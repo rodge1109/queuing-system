@@ -1,0 +1,134 @@
+function SurveyPage({ setCurrentPage }) {
+    const [step, setStep] = useState(1);
+    const [formData, setFormData] = useState({ 
+        name: '', age: '', sex: '', region: '', clientType: 'Citizen', cc1: '', cc2: '', cc3: '',
+        sqd0: 5, sqd1: 5, sqd2: 5, sqd3: 5, sqd4: 5, sqd5: 5, sqd6: 5, sqd7: 5, sqd8: 5
+    });
+    const handleRating = (key, val) => setFormData(prev => ({ ...prev, [key]: val }));
+    return (
+      <div className="min-h-screen bg-white pt-[148px] px-8 pb-24">
+        <div className="max-w-4xl mx-auto bg-[#f4f4f4] border-t-4 border-[#0f62fe] p-12">
+          <h2 className="text-4xl font-light text-[#161616] mb-8">Service Feedback</h2>
+          <div className="space-y-8">
+            <div className="space-y-2">
+               <label className="text-xs uppercase text-[#525252]">Full Name</label>
+               <input className="carbon-input w-full p-4" onChange={e => setFormData({...formData, name: e.target.value})} />
+            </div>
+            <p className="font-bold text-sm uppercase text-[#0f62fe]">Overall Satisfaction</p>
+            <div className="flex gap-2">
+               {[1,2,3,4,5].map(v => (
+                 <button key={v} onClick={() => handleRating('sqd0', v)} className={`w-12 h-12 font-bold ${formData.sqd0 === v ? 'bg-[#0f62fe] text-white' : 'bg-white border'}`}>{v}</button>
+               ))}
+            </div>
+            <button onClick={() => setCurrentPage('home')} className="carbon-btn-primary p-4 px-12 font-bold">SUBMIT FEEDBACK</button>
+          </div>
+        </div>
+      </div>
+    );
+}
+
+function QueuePage({ setCurrentPage }) {
+    const [formData, setFormData] = useState({ name: '', transactionType: '' });
+    const [ticket, setTicket] = useState(null);
+
+    const handleSubmit = async (e) => {
+      e.preventDefault();
+      try {
+        const res = await fetch('http://localhost:5000/api/queue/ticket', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData)
+        });
+        const data = await res.json();
+        if (data.success) setTicket(data.ticket);
+      } catch (err) { }
+    };
+
+    if (ticket) {
+      return (
+        <div className="min-h-screen bg-white pt-[148px] px-8 flex justify-center">
+           <div className="w-full max-w-sm bg-[#f4f4f4] p-12 text-center border-t-4 border-[#0f62fe]">
+              <p className="text-xs uppercase text-[#525252] mb-8">Queue Number</p>
+              <h2 className="text-7xl font-light text-[#161616] mb-8">{ticket.ticket_number}</h2>
+              <button onClick={() => setCurrentPage('survey')} className="carbon-btn-primary w-full p-4 font-semibold">FINISH & GIVE FEEDBACK</button>
+           </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="min-h-screen bg-white pt-[148px] px-8 flex justify-center">
+        <div className="w-full max-w-lg bg-[#f4f4f4] p-12 border-t-4 border-[#0f62fe]">
+          <h2 className="text-3xl font-light text-[#161616] mb-10">Electronic Queue</h2>
+          <form onSubmit={handleSubmit} className="space-y-8">
+            <div className="space-y-2">
+              <label className="text-xs uppercase text-[#525252]">Full Name</label>
+              <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="carbon-input w-full p-4" required />
+            </div>
+            <button type="submit" className="carbon-btn-primary w-full p-5 font-bold">GET TICKET</button>
+          </form>
+        </div>
+      </div>
+    );
+}
+
+function QueueDisplayPage() {
+    return (
+      <div className="fixed inset-0 bg-[#f4f4f4] flex flex-col items-center justify-center">
+         <h1 className="text-2xl uppercase tracking-widest text-[#525252] mb-12">Now Serving</h1>
+         <div className="bg-white border-t-8 border-[#0f62fe] p-24 text-center shadow-xl">
+            <span className="text-[240px] font-light leading-none">A-001</span>
+            <p className="text-4xl text-[#525252] mt-4 uppercase">Window 3</p>
+         </div>
+      </div>
+    );
+}
+
+function QueueTellerPage({ setCurrentPage }) {
+  const [tellers, setTellers] = useState([]);
+  const [selectedWindow, setSelectedWindow] = useState('');
+  const [tellerName, setTellerName] = useState('');
+  const [currentTicket, setCurrentTicket] = useState(null);
+  const [waitingCount, setWaitingCount] = useState(0);
+
+  useEffect(() => {
+    fetch('http://localhost:5000/api/queue/tellers')
+      .then(res => res.json())
+      .then(data => { if (data.success) setTellers(data.tellers); });
+  }, []);
+
+  if (!selectedWindow) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center pt-[100px]">
+        <div className="w-full max-w-lg bg-[#f4f4f4] p-12 border-t-4 border-[#0f62fe]">
+          <h2 className="text-3xl font-light text-[#161616] mb-8">Teller Access</h2>
+          <div className="space-y-6">
+            <input value={tellerName} onChange={e => setTellerName(e.target.value)} className="carbon-input w-full p-4" placeholder="Staff Name" />
+            <div className="grid grid-cols-2 gap-2">
+               {tellers.map(t => (
+                 <button key={t.id} onClick={() => setSelectedWindow(t.window_name)} disabled={!tellerName} className="carbon-btn-primary p-4 disabled:opacity-30">{t.window_name}</button>
+               ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-white pt-[148px] px-8">
+       <div className="bg-[#161616] p-8 text-white flex justify-between items-center mb-8">
+          <h3 className="text-2xl font-light">{selectedWindow} — {tellerName}</h3>
+          <button onClick={() => setSelectedWindow('')} className="text-xs uppercase underline">Sign Out</button>
+       </div>
+       <div className="max-w-4xl mx-auto bg-[#f4f4f4] p-24 text-center border-t-4 border-[#0f62fe]">
+          <p className="text-xs uppercase text-[#525252] mb-4">Current Client</p>
+          <h2 className="text-[120px] font-light mb-12 leading-none">A-002</h2>
+          <div className="grid grid-cols-2 gap-4">
+             <button className="carbon-btn-primary p-6 font-bold text-xl uppercase">Complete</button>
+             <button className="p-6 border border-[#da1e28] text-[#da1e28] font-bold text-xl uppercase">Skip</button>
+          </div>
+       </div>
+    </div>
+  );
+}

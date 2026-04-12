@@ -1,0 +1,36 @@
+  const [currentPage, setCurrentPage] = useState('home');
+  const [staffList, setStaffList] = useState([]);
+  const [newStaffUsername, setNewStaffUsername] = useState('');
+  const [newStaffPassword, setNewStaffPassword] = useState('');
+  const [newStaffName, setNewStaffName] = useState('');
+  const [csmStats, setCsmStats] = useState(null);
+
+  const fetchStaffList = async () => {
+    try {
+      const resp = await fetch('http://localhost:5000/api/admin/staff');
+      const data = await resp.json();
+      if (data.success) setStaffList(data.staff);
+    } catch (err) { console.error(err); }
+  };
+
+  const addStaff = async () => {
+    if (!newStaffUsername || !newStaffPassword || !newStaffName) return;
+    try {
+      const resp = await fetch('http://localhost:5000/api/admin/staff', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: newStaffUsername, password: newStaffPassword, name: newStaffName })
+      });
+      const data = await resp.json();
+      if (data.success) {
+        setNewStaffUsername(''); setNewStaffPassword(''); setNewStaffName('');
+        fetchStaffList();
+      }
+    } catch (err) { }
+  };
+
+  const deleteStaff = async (id) => {
+    if (!confirm('Remove?')) return;
+    await fetch(`http://localhost:5000/api/admin/staff/${id}`, { method: 'DELETE' });
+    fetchStaffList();
+  };

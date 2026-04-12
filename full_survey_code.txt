@@ -1,0 +1,171 @@
+function SurveyPage({ setCurrentPage }) {
+    const [step, setStep] = useState(1);
+    const [submitting, setSubmitting] = useState(false);
+    const [formData, setFormData] = useState({
+      name: '', age: '', sex: '', region: '', contactNumber: '', serviceAvailed: '', clientType: 'Citizen',
+      cc1: '', cc2: '', cc3: '', cc3Reason: '',
+      sqd0: 5, sqd1: 5, sqd2: 5, sqd3: 5, sqd4: 5, sqd5: 5, sqd6: 5, sqd7: 5, sqd8: 5,
+      suggestions: ''
+    });
+
+    const handleChange = (e) => {
+      const { name, value } = e.target;
+      setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleRating = (key, val) => {
+      setFormData(prev => ({ ...prev, [key]: val }));
+    };
+
+    const sqdQuestions = [
+      { key: 'sqd0', label: 'Overall Satisfaction', desc: 'How satisfied are you with the service overall?' },
+      { key: 'sqd1', label: 'Responsiveness', desc: 'The service was provided in a timely manner.' },
+      { key: 'sqd2', label: 'Reliability', desc: 'The staff followed the requirements and procedures.' },
+      { key: 'sqd3', label: 'Access & Facilities', desc: 'The location and office were accessible and comfortable.' },
+      { key: 'sqd4', label: 'Communication', desc: 'I was informed of the requirements and status clearly.' },
+      { key: 'sqd5', label: 'Costs', desc: 'The costs were reasonable and the payment process was easy.' },
+      { key: 'sqd6', label: 'Integrity', desc: 'The office was fair and there was no corruption.' },
+      { key: 'sqd7', label: 'Assurance', desc: 'I felt safe and secure during my transaction.' },
+      { key: 'sqd8', label: 'Outcome', desc: 'The office delivered what was promised.' }
+    ];
+
+    const handleSubmit = async (e) => {
+      e.preventDefault();
+      setSubmitting(true);
+      try {
+        const res = await fetch('http://localhost:5000/api/survey', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData)
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert('Thank you! Your feedback has been submitted.');
+          setCurrentPage('home');
+        } else alert(data.message);
+      } catch (err) { alert('Communication error with server.'); }
+      finally { setSubmitting(false); }
+    };
+
+    return (
+      <div className="min-h-screen bg-slate-50 py-12 px-4">
+        <div className="max-w-4xl mx-auto bg-white rounded-[40px] shadow-2xl overflow-hidden border border-blue-100">
+          <div className="bg-[#274690] p-10 text-white relative">
+            <h2 className="text-3xl font-black mb-2">Client Satisfaction Measurement</h2>
+            <p className="text-blue-200">ARTA-Compliant Customer Feedback Form</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="p-8 md:p-12">
+            {step === 1 && (
+              <div className="space-y-8">
+                <h3 className="text-xl font-bold border-b pb-4">I. Client Profile</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Full Name (Optional)</label>
+                    <input type="text" name="name" value={formData.name} onChange={handleChange} className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-600/20" placeholder="Your Name" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Age</label>
+                    <input type="number" name="age" value={formData.age} onChange={handleChange} className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-600/20" placeholder="e.g. 30" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Sex</label>
+                    <select name="sex" value={formData.sex} onChange={handleChange} className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl focus:outline-none">
+                      <option value="">Select</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Client Type</label>
+                    <select name="clientType" value={formData.clientType} onChange={handleChange} className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl focus:outline-none">
+                      <option value="Citizen">Citizen</option>
+                      <option value="Business">Business</option>
+                      <option value="Government">Government</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Region/City</label>
+                    <input type="text" name="region" value={formData.region} onChange={handleChange} className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl focus:outline-none" placeholder="Local City" />
+                  </div>
+                </div>
+                <div>
+                   <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Service Availed</label>
+                   <input type="text" name="serviceAvailed" value={formData.serviceAvailed} onChange={handleChange} className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl focus:outline-none" placeholder="The service you received" />
+                </div>
+                <button type="button" onClick={() => setStep(2)} className="w-full py-5 bg-[#274690] text-white rounded-2xl font-black text-xl shadow-xl shadow-blue-100">NEXT: SURVEY QUESTIONS</button>
+              </div>
+            )}
+
+            {step === 2 && (
+              <div className="space-y-10 animate-in fade-in slide-in-from-right-4">
+                <div className="space-y-8">
+                  <h3 className="text-xl font-bold border-b pb-4">II. Citizen's Charter (CC)</h3>
+                  <div>
+                    <p className="font-bold mb-4">CC1. Are you aware of the Citizen's Charter (posted info about services)?</p>
+                    <div className="flex flex-wrap gap-2">
+                      {["Yes, aware", "Yes, but not aware of details", "No, not aware"].map(o => (
+                        <button key={o} type="button" onClick={() => handleRating('cc1', o)} className={`px-4 py-2 rounded-xl border font-bold ${formData.cc1 === o ? 'bg-blue-600 text-white' : 'bg-white text-slate-600'}`}>{o}</button>
+                      ))}
+                    </div>
+                  </div>
+                  {formData.cc1.startsWith("Yes") && (
+                    <>
+                      <div>
+                        <p className="font-bold mb-4">CC2. Did you see the Citizen me-Charter in this office?</p>
+                        <div className="flex gap-2">
+                          {["Yes, seen", "No, not seen", "N/A"].map(o => (
+                            <button key={o} type="button" onClick={() => handleRating('cc2', o)} className={`px-4 py-2 rounded-xl border font-bold ${formData.cc2 === o ? 'bg-blue-600 text-white' : 'bg-white text-slate-600'}`}>{o}</button>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <p className="font-bold mb-4">CC3. If seen, how much did it help you in your transaction?</p>
+                        <div className="flex flex-wrap gap-2">
+                          {["Very helpful", "Helpful", "Somewhat helpful", "Not helpful", "N/A"].map(o => (
+                            <button key={o} type="button" onClick={() => handleRating('cc3', o)} className={`px-4 py-2 rounded-xl border font-bold ${formData.cc3 === o ? 'bg-blue-600 text-white' : 'bg-white text-slate-600'}`}>{o}</button>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <div className="space-y-10">
+                  <h3 className="text-xl font-bold border-b pb-4">III. Service Quality Dimensions (SQD)</h3>
+                  <p className="text-sm text-slate-400 -mt-6">Rate from 1 (Strongly Disagree) to 5 (Strongly Agree)</p>
+                  {sqdQuestions.map((q) => (
+                    <div key={q.key} className="bg-slate-50 p-6 rounded-3xl border border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div className="max-w-md">
+                        <p className="font-black text-blue-600 text-xs uppercase mb-1">{q.label}</p>
+                        <p className="font-bold text-slate-800">{q.desc}</p>
+                      </div>
+                      <div className="flex gap-2">
+                        {[1, 2, 3, 4, 5].map(star => (
+                          <button key={star} type="button" onClick={() => handleRating(q.key, star)} className={`w-12 h-12 rounded-xl font-bold transition-all ${formData[q.key] === star ? 'bg-amber-400 text-white shadow-lg' : 'bg-white text-slate-300'}`}>{star}</button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div>
+                   <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Suggestions / Comments</label>
+                   <textarea name="suggestions" value={formData.suggestions} onChange={handleChange} className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl min-h-[100px]" placeholder="How can we improve?"></textarea>
+                </div>
+
+                <div className="flex gap-4">
+                  <button type="button" onClick={() => setStep(1)} className="px-8 py-5 text-slate-400 font-bold">Back</button>
+                  <button type="submit" disabled={submitting} className="flex-1 py-5 bg-emerald-500 text-white rounded-2xl font-black text-xl shadow-xl shadow-emerald-100 transition-all">
+                    {submitting ? 'SUBMITTING...' : 'SUBMIT FEEDBACK'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </form>
+        </div>
+      </div>
+    );
+}
