@@ -41,6 +41,10 @@
   border-radius: 24px !important;
 }
 
+.force-circle {
+  border-radius: 9999px !important;
+}
+
 html {
   overflow-x: hidden;
   overflow-y: scroll;
@@ -87,13 +91,14 @@ small, .text-xs {
 
 /* Carbon Input Pattern */
 .carbon-input {
-  background-color: var(--cds-field);
-  border: none;
-  border-bottom: 2px solid transparent;
+  background-color: white;
+  border: 1px solid #e0e0e0;
+  border-bottom: 2px solid #8d8d8d;
   transition: all 0.1s;
 }
 
 .carbon-input:focus {
+  border-color: var(--cds-focus);
   border-bottom: 2px solid var(--cds-focus);
   outline: none;
 }
@@ -111,4 +116,56 @@ small, .text-xs {
 
 .carbon-btn-primary:active {
   background-color: var(--cds-button-primary-active);
+}
+
+/* ========================================
+   Ride Scheduling / Dispatch Animations
+   ======================================== */
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes zoomIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-slideInRight {
+  animation: slideInRight 0.22s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.animate-zoomIn {
+  animation: zoomIn 0.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Dark-theme custom scrollbar for dispatch panels */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 9999px !important;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
 }

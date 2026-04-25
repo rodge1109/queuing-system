@@ -16,8 +16,14 @@ const server = http.createServer(app);
 const PORT = process.env.PORT || 5000;
 
 // Middleware
-app.use(cors());
 app.use(express.json());
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    console.log(`[${new Date().toLocaleTimeString()}] ${req.method} ${req.url} - ${res.statusCode} (${Date.now() - start}ms)`);
+  });
+  next();
+});
 
 // ==================== FILE UPLOADS ====================
 const UPLOADS_DIR = path.join(__dirname, 'uploads');
@@ -61,7 +67,7 @@ app.post('/api/staff/upload', (req, res) => {
 
 // ==================== WEBSOCKET STAFF CHAT ====================
 
-// Map: ws -> { name, window } â€” tracks connected staff
+// Map: ws -> { name, window } - tracks connected staff
 const wsClients = new Map();
 
 const WS_OPEN = 1;
@@ -428,7 +434,16 @@ app.post('/api/appointments', async (req, res) => {
       serviceType,
       preferredDate,
       preferredTime,
-      notes
+      notes,
+      specialistId,
+      agentCode,
+      pickupLocation,
+      destinationLocation,
+      pickupLat,
+      pickupLng,
+      destLat,
+      destLng,
+      totalAmount
     } = req.body;
 
     // Validate required fields
@@ -460,12 +475,36 @@ app.post('/api/appointments', async (req, res) => {
 
     // Insert into database
     const query = `
-      INSERT INTO appointments (full_name, phone_number, email, service_type, preferred_date, preferred_time, notes, cancel_token)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      INSERT INTO appointments (
+        full_name, phone_number, email, service_type, preferred_date, 
+        preferred_time, notes, cancel_token, specialist_id, agent_code, 
+        pickup_location, destination_location,
+        pickup_lat, pickup_lng, dest_lat, dest_lng,
+        total_amount
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
       RETURNING *
     `;
 
-    const values = [fullName, phoneNumber, email, serviceType, preferredDate, preferredTime, notes || '', cancelToken];
+    const values = [
+      fullName, 
+      phoneNumber, 
+      email, 
+      serviceType, 
+      preferredDate, 
+      preferredTime, 
+      notes || '', 
+      cancelToken, 
+      specialistId === 'any' ? null : specialistId, 
+      agentCode, 
+      pickupLocation, 
+      destinationLocation,
+      pickupLat || null,
+      pickupLng || null,
+      destLat || null,
+      destLng || null,
+      totalAmount || 0
+    ];
     const result = await pool.query(query, values);
 
     // Send confirmation email and SMS (don't wait for it, don't fail if it fails)
@@ -520,11 +559,13 @@ app.get('/api/available-slots', async (req, res) => {
       });
     }
 
-    // All possible time slots
-    const allSlots = [
-      '9:00 AM', '10:00 AM', '11:00 AM',
-      '2:00 PM', '3:00 PM', '4:00 PM'
-    ];
+    // All possible time slots (24 hours)
+    const allSlots = [];
+    for (let i = 0; i < 24; i++) {
+        const h = i % 12 || 12;
+        const ampm = i < 12 ? 'AM' : 'PM';
+        allSlots.push(`${h}:00 ${ampm}`);
+    }
 
     // Get booked slots for the date
     const bookedResult = await pool.query(
@@ -744,34 +785,29 @@ app.delete('/api/admin/staff/:id', async (req, res) => {
 // Admin login
 app.post('/api/admin/login', async (req, res) => {
   try {
-    let { username='', password='' } = req.body; username = username.trim(); password = password.trim();
-
-    // Check against environment variables (simple approach)
-    const adminUser = process.env.ADMIN_USER || 'admin';
-    const adminPass = process.env.ADMIN_PASS || 'admin123';
-
-    if (username === adminUser && password === adminPass) {
-      // Generate simple session token
+    const { username = '', password = '' } = req.body || {};
+    
+    // TEMPORARY EASY LOGIN FOR CONFIGURATION
+    if ((username.toLowerCase() === 'admin' && password === 'admin') || 
+        (username.toLowerCase() === 'admin' && password === 'clinic2024')) {
+      
       const token = Math.random().toString(36).substring(2) + Date.now().toString(36);
-      sessions.set(token, { username, loginTime: new Date() });
+      sessions.set(token, { username: 'admin', loginTime: new Date() });
 
-      res.json({
+      return res.json({
         success: true,
         message: 'Login successful',
         token
       });
     } else {
-      res.status(401).json({
+      return res.status(401).json({
         success: false,
         message: 'Invalid username or password'
       });
     }
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Login failed'
-    });
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 
@@ -2602,6 +2638,422 @@ app.post('/api/survey', async (req, res) => {
   }
 });
 
+// ==================== SPECIALIST ENDPOINTS ====================
+
+app.get('/api/specialists', async (_req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT * FROM booking_specialists ORDER BY name ASC');
+    res.json({ success: true, specialists: rows });
+  } catch (error) {
+    console.error('Error fetching specialists:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch specialists' });
+  }
+});
+
+app.post('/api/specialists', async (req, res) => {
+  try {
+    const { name, email, title, imageUrl } = req.body;
+    const { rows } = await pool.query(
+      'INSERT INTO booking_specialists (name, email, title, image_url) VALUES ($1, $2, $3, $4) RETURNING *',
+      [name, email, title, imageUrl]
+    );
+    res.json({ success: true, specialist: rows[0] });
+  } catch (error) {
+    console.error('Error creating specialist:', error);
+    res.status(500).json({ success: false, message: 'Failed to create specialist' });
+  }
+});
+
+app.delete('/api/specialists/:id', async (req, res) => {
+  try {
+    await pool.query('DELETE FROM booking_specialists WHERE id = $1', [req.params.id]);
+    res.json({ success: true, message: 'Specialist deleted' });
+  } catch (error) {
+    console.error('Error deleting specialist:', error);
+    res.status(500).json({ success: false, message: 'Failed to delete specialist' });
+  }
+});
+
+// ==================== SERVICE ENDPOINTS ====================
+
+app.get('/api/booking-services', async (_req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT * FROM booking_services ORDER BY category, name ASC');
+    res.json({ success: true, services: rows });
+  } catch (error) {
+    console.error('Error fetching services:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch services' });
+  }
+});
+
+// Get unique categories
+app.get('/api/booking-categories', async (_req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT DISTINCT category FROM booking_services WHERE category IS NOT NULL ORDER BY category ASC');
+    res.json({ success: true, categories: rows.map(r => r.category) });
+  } catch (error) {
+    console.error('Error fetching categories:', error);
+    res.status(500).json({ success: false });
+  }
+});
+
+app.post('/api/booking-services', async (req, res) => {
+  try {
+    const { name, duration, price, icon, category, base_fare, per_km_rate } = req.body || {};
+    
+    const query = 'INSERT INTO booking_services (name, duration, price, icon, category, base_fare, per_km_rate) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *';
+    const values = [
+      String(name || 'Unnamed Service'),
+      String(duration || '30m'),
+      String(price || 'PHP 0.00'),
+      String(icon || '🚗'),
+      String(category || 'Transport'),
+      parseFloat(String(base_fare).replace(/[^0-9.]/g, '')) || 0,
+      parseFloat(String(per_km_rate).replace(/[^0-9.]/g, '')) || 0
+    ];
+
+    const { rows } = await pool.query(query, values);
+    res.json({ success: true, service: rows[0] });
+  } catch (error) {
+    console.error('ERROR SAVING SERVICE:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Update a clinical service
+app.put('/api/booking-services/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, duration, price, icon, category, base_fare, per_km_rate } = req.body;
+    
+    const query = `
+      UPDATE booking_services 
+      SET name = $1, duration = $2, price = $3, icon = $4, category = $5, base_fare = $6, per_km_rate = $7, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $8 RETURNING *`;
+    const values = [name, duration, price, icon, category, base_fare, per_km_rate, id];
+    
+    const { rows } = await pool.query(query, values);
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Service not found' });
+    }
+    res.json({ success: true, service: rows[0] });
+  } catch (error) {
+    console.error('Error updating service:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Delete a clinical service
+app.delete('/api/booking-services/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log(`[Admin] Deleting service ID: ${id}`);
+    await pool.query('DELETE FROM booking_services WHERE id = $1', [id]);
+    res.json({ success: true, message: 'Service deleted' });
+  } catch (error) {
+    console.error('Error deleting service:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ==================== RIDER TRACKING ENDPOINTS ====================
+
+// Standard rider login (by username/password)
+app.post('/api/rider/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    console.log(`[Rider Login] Attempt for: ${username}`);
+    const { rows } = await pool.query('SELECT * FROM riders WHERE username = $1 AND password = $2', [username, password]);
+    
+    if (rows.length === 0) {
+      console.log(`[Rider Login] FAILED for: ${username}`);
+      return res.status(401).json({ success: false, message: 'Invalid username or password' });
+    }
+    
+    console.log(`[Rider Login] SUCCESS for: ${username}`);
+    res.json({ success: true, rider: rows[0] });
+  } catch (error) {
+    console.error('[Rider Login] Error:', error);
+    res.status(500).json({ success: false });
+  }
+});
+
+// Get pending transport requests
+app.get('/api/rider/requests', async (req, res) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT a.*, s.base_fare, s.per_km_rate 
+      FROM appointments a
+      JOIN booking_services s ON a.service_type = s.name
+      WHERE s.category ILIKE 'TRANSPORT' 
+      AND a.transport_status = 'unassigned'
+      AND a.status NOT IN ('cancelled', 'completed')
+      ORDER BY a.created_at DESC
+    `);
+    res.json({ success: true, requests: rows });
+  } catch (error) {
+    console.error('Error fetching rider requests:', error);
+    res.status(500).json({ success: false });
+  }
+});
+
+// Accept a request
+app.post('/api/rider/accept', async (req, res) => {
+  try {
+    const { appointmentId, riderId } = req.body;
+    await pool.query(
+      "UPDATE appointments SET rider_id = $1, transport_status = 'accepted', status = 'confirmed' WHERE id = $2",
+      [riderId, appointmentId]
+    );
+    res.json({ success: true, message: 'Request accepted' });
+  } catch (error) {
+    res.status(500).json({ success: false });
+  }
+});
+
+// Update rider location
+app.post('/api/rider/update-location', async (req, res) => {
+  try {
+    const { riderId, lat, lng } = req.body;
+    await pool.query(
+      'UPDATE riders SET current_lat = $1, current_lng = $2, last_updated = NOW(), status = $3 WHERE id = $4',
+      [lat, lng, 'online', riderId]
+    );
+
+    // Broadcast location update to all connected admins/staff
+    wsBroadcast({ 
+      type: 'location_update', 
+      riderId, 
+      lat, 
+      lng,
+      timestamp: new Date()
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false });
+  }
+});
+
+// Update trip status
+app.post('/api/rider/update-status', async (req, res) => {
+  try {
+    const { appointmentId, status } = req.body; // on_way_to_pickup, arrived_at_pickup, picked_up, completed
+    
+    let aptStatus = 'confirmed';
+    if (status === 'completed') aptStatus = 'completed';
+
+    await pool.query(
+      'UPDATE appointments SET transport_status = $1, status = $2, updated_at = NOW() WHERE id = $3',
+      [status, aptStatus, appointmentId]
+    );
+
+    // Broadcast status update to all connected admins/staff
+    wsBroadcast({ 
+      type: 'trip_update', 
+      appointmentId, 
+      status,
+      timestamp: new Date()
+    });
+
+    res.json({ success: true, transport_status: status });
+  } catch (error) {
+    res.status(500).json({ success: false });
+  }
+});
+
+// ==================== ADMIN RIDER MANAGEMENT ENDPOINTS ====================
+
+// Get all riders (admin)
+app.get('/api/admin/riders', async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT * FROM riders ORDER BY name ASC');
+    res.json({ success: true, riders: rows });
+  } catch (error) {
+    console.error('Error fetching riders:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch riders' });
+  }
+});
+
+// Add new rider (admin)
+app.post('/api/admin/riders', async (req, res) => {
+  try {
+    const { name, username, password, email, phone, address, vehicle_type, plate_number, brand_model } = req.body;
+    const { rows } = await pool.query(
+      'INSERT INTO riders (name, username, password, email, phone, address, vehicle_type, plate_number, brand_model, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *',
+      [name, username, password, email, phone, address, vehicle_type, plate_number, brand_model, 'offline']
+    );
+    res.json({ success: true, rider: rows[0] });
+  } catch (error) {
+    console.error('Error creating rider:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Update rider (admin)
+app.put('/api/admin/riders/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, email, phone, address, vehicle_type, plate_number, brand_model, status } = req.body;
+    const { rows } = await pool.query(
+      'UPDATE riders SET name = $1, email = $2, phone = $3, address = $4, vehicle_type = $5, plate_number = $6, brand_model = $7, status = $8, last_updated = NOW() WHERE id = $9 RETURNING *',
+      [name, email, phone, address, vehicle_type, plate_number, brand_model, status, id]
+    );
+    res.json({ success: true, rider: rows[0] });
+  } catch (error) {
+    console.error('Error updating rider:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Delete rider (admin)
+app.delete('/api/admin/riders/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.query('DELETE FROM riders WHERE id = $1', [id]);
+    res.json({ success: true, message: 'Rider removed' });
+  } catch (error) {
+    console.error('Error deleting rider:', error);
+    res.status(500).json({ success: false, message: 'Failed to delete rider' });
+  }
+});
+
+// Get rider trip history
+app.get('/api/admin/riders/:id/trips', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rows } = await pool.query(
+      "SELECT * FROM appointments WHERE rider_id = $1 ORDER BY created_at DESC",
+      [id]
+    );
+    res.json({ success: true, trips: rows });
+  } catch (error) {
+    res.status(500).json({ success: false });
+  }
+});
+
+// ==================== TRIP MONITORING ENDPOINTS ====================
+
+// Get all trips (admin monitoring)
+app.get('/api/admin/trips', async (req, res) => {
+  try {
+    const { status, date } = req.query;
+    // We assume any appointment with pickup_lat is a transport trip
+    let query = `
+      SELECT a.*, r.name as rider_name, r.plate_number, r.vehicle_type, r.current_lat as rider_lat, r.current_lng as rider_lng
+      FROM appointments a
+      LEFT JOIN riders r ON a.rider_id = r.id
+      WHERE a.pickup_lat IS NOT NULL
+    `;
+    const params = [];
+
+    if (status && status !== 'all') {
+      params.push(status);
+      query += ` AND a.transport_status = $${params.length}`;
+    }
+
+    query += ' ORDER BY a.created_at DESC';
+    const { rows } = await pool.query(query, params);
+    res.json({ success: true, trips: rows });
+  } catch (error) {
+    console.error('Fetch trips error:', error);
+    res.status(500).json({ success: false });
+  }
+});
+
+// Trip summary stats
+app.get('/api/admin/trips/stats', async (req, res) => {
+  try {
+    const statsQuery = `
+      SELECT 
+        COUNT(*) as total,
+        COUNT(*) FILTER (WHERE transport_status = 'picked_up' OR transport_status = 'en_route') as ongoing,
+        COUNT(*) FILTER (WHERE transport_status = 'completed') as completed,
+        COUNT(*) FILTER (WHERE transport_status = 'cancelled') as cancelled,
+        COUNT(*) FILTER (WHERE transport_status = 'sos') as sos
+      FROM appointments
+      WHERE pickup_lat IS NOT NULL
+    `;
+    const { rows } = await pool.query(statsQuery);
+    res.json({ success: true, stats: rows[0] });
+  } catch (error) {
+    res.status(500).json({ success: false });
+  }
+});
+
+// Get trip incidents (SOS)
+app.get('/api/admin/incidents', async (req, res) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT i.*, a.full_name as passenger_name, r.name as rider_name, r.phone as rider_phone
+      FROM trip_incidents i
+      JOIN appointments a ON i.trip_id = a.id
+      JOIN riders r ON i.rider_id = r.id
+      ORDER BY i.created_at DESC
+    `);
+    res.json({ success: true, incidents: rows });
+  } catch (error) {
+    console.error('Fetch incidents error:', error);
+    res.status(500).json({ success: false });
+  }
+});
+
+// Add timeline entry (internal helper call)
+app.post('/api/admin/trips/:id/timeline', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    await pool.query('INSERT INTO trip_timeline (trip_id, status) VALUES ($1, $2)', [id, status]);
+    await pool.query('UPDATE appointments SET transport_status = $1 WHERE id = $2', [status, id]);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false });
+  }
+});
+
+// ==================== PATIENT TRACKING ENDPOINTS ====================
+
+// Lookup appointment by email and reference ID
+app.post('/api/patient/lookup', async (req, res) => {
+  try {
+    const { email, referenceId } = req.body;
+    const { rows } = await pool.query(
+      'SELECT * FROM appointments WHERE email = $1 AND id = $2',
+      [email, referenceId]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'No appointment found with these details.' });
+    }
+
+    res.json({ success: true, appointment: rows[0] });
+  } catch (error) {
+    console.error('Lookup error:', error);
+    res.status(500).json({ success: false, message: 'An error occurred during lookup.' });
+  }
+});
+
+// Real-time tracker for clients
+app.get('/api/patient/appointment/:token/tracker', async (req, res) => {
+  try {
+    const { token } = req.params;
+    const { rows } = await pool.query(`
+      SELECT a.*, r.name as rider_name, r.phone as rider_phone, 
+             r.vehicle_type, r.plate_number,
+             r.current_lat, r.current_lng, r.last_updated as rider_last_ping
+      FROM appointments a
+      LEFT JOIN riders r ON a.rider_id = r.id
+      WHERE a.cancel_token = $1
+    `, [token]);
+
+    if (rows.length === 0) return res.status(404).json({ success: false });
+    res.json({ success: true, tracking: rows[0] });
+  } catch (error) {
+    console.error('Tracker error:', error);
+    res.status(500).json({ success: false });
+  }
+});
+
 // ==================== CLINIC SETTINGS ENDPOINTS ====================
 
 app.get('/api/clinic-settings', async (_req, res) => {
@@ -2643,6 +3095,118 @@ const initClinicSettings = async () => {
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS booking_specialists (
+      id SERIAL PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      email VARCHAR(255),
+      title VARCHAR(255),
+      image_url TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS booking_services (
+      id SERIAL PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      duration VARCHAR(50),
+      price VARCHAR(50),
+      icon TEXT,
+      category VARCHAR(100),
+      base_fare DECIMAL(10, 2) DEFAULT 0,
+      per_km_rate DECIMAL(10, 2) DEFAULT 0,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Migration for existing table
+  await pool.query(`ALTER TABLE booking_services ADD COLUMN IF NOT EXISTS base_fare DECIMAL(10, 2) DEFAULT 0`);
+  await pool.query(`ALTER TABLE booking_services ADD COLUMN IF NOT EXISTS per_km_rate DECIMAL(10, 2) DEFAULT 0`);
+
+  // Rider Tracking Table
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS riders (
+      id SERIAL PRIMARY KEY,
+      name VARCHAR(100),
+      username VARCHAR(50) UNIQUE,
+      password VARCHAR(100),
+      email VARCHAR(100),
+      phone VARCHAR(20),
+      address TEXT,
+      status VARCHAR(20) DEFAULT 'offline',
+      current_lat DECIMAL(10, 8),
+      current_lng DECIMAL(11, 8),
+      vehicle_type VARCHAR(50),
+      plate_number VARCHAR(20),
+      brand_model VARCHAR(100),
+      last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Migration for additional rider fields
+  await pool.query(`ALTER TABLE riders ADD COLUMN IF NOT EXISTS email VARCHAR(100)`);
+  await pool.query(`ALTER TABLE riders ADD COLUMN IF NOT EXISTS address TEXT`);
+  await pool.query(`ALTER TABLE riders ADD COLUMN IF NOT EXISTS brand_model VARCHAR(100)`);
+  await pool.query(`ALTER TABLE riders ADD COLUMN IF NOT EXISTS vehicle_type VARCHAR(50)`);
+  await pool.query(`ALTER TABLE riders ADD COLUMN IF NOT EXISTS plate_number VARCHAR(20)`);
+  
+  // Migration for appointments tracking
+  await pool.query(`ALTER TABLE appointments ADD COLUMN IF NOT EXISTS rider_id INTEGER`);
+  await pool.query(`ALTER TABLE appointments ADD COLUMN IF NOT EXISTS transport_status VARCHAR(50) DEFAULT 'unassigned'`);
+  await pool.query(`ALTER TABLE appointments ADD COLUMN IF NOT EXISTS pickup_lat DECIMAL(10, 8)`);
+  await pool.query(`ALTER TABLE appointments ADD COLUMN IF NOT EXISTS pickup_lng DECIMAL(11, 8)`);
+  await pool.query(`ALTER TABLE appointments ADD COLUMN IF NOT EXISTS dest_lat DECIMAL(10, 8)`);
+  await pool.query(`ALTER TABLE appointments ADD COLUMN IF NOT EXISTS dest_lng DECIMAL(11, 8)`);
+  await pool.query(`ALTER TABLE appointments ADD COLUMN IF NOT EXISTS total_amount DECIMAL(10, 2) DEFAULT 0`);
+  
+  // Trip Incidents / SOS tracking
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS trip_incidents (
+      id SERIAL PRIMARY KEY,
+      trip_id INTEGER,
+      rider_id INTEGER,
+      type VARCHAR(50) DEFAULT 'SOS',
+      description TEXT,
+      lat DECIMAL(10, 8),
+      lng DECIMAL(11, 8),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      status VARCHAR(20) DEFAULT 'pending'
+    )
+  `);
+
+  // Trip Timeline tracking
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS trip_timeline (
+      id SERIAL PRIMARY KEY,
+      trip_id INTEGER,
+      status VARCHAR(50),
+      timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  
+  // Seed a demo rider if none exists
+  const rCheck = await pool.query('SELECT COUNT(*) FROM riders');
+  if (parseInt(rCheck.rows[0].count) === 0) {
+    await pool.query(`
+      INSERT INTO riders (name, username, password, phone, status, vehicle_type, plate_number) 
+      VALUES ('Demo Rider', 'rider1', 'rider123', '09123456789', 'online', 'Luxury White Van', 'KNG-1234')
+    `);
+  }
+
+  // Migrate appointments table
+  try {
+    await pool.query('ALTER TABLE appointments ADD COLUMN IF NOT EXISTS specialist_id INTEGER REFERENCES booking_specialists(id)');
+    await pool.query('ALTER TABLE appointments ADD COLUMN IF NOT EXISTS agent_code VARCHAR(50)');
+    await pool.query('ALTER TABLE appointments ADD COLUMN IF NOT EXISTS pickup_location TEXT');
+    await pool.query('ALTER TABLE appointments ADD COLUMN IF NOT EXISTS destination_location TEXT');
+    
+    // Performance indexes
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_appointments_date ON appointments(preferred_date)');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_queue_date ON queue_tickets(queue_date)');
+  } catch (e) {}
+
   const defaults = [
     ['clinic_name',                'HealthCare Clinic'],
     ['clinic_address',             'Cantecson, Gairan, Bogo City, Cebu'],
@@ -2680,7 +3244,7 @@ const autoQueueAppointments = async () => {
     );
 
     for (const appt of appointments) {
-      // Parse "9:00 AM" â†’ total minutes since midnight
+      // Parse "9:00 AM" -> total minutes since midnight
       const [timePart, period] = appt.preferred_time.split(' ');
       let [h, m] = timePart.split(':').map(Number);
       if (period === 'PM' && h !== 12) h += 12;
@@ -2717,7 +3281,7 @@ const autoQueueAppointments = async () => {
           [appt.id]
         );
 
-        console.log(`[Auto-Queue] ${appt.full_name} â†’ ticket ${ticketNumber} (appt #${appt.id})`);
+        console.log(`[Auto-Queue] ${appt.full_name} -> ticket ${ticketNumber} (appt #${appt.id})`);
       }
     }
   } catch (err) {

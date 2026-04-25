@@ -1,0 +1,158 @@
+
+import React from 'react';
+import {
+  LayoutDashboard,
+  Users,
+  Truck,
+  Building2,
+  ClipboardList,
+  Map as MapIcon,
+  Calendar,
+  CreditCard,
+  Wallet,
+  Receipt,
+  BadgePercent,
+  UserCheck,
+  Car,
+  Settings2,
+  LifeBuoy,
+  AlertTriangle,
+  BarChart3,
+  ShieldCheck,
+  Settings,
+  Lock,
+  History,
+  LogOut,
+  ChevronRight,
+  Clock,
+  MessageSquare,
+  Gavel
+} from 'lucide-react';
+import './Sidebar.css';
+
+const Sidebar = ({ activeTab, setActiveTab, onLogout, userProfile }) => {
+  const sidebarData = [
+    {
+      section: null,
+      items: [
+        { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      ]
+    },
+    {
+      section: 'MANAGEMENT',
+      items: [
+        { id: 'specialists', label: 'Specialists', icon: Users },
+        { id: 'services', label: 'Services', icon: ClipboardList },
+        { id: 'riders', label: 'Riders', icon: Truck },
+        { id: 'corporate', label: 'Corporate Accounts', icon: Building2 },
+        { id: 'users', label: 'Users', icon: UserCheck },
+      ]
+    },
+    {
+      section: 'BOOKINGS',
+      items: [
+        { id: 'appointments', label: 'All Bookings', icon: Calendar },
+        { id: 'trips', label: 'Trip Monitoring', icon: MapIcon },
+        { id: 'calendar', label: 'Calendar View', icon: Calendar },
+        { id: 'scheduling', label: 'Ride Scheduling', icon: Clock },
+      ]
+    },
+    {
+      section: 'FINANCE',
+      items: [
+        { id: 'payments', label: 'Payments', icon: CreditCard },
+        { id: 'payouts', label: 'Payouts', icon: Receipt },
+        { id: 'wallet', label: 'Wallet Transactions', icon: Wallet },
+        { id: 'promotions', label: 'Promotions & Vouchers', icon: BadgePercent },
+        { id: 'billing', label: 'Corporate Billing', icon: Building2 },
+      ]
+    },
+    {
+      section: 'OPERATIONS',
+      items: [
+        { id: 'fleet', label: 'Fleet Tracker', icon: MapIcon },
+        { id: 'queue', label: 'Queue Management', icon: History },
+        { id: 'verification', label: 'Driver Verification', icon: UserCheck },
+        { id: 'vehicles', label: 'Vehicles', icon: Car },
+        { id: 'zones', label: 'Zones and Pricing', icon: MapIcon },
+      ]
+    },
+    {
+      section: 'SUPPORT AND SAFETY',
+      items: [
+        { id: 'tickets', label: 'Support Tickets', icon: MessageSquare },
+        { id: 'disputes', label: 'Disputes', icon: Gavel },
+        { id: 'sos', label: 'SOS Alerts', icon: AlertTriangle },
+      ]
+    },
+    {
+      section: 'ANALYTICS',
+      items: [
+        { id: 'reports', label: 'Performance Reports', icon: BarChart3 },
+      ]
+    },
+    {
+      section: 'SYSTEM',
+      items: [
+        { id: 'settings', label: 'Settings', icon: Settings },
+        { id: 'roles', label: 'Roles and Permissions', icon: ShieldCheck },
+        { id: 'audit', label: 'Audit Logs', icon: History },
+      ]
+    }
+  ];
+
+  return (
+    <aside className="sidebar">
+      <div className="sidebar-logo">
+        <div className="logo-icon">
+          <Car size={20} />
+        </div>
+        <span className="logo-text">RideHail Admin</span>
+      </div>
+
+      <div className="sidebar-content">
+        {sidebarData.map((group, groupIdx) => (
+          <div key={groupIdx} className="sidebar-section">
+            {group.section && (
+              <h3 className="sidebar-section-title">{group.section}</h3>
+            )}
+            <nav>
+              {group.items.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <div
+                    key={item.id}
+                    className={`sidebar-item ${activeTab === item.id ? 'active' : ''}`}
+                    onClick={() => setActiveTab(item.id)}
+                  >
+                    <Icon className="sidebar-item-icon" />
+                    <span className="sidebar-item-label">{item.label}</span>
+                    {activeTab !== item.id && group.section && <ChevronRight size={14} className="ml-auto opacity-20" />}
+                  </div>
+                );
+              })}
+            </nav>
+          </div>
+        ))}
+      </div>
+
+      <div className="sidebar-footer">
+        <div className="user-profile">
+          <div className="user-avatar">
+            {userProfile?.name?.charAt(0) || 'A'}
+          </div>
+          <div className="user-info">
+            <p className="user-name">{userProfile?.name || 'Admin'}</p>
+            <p className="user-role">{userProfile?.role || 'Super Admin'}</p>
+          </div>
+        </div>
+        <button className="logout-btn" onClick={onLogout}>
+          <LogOut size={16} />
+          <span>Sign Out</span>
+        </button>
+      </div>
+    </aside>
+  );
+};
+
+export default Sidebar;
