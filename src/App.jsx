@@ -4785,7 +4785,7 @@ function CheckoutPage({ setCurrentPage, clearCart }) {
                       )}
                       {notificationStatus === 'denied' && (
                         <p className="text-xs text-red-600 font-medium">
-                          To enable: Click the lock icon in your browser's address bar -> Allow notifications
+                          To enable: Click the lock icon in your browser's address bar &rarr; Allow notifications
                         </p>
                       )}
                     </div>
@@ -8012,6 +8012,23 @@ function RideDispatch({ trips, stats, riders, onRefresh }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [isReady, setIsReady] = useState(false);
 
+  const [newBookingData, setNewBookingData] = useState({
+    fullName: '',
+    phoneNumber: '',
+    email: '',
+    scheduleType: 'Immediate',
+    preferredDate: '',
+    preferredTime: '',
+    vehiclePreference: 'Standard',
+    paymentMethod: 'Cash',
+    accountNumber: '',
+    notes: '',
+    pickupLocation: '',
+    destinationLocation: '',
+    pickupCoords: null,
+    destCoords: null
+  });
+
   // Trigger initial data load and mark ready once trips arrive
   useEffect(() => {
     onRefresh();
@@ -8027,26 +8044,41 @@ function RideDispatch({ trips, stats, riders, onRefresh }) {
 
   const handleCreateBooking = async (e) => {
     e.preventDefault();
-    const formData = new FormData(e.target);
-    const data = Object.fromEntries(formData.entries());
-
+    
     try {
+      const isScheduled = newBookingData.scheduleType === 'Scheduled';
+      const pDate = isScheduled && newBookingData.preferredDate ? newBookingData.preferredDate : new Date().toISOString().split('T')[0];
+      const pTime = isScheduled && newBookingData.preferredTime ? newBookingData.preferredTime : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      // Fallback pseudo-coordinates if not selected via map
+      const finalPickupLat = newBookingData.pickupCoords ? newBookingData.pickupCoords.lat : 11.0500 + (Math.random() - 0.5) * 0.05;
+      const finalPickupLng = newBookingData.pickupCoords ? newBookingData.pickupCoords.lng : 124.0000 + (Math.random() - 0.5) * 0.05;
+      const finalDestLat = newBookingData.destCoords ? newBookingData.destCoords.lat : 11.0500 + (Math.random() - 0.5) * 0.05;
+      const finalDestLng = newBookingData.destCoords ? newBookingData.destCoords.lng : 124.0000 + (Math.random() - 0.5) * 0.05;
+
+      let combinedNotes = newBookingData.notes;
+      if (newBookingData.paymentMethod === 'Corporate' && newBookingData.accountNumber) {
+        const acctStr = `[CORPORATE ACCOUNT: ${newBookingData.accountNumber}]`;
+        combinedNotes = combinedNotes ? `${acctStr} - ${combinedNotes}` : acctStr;
+      }
+
       const response = await fetch('/api/appointments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          fullName: data.fullName,
-          phoneNumber: data.phoneNumber,
-          email: data.email || 'dispatch@internal.com',
-          serviceType: data.vehiclePreference || 'Standard',
-          preferredDate: new Date().toISOString().split('T')[0],
-          preferredTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          pickupLocation: data.pickupLocation,
-          destinationLocation: data.destinationLocation,
-          pickupLat: 11.0500 + (Math.random() - 0.5) * 0.05,
-          pickupLng: 124.0000 + (Math.random() - 0.5) * 0.05,
-          destLat: 11.0500 + (Math.random() - 0.5) * 0.05,
-          destLng: 124.0000 + (Math.random() - 0.5) * 0.05,
+          fullName: newBookingData.fullName,
+          phoneNumber: newBookingData.phoneNumber,
+          email: newBookingData.email || 'dispatch@internal.com',
+          serviceType: newBookingData.vehiclePreference || 'Standard',
+          preferredDate: pDate,
+          preferredTime: pTime,
+          notes: combinedNotes,
+          pickupLocation: newBookingData.pickupLocation,
+          destinationLocation: newBookingData.destinationLocation,
+          pickupLat: finalPickupLat,
+          pickupLng: finalPickupLng,
+          destLat: finalDestLat,
+          destLng: finalDestLng,
           totalAmount: 150 + Math.floor(Math.random() * 300),
           agentCode: 'DISPATCHER'
         })
@@ -8054,8 +8086,16 @@ function RideDispatch({ trips, stats, riders, onRefresh }) {
 
       if (response.ok) {
         setIsCreatingBooking(false);
+        // Reset form
+        setNewBookingData({
+          fullName: '', phoneNumber: '', email: '', scheduleType: 'Immediate',
+          preferredDate: '', preferredTime: '', vehiclePreference: 'Standard', paymentMethod: 'Cash',
+          accountNumber: '', notes: '', pickupLocation: '', destinationLocation: '', pickupCoords: null, destCoords: null
+        });
         onRefresh();
         alert('Booking created successfully!');
+      } else {
+        alert('Failed to create booking.');
       }
     } catch (error) {
       console.error('Create booking error:', error);
@@ -8120,8 +8160,8 @@ function RideDispatch({ trips, stats, riders, onRefresh }) {
      return true;
   }).filter(t => 
      t.id.toString().includes(searchTerm) || 
-     t.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-     t.pickup_location?.toLowerCase().includes(searchTerm.toLowerCase())
+     t.full_name?.toLowerCase()?.includes(searchTerm.toLowerCase()) ||
+     t.pickup_location?.toLowerCase()?.includes(searchTerm.toLowerCase())
   );
 
   if (!isReady) {
@@ -8304,29 +8344,47 @@ function RideDispatch({ trips, stats, riders, onRefresh }) {
                      <button className="text-[10px] text-[#0f62fe] font-bold uppercase hover:underline">Auto Dispatch</button>
                   </div>
                   <div className="space-y-3">
-                     {riders.filter(r => r.status === 'available').length === 0 ? (
-                        <div className="p-4 bg-red-500/5 border border-red-500/20 text-red-500 text-[10px] uppercase font-bold text-center">
-                           No riders available in radius
-                        </div>
-                     ) : (
-                        riders.filter(r => r.status === 'available').slice(0, 3).map(rider => (
-                           <div key={rider.id} className="p-3 bg-white/5 border border-white/10 hover:border-[#24a148] transition-all flex justify-between items-center group">
-                              <div className="flex gap-3 items-center">
-                                 <div className="w-8 h-8 rounded-full bg-[#24a148]/20 flex items-center justify-center text-[#24a148]"><User size={14} /></div>
-                                 <div>
-                                    <p className="text-xs font-bold text-white">{rider.name}</p>
-                                    <p className="text-[9px] text-gray-500">{rider.vehicle_type} • 0.8 KM away</p>
-                                 </div>
+                     {(() => {
+                        const availableRiders = riders.filter(r => r.status === 'available');
+                        if (availableRiders.length === 0) {
+                           return (
+                              <div className="p-4 bg-red-500/5 border border-red-500/20 text-red-500 text-[10px] uppercase font-bold text-center">
+                                 No riders available in radius
                               </div>
-                              <button 
-                                onClick={() => handleAssignRider(selectedBooking.id, rider.id)}
-                                className="px-3 py-1.5 bg-[#24a148] text-white text-[9px] font-bold uppercase tracking-widest hover:bg-[#1e8a3d] transition-colors"
-                              >
-                                 Assign
-                              </button>
-                           </div>
-                        ))
-                     )}
+                           );
+                        }
+                        
+                        const reqType = selectedBooking.service_type?.toLowerCase() || '';
+                        const matchingRiders = availableRiders.filter(r => r.vehicle_type?.toLowerCase() === reqType);
+                        const nonMatchingRiders = availableRiders.filter(r => r.vehicle_type?.toLowerCase() !== reqType);
+                        const sortedRiders = [...matchingRiders, ...nonMatchingRiders].slice(0, 4);
+
+                        return sortedRiders.map(rider => {
+                           const isMatch = rider.vehicle_type?.toLowerCase() === reqType;
+                           return (
+                              <div key={rider.id} className={`p-3 bg-white/5 border transition-all flex justify-between items-center group ${isMatch ? 'border-l-4 border-l-[#24a148] border-white/10 hover:border-[#24a148]' : 'border-l-4 border-l-orange-500 border-white/10 hover:border-orange-500'}`}>
+                                 <div className="flex gap-3 items-center">
+                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isMatch ? 'bg-[#24a148]/20 text-[#24a148]' : 'bg-orange-500/20 text-orange-500'}`}>
+                                       <User size={14} />
+                                    </div>
+                                    <div>
+                                       <div className="flex items-center gap-2">
+                                          <p className="text-xs font-bold text-white">{rider.name}</p>
+                                          {!isMatch && <span className="text-[8px] font-bold bg-orange-500/20 text-orange-500 px-1 py-0.5 uppercase">Mismatch</span>}
+                                       </div>
+                                       <p className="text-[9px] text-gray-500">{rider.vehicle_type} • 0.8 KM away</p>
+                                    </div>
+                                 </div>
+                                 <button 
+                                   onClick={() => handleAssignRider(selectedBooking.id, rider.id)}
+                                   className={`px-3 py-1.5 text-white text-[9px] font-bold uppercase tracking-widest transition-colors ${isMatch ? 'bg-[#24a148] hover:bg-[#1e8a3d]' : 'bg-orange-600 hover:bg-orange-700'}`}
+                                 >
+                                    Assign
+                                 </button>
+                              </div>
+                           );
+                        });
+                     })()}
                   </div>
                </section>
 
@@ -8348,55 +8406,176 @@ function RideDispatch({ trips, stats, riders, onRefresh }) {
 
       {/* 4. MODALS (Booking Creation, etc.) */}
       {isCreatingBooking && (
-         <div className="fixed inset-0 z-[5000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
-            <div className="w-full max-w-2xl bg-[#1c1c1c] border border-white/10 shadow-2xl overflow-hidden animate-zoomIn">
-               <div className="p-6 bg-[#161616] border-b border-white/10 flex justify-between items-center">
+         <div className="fixed inset-0 z-[5000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+            <div className="w-full max-w-2xl bg-white border border-gray-200 shadow-2xl overflow-hidden animate-zoomIn">
+               <div className="p-6 bg-white border-b border-gray-100 flex justify-between items-center">
                   <div>
-                     <h3 className="text-lg font-bold text-white uppercase tracking-tighter italic">Manual Dispatch Request</h3>
+                     <h3 className="text-xl font-bold text-black uppercase tracking-tighter italic">Manual Dispatch Request</h3>
                      <p className="text-xs text-gray-500">Create a new booking directly in the system</p>
                   </div>
-                  <button onClick={() => setIsCreatingBooking(false)} className="text-gray-500 hover:text-white"><X size={24} /></button>
+                  <button onClick={() => setIsCreatingBooking(false)} className="text-gray-400 hover:text-black"><X size={24} /></button>
                </div>
-               <form onSubmit={handleCreateBooking} className="p-8 space-y-6">
-                  <div className="grid grid-cols-2 gap-6">
-                     <div className="space-y-4">
-                        <h4 className="text-[10px] font-bold text-[#0f62fe] uppercase tracking-widest">Passenger Information</h4>
-                        <input name="fullName" required className="w-full bg-white/5 border border-white/10 p-4 text-sm text-white focus:outline-none focus:border-[#0f62fe]" placeholder="Full Name" />
-                        <input name="phoneNumber" required className="w-full bg-white/5 border border-white/10 p-4 text-sm text-white focus:outline-none focus:border-[#0f62fe]" placeholder="Contact Number" />
-                        <input name="email" className="w-full bg-white/5 border border-white/10 p-4 text-sm text-white focus:outline-none focus:border-[#0f62fe]" placeholder="Email (Optional)" />
+               <form onSubmit={handleCreateBooking} className="p-6 space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                     <div className="space-y-2">
+                        <h4 className="text-[10px] font-bold text-[#24a148] uppercase tracking-widest">Passenger Information</h4>
+                        <input 
+                           name="fullName" 
+                           value={newBookingData.fullName}
+                           onChange={e => setNewBookingData({...newBookingData, fullName: e.target.value})}
+                           required 
+                           className="w-full bg-[#f4f4f4] border-0 border-b border-gray-300 p-2.5 text-[12px] text-black focus:outline-none focus:border-[#24a148] focus:ring-0" 
+                           placeholder="Full Name" 
+                        />
+                        <input 
+                           name="phoneNumber" 
+                           value={newBookingData.phoneNumber}
+                           onChange={e => setNewBookingData({...newBookingData, phoneNumber: e.target.value})}
+                           required 
+                           className="w-full bg-[#f4f4f4] border-0 border-b border-gray-300 p-2.5 text-[12px] text-black focus:outline-none focus:border-[#24a148] focus:ring-0" 
+                           placeholder="Contact Number" 
+                        />
+                        <input 
+                           name="email" 
+                           value={newBookingData.email}
+                           onChange={e => setNewBookingData({...newBookingData, email: e.target.value})}
+                           className="w-full bg-[#f4f4f4] border-0 border-b border-gray-300 p-2.5 text-[12px] text-black focus:outline-none focus:border-[#24a148] focus:ring-0" 
+                           placeholder="Email (Optional)" 
+                        />
                      </div>
-                     <div className="space-y-4">
-                        <h4 className="text-[10px] font-bold text-[#0f62fe] uppercase tracking-widest">Trip Details</h4>
-                        <input name="pickupLocation" required className="w-full bg-white/5 border border-white/10 p-4 text-sm text-white focus:outline-none focus:border-[#0f62fe]" placeholder="Pickup Address" />
-                        <input name="destinationLocation" required className="w-full bg-white/5 border border-white/10 p-4 text-sm text-white focus:outline-none focus:border-[#0f62fe]" placeholder="Destination Address" />
+                     <div className="space-y-2">
+                        <h4 className="text-[10px] font-bold text-[#24a148] uppercase tracking-widest">Trip Details</h4>
+                        <div className="relative [&_input]:text-[12px] [&_input]:p-2.5">
+                           <LocationAutocomplete
+                             value={newBookingData.pickupLocation}
+                             onChange={(val) => setNewBookingData(prev => ({ ...prev, pickupLocation: val }))}
+                             onSelect={(place) => {
+                               if (place && place.address && place.coords) {
+                                 setNewBookingData(prev => ({
+                                   ...prev,
+                                   pickupLocation: place.address,
+                                   pickupCoords: place.coords
+                                 }));
+                               }
+                             }}
+                             placeholder="Search Pickup Address..."
+                           />
+                        </div>
+                        <div className="relative [&_input]:text-[12px] [&_input]:p-2.5">
+                           <LocationAutocomplete
+                             value={newBookingData.destinationLocation}
+                             onChange={(val) => setNewBookingData(prev => ({ ...prev, destinationLocation: val }))}
+                             onSelect={(place) => {
+                               if (place && place.address && place.coords) {
+                                 setNewBookingData(prev => ({
+                                   ...prev,
+                                   destinationLocation: place.address,
+                                   destCoords: place.coords
+                                 }));
+                               }
+                             }}
+                             placeholder="Search Destination Address..."
+                           />
+                        </div>
                      </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-4">
-                     <div className="space-y-2">
+
+                  <div className="grid grid-cols-3 gap-3">
+                     <div className="space-y-1">
                         <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Schedule Type</label>
-                        <select name="scheduleType" className="w-full bg-white/5 border border-white/10 p-3 text-xs text-white focus:outline-none">
+                        <select 
+                          name="scheduleType" 
+                          value={newBookingData.scheduleType}
+                          onChange={e => setNewBookingData({...newBookingData, scheduleType: e.target.value})}
+                          className="w-full bg-[#f4f4f4] border-0 border-b border-gray-300 p-2 text-[12px] text-black focus:outline-none focus:border-[#24a148]"
+                        >
                            <option>Immediate</option>
                            <option>Scheduled</option>
                         </select>
                      </div>
-                     <div className="space-y-2">
+                     <div className="space-y-1">
                         <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Vehicle Preference</label>
-                        <select name="vehiclePreference" className="w-full bg-white/5 border border-white/10 p-3 text-xs text-white focus:outline-none">
+                        <select 
+                          name="vehiclePreference" 
+                          value={newBookingData.vehiclePreference}
+                          onChange={e => setNewBookingData({...newBookingData, vehiclePreference: e.target.value})}
+                          className="w-full bg-[#f4f4f4] border-0 border-b border-gray-300 p-2 text-[12px] text-black focus:outline-none focus:border-[#24a148]"
+                        >
                            <option value="Standard">No Preference</option>
                            <option value="Car">Car</option>
-                           <option value="Van">Van / SUV</option>
+                           <option value="Luxury Van">Van / SUV</option>
                         </select>
                      </div>
-                     <div className="space-y-2">
+                     <div className="space-y-1">
                         <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Payment Method</label>
-                        <select name="paymentMethod" className="w-full bg-white/5 border border-white/10 p-3 text-xs text-white focus:outline-none">
+                        <select 
+                          name="paymentMethod" 
+                          value={newBookingData.paymentMethod}
+                          onChange={e => setNewBookingData({...newBookingData, paymentMethod: e.target.value})}
+                          className="w-full bg-[#f4f4f4] border-0 border-b border-gray-300 p-2 text-[12px] text-black focus:outline-none focus:border-[#24a148]"
+                        >
                            <option>Cash</option>
                            <option>Wallet</option>
+                           <option>Corporate</option>
                         </select>
                      </div>
                   </div>
-                  <div className="pt-6 border-t border-white/5">
-                     <button type="submit" className="w-full py-4 bg-[#0f62fe] text-white font-bold uppercase tracking-[4px] shadow-xl hover:bg-[#0353e9] transition-all">Submit Dispatch Request</button>
+
+                  <div className="space-y-3">
+                     {newBookingData.paymentMethod === 'Corporate' && (
+                        <div>
+                           <label className="text-[9px] font-bold text-[#24a148] uppercase tracking-widest">Corporate Account Number</label>
+                           <input 
+                              name="accountNumber" 
+                              value={newBookingData.accountNumber}
+                              onChange={e => setNewBookingData({...newBookingData, accountNumber: e.target.value})}
+                              required 
+                              className="w-full bg-[#f4f4f4] border-0 border-b border-[#24a148] p-2 text-[12px] text-black focus:outline-none focus:ring-0 mt-1" 
+                              placeholder="Enter Account ID / Cost Center" 
+                           />
+                        </div>
+                     )}
+                     <div>
+                        <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Notes to Driver</label>
+                        <textarea 
+                           name="notes" 
+                           value={newBookingData.notes}
+                           onChange={e => setNewBookingData({...newBookingData, notes: e.target.value})}
+                           className="w-full bg-[#f4f4f4] border-0 border-b border-gray-300 p-2 text-[12px] text-black focus:outline-none focus:border-[#24a148] focus:ring-0 mt-1 resize-none h-14" 
+                           placeholder="Special instructions, gate codes, etc..." 
+                        />
+                     </div>
+                  </div>
+
+                  {newBookingData.scheduleType === 'Scheduled' && (
+                    <div className="grid grid-cols-2 gap-3 bg-gray-50 p-3 border border-gray-100 mt-2">
+                       <div className="space-y-1">
+                          <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Date</label>
+                          <input 
+                            type="date" 
+                            name="preferredDate"
+                            value={newBookingData.preferredDate}
+                            onChange={e => setNewBookingData({...newBookingData, preferredDate: e.target.value})}
+                            required
+                            className="w-full bg-white border-0 border-b border-gray-300 p-2 text-[12px] text-black focus:outline-none focus:border-[#24a148]" 
+                          />
+                       </div>
+                       <div className="space-y-1">
+                          <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Time</label>
+                          <input 
+                            type="time" 
+                            name="preferredTime"
+                            value={newBookingData.preferredTime}
+                            onChange={e => setNewBookingData({...newBookingData, preferredTime: e.target.value})}
+                            required
+                            className="w-full bg-white border-0 border-b border-gray-300 p-2 text-[12px] text-black focus:outline-none focus:border-[#24a148]" 
+                          />
+                       </div>
+                    </div>
+                  )}
+
+                  <div className="pt-4 border-t border-gray-100">
+                     <button type="submit" className="force-circle w-full py-3 bg-[#24a148] text-white text-[14px] font-medium shadow-lg hover:shadow-xl hover:bg-[#1e8a3d] active:scale-[0.98] transition-all">Submit Dispatch Request</button>
                   </div>
                </form>
             </div>

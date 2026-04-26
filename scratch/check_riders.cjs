@@ -1,16 +1,10 @@
 const pool = require('../server/db');
-
-async function check() {
+async function checkRiders() {
   try {
-    const res = await pool.query('SELECT * FROM riders');
-    console.log('--- RIDERS ---');
+    const res = await pool.query("SELECT id, name, vehicle_type FROM riders");
     console.table(res.rows);
-    console.log('--------------');
-  } catch (e) {
-    console.error('Error checking riders:', e.message);
   } finally {
-    process.exit();
+    pool.end();
   }
 }
-
-check();
+checkRiders();

@@ -2943,7 +2943,8 @@ app.get('/api/admin/trips', async (req, res) => {
       SELECT a.*, r.name as rider_name, r.plate_number, r.vehicle_type, r.current_lat as rider_lat, r.current_lng as rider_lng
       FROM appointments a
       LEFT JOIN riders r ON a.rider_id = r.id
-      WHERE a.pickup_lat IS NOT NULL
+      JOIN booking_services s ON a.service_type = s.name
+      WHERE s.category ILIKE 'TRANSPORT'
     `;
     const params = [];
 
@@ -2967,12 +2968,13 @@ app.get('/api/admin/trips/stats', async (req, res) => {
     const statsQuery = `
       SELECT 
         COUNT(*) as total,
-        COUNT(*) FILTER (WHERE transport_status = 'picked_up' OR transport_status = 'en_route') as ongoing,
-        COUNT(*) FILTER (WHERE transport_status = 'completed') as completed,
-        COUNT(*) FILTER (WHERE transport_status = 'cancelled') as cancelled,
-        COUNT(*) FILTER (WHERE transport_status = 'sos') as sos
-      FROM appointments
-      WHERE pickup_lat IS NOT NULL
+        COUNT(*) FILTER (WHERE a.transport_status = 'picked_up' OR a.transport_status = 'en_route') as ongoing,
+        COUNT(*) FILTER (WHERE a.transport_status = 'completed') as completed,
+        COUNT(*) FILTER (WHERE a.transport_status = 'cancelled') as cancelled,
+        COUNT(*) FILTER (WHERE a.transport_status = 'sos') as sos
+      FROM appointments a
+      JOIN booking_services s ON a.service_type = s.name
+      WHERE s.category ILIKE 'TRANSPORT'
     `;
     const { rows } = await pool.query(statsQuery);
     res.json({ success: true, stats: rows[0] });
