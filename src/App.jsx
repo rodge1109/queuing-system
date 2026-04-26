@@ -1,4 +1,4 @@
-import React, { useState, createContext, useContext, useEffect, useCallback } from 'react';
+import React, { useState, createContext, useContext, useEffect, useCallback, useMemo } from 'react';
 import { ShoppingCart, Plus, Minus, Trash2, ChevronRight, ChevronLeft, ArrowRight, Check, X, Search, Settings, Smartphone, Printer, Download, Store, CreditCard, Lock, User, Users, Wallet, Calendar, MapPin, Clock, Phone, Mail, Star, Car, Truck, Shield, Activity, Clipboard, ClipboardList, Stethoscope, Hospital, Pill, Syringe, HeartPulse, Map as MapIcon, Navigation, AlertTriangle, AlertCircle, RefreshCw, Edit, History, DollarSign, Link, Bell, Database } from 'lucide-react';
 
 // Help component to render either Lucide icon or Emoji
@@ -10,6 +10,17 @@ const ServiceIconRender = ({ iconName, className }) => {
   return <span className={className || "text-4xl"}>{iconName}</span>;
 };
 import Sidebar from './components/layout/Sidebar';
+import CorporateAccountsManagement from './components/admin/CorporateAccountsManagement';
+import AppointmentForm from './components/booking/AppointmentForm';
+import RiderPortal from './components/rider/RiderPortal';
+import LiveTrackingMap from './components/maps/LiveTrackingMap';
+import QueuePage from './components/queue/QueuePage';
+import QueueDisplayPage from './components/queue/QueueDisplayPage';
+import QueueTellerPage from './components/queue/QueueTellerPage';
+import SurveyPage from './components/queue/SurveyPage';
+import RidersManagement from './components/admin/RidersManagement';
+
+
 
 // Cart Context
 const CartContext = createContext();
@@ -54,385 +65,9 @@ const fallbackMenuData = [
 
 // ==================== RIDER PORTAL ====================
 
-const RiderPortal = () => {
-  const [rider, setRider] = useState(null);
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [requests, setRequests] = useState([]);
-  const [activeJob, setActiveJob] = useState(null);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [locationPulse, setLocationPulse] = useState(null);
-
-  const fetchRequests = async () => {
-    try {
-      const res = await fetch('/api/rider/requests');
-      const data = await res.json();
-      if (data.success) setRequests(data.requests);
-    } catch (e) { }
-  };
-
-  const login = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      const res = await fetch('/api/rider/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
-      });
-      const data = await res.json();
-      if (data.success) {
-        setRider(data.rider);
-        fetchRequests();
-      } else {
-        setError('Rider not found or unauthorized');
-      }
-    } catch (e) {
-      setError('Login failed');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const acceptJob = async (id) => {
-    try {
-      const res = await fetch('/api/rider/accept', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ appointmentId: id, riderId: rider.id })
-      });
-      const data = await res.json();
-      if (data.success) {
-        const job = requests.find(r => r.id === id);
-        setActiveJob({ ...job, transport_status: 'accepted' });
-        startTracking();
-      }
-    } catch (e) { }
-  };
-
-  const startTracking = () => {
-    if (locationPulse) clearInterval(locationPulse);
-    const interval = setInterval(() => {
-      navigator.geolocation.getCurrentPosition((pos) => {
-        fetch('/api/rider/update-location', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            riderId: rider.id,
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude
-          })
-        });
-      }, null, { enableHighAccuracy: true });
-    }, 5000);
-    setLocationPulse(interval);
-  };
-
-  const updateStatus = async (newStatus) => {
-    try {
-      const res = await fetch('/api/rider/update-status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ appointmentId: activeJob.id, status: newStatus })
-      });
-      const data = await res.json();
-      if (data.success) {
-        if (newStatus === 'completed') {
-          setActiveJob(null);
-          if (locationPulse) clearInterval(locationPulse);
-          fetchRequests();
-        } else {
-          setActiveJob(prev => ({ ...prev, transport_status: newStatus }));
-        }
-      }
-    } catch (e) { }
-  };
-
-  if (!rider) {
-    return (
-      <div className="flex items-center justify-center min-h-[80vh] bg-[#f4f4f4] p-4">
-        <div className="w-full max-w-md bg-white border border-[#e0e0e0] p-8">
-          <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold text-[#1c1917] mb-2 uppercase tracking-tight">Rider Portal</h1>
-            <p className="text-sm text-[#666]">Authenticate to track and accept orders</p>
-          </div>
-          <form onSubmit={login} className="space-y-6">
-            <div>
-              <label className="block text-xs font-bold text-[#444] mb-2 uppercase tracking-wide">Username</label>
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Rider Username"
-                required
-                className="w-full bg-[#f4f4f4] border-0 p-3 text-sm focus:ring-2 focus:ring-[#1c1917] outline-none transition-all"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-[#444] mb-2 uppercase tracking-wide">Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter Password"
-                required
-                className="w-full bg-[#f4f4f4] border-0 p-3 text-sm focus:ring-2 focus:ring-[#1c1917] outline-none transition-all"
-              />
-            </div>
-            {error && <div className="p-3 bg-red-50 text-red-600 text-xs border border-red-100">{error}</div>}
-            <button
-              disabled={loading}
-              type="submit"
-              className="w-full bg-[#1c1917] text-white p-4 font-bold text-sm tracking-widest hover:bg-[#333] transition-colors disabled:opacity-50"
-            >
-              {loading ? 'AUTHENTICATING...' : 'LOGIN TO DASHBOARD'}
-            </button>
-          </form>
-          <div className="mt-8 pt-6 border-t border-[#f4f4f4] text-center">
-            <p className="text-[10px] text-gray-400 uppercase tracking-widest">Demo Access: rider1 / rider123</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-[#f4f4f4] pb-24">
-      <header className="bg-white border-b border-[#e0e0e0] p-4 flex justify-between items-center sticky top-0 z-50">
-        <div>
-          <p className="text-xs font-bold text-[#666] uppercase">Active Rider</p>
-          <h2 className="font-bold text-[#1c1917]">{rider.name}</h2>
-        </div>
-        <button onClick={() => { setRider(null); if (locationPulse) clearInterval(locationPulse); }} className="text-xs font-bold border border-[#e0e0e0] px-3 py-1 hover:bg-red-50 hover:text-red-600 transition-colors">LOGOUT</button>
-      </header>
-
-      {activeJob ? (
-        <div className="p-4 space-y-4">
-          <div className="bg-white border border-[#1c1917] border-l-8 overflow-hidden shadow-lg">
-            <div className="p-4 bg-[#1c1917] text-white flex justify-between items-center">
-              <span className="text-xs font-bold uppercase tracking-widest">Active Trip #{activeJob.id}</span>
-              <span className="text-xs font-bold uppercase">{activeJob.transport_status.replace(/_/g, ' ')}</span>
-            </div>
-            <div className="p-6 space-y-6">
-              <div className="flex gap-4">
-                <div className="flex flex-col items-center gap-1">
-                  <div className="w-3 h-3 rounded-full bg-blue-600" />
-                  <div className="w-0.5 h-full bg-gray-200 border-dashed border-l-2" />
-                  <div className="w-3 h-3 rounded-full bg-red-600" />
-                </div>
-                <div className="flex flex-col gap-8 flex-1">
-                  <div>
-                    <p className="text-[10px] font-bold text-[#666] uppercase">Pickup</p>
-                    <p className="text-sm font-bold text-[#1c1917]">{activeJob.pickup_location}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold text-[#666] uppercase">Destination</p>
-                    <p className="text-sm font-bold text-[#1c1917]">{activeJob.destination_location}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-4 grid grid-cols-1 gap-2">
-                {activeJob.transport_status === 'accepted' && (
-                  <button onClick={() => updateStatus('on_way_to_pickup')} className="bg-[#1c1917] text-white p-4 font-black text-sm tracking-widest uppercase">Start Journey</button>
-                )}
-                {activeJob.transport_status === 'on_way_to_pickup' && (
-                  <button onClick={() => updateStatus('arrived_at_pickup')} className="bg-[#24b0a9] text-white p-4 font-black text-sm tracking-widest uppercase">I Have Arrived</button>
-                )}
-                {activeJob.transport_status === 'arrived_at_pickup' && (
-                  <button onClick={() => updateStatus('picked_up')} className="bg-[#E4FE7B] text-[#1c1917] p-4 font-black text-sm tracking-widest uppercase">Client is Onboard</button>
-                )}
-                {activeJob.transport_status === 'picked_up' && (
-                  <button onClick={() => updateStatus('completed')} className="bg-[#da1e28] text-white p-4 font-black text-sm tracking-widest uppercase">Drop-off Finished</button>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="p-4 space-y-4">
-          <div className="flex justify-between items-end mb-4 pt-4">
-            <h3 className="text-2xl font-black text-[#1c1917] uppercase tracking-tighter italic">Available Jobs</h3>
-            <button onClick={fetchRequests} className="text-xs font-bold bg-white border border-[#1c1917] px-4 py-2 hover:bg-[#1c1917] hover:text-white transition-all">REFRESH</button>
-          </div>
-
-          <div className="grid gap-4">
-            {requests.map(req => (
-              <div key={req.id} className="bg-white border border-[#e0e0e0] p-6 shadow-sm hover:border-[#1c1917] transition-all relative overflow-hidden">
-                <div className="flex justify-between items-start mb-6">
-                  <div>
-                    <span className="text-[10px] font-bold text-[#999] block mb-1">REFERENCE #{req.id}</span>
-                    <h4 className="text-lg font-black text-[#1c1917]">PHP {(parseFloat(req.total_amount) || 0).toFixed(2)}</h4>
-                  </div>
-                  <div className="bg-blue-600 text-white text-[10px] font-bold px-2 py-1 uppercase">Nearby</div>
-                </div>
-                <div className="space-y-4 mb-6">
-                  <div className="flex gap-2">
-                    <div className="w-2 h-2 rounded-full bg-blue-600 mt-1" />
-                    <p className="text-xs text-[#1c1917] font-medium">{req.pickup_location}</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <div className="w-2 h-2 rounded-full bg-red-600 mt-1" />
-                    <p className="text-xs text-[#1c1917] font-medium">{req.destination_location}</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => acceptJob(req.id)}
-                  className="w-full bg-[#1c1917] text-white py-4 text-xs font-black uppercase tracking-widest hover:bg-[#333] transition-colors"
-                >
-                  Accept Job
-                </button>
-              </div>
-            ))}
-          </div>
-
-          {requests.length === 0 && (
-            <div className="text-center py-20 bg-white border border-dashed border-[#ccc]">
-              <div className="text-4xl mb-4 opacity-20"><svg xmlns="http://www.w3.org/2000/svg" className="w-12 h-12 mx-auto text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg></div>
-              <p className="text-sm font-bold text-[#999] uppercase tracking-widest">Scanning for requests...</p>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-};
 
 // ==================== LIVE TRACKING MAP ====================
 
-const LiveTrackingMap = ({ riderPos, pickupPos, destPos, status }) => {
-  const mapRef = React.useRef(null);
-  const leafletMap = React.useRef(null);
-  const [mainRoute, setMainRoute] = useState(null);
-  const [driverRoute, setDriverRoute] = useState(null);
-
-  useEffect(() => {
-    if (!mapRef.current || leafletMap.current || mapRef.current._leaflet_id) return;
-    const L = window.L;
-    leafletMap.current = L.map(mapRef.current, { zoomControl: false, scrollWheelZoom: false }).setView([11.0500, 124.0000], 13);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-      subdomains: 'abcd',
-      maxZoom: 20
-    }).addTo(leafletMap.current);
-
-    setTimeout(() => {
-      if (leafletMap.current) leafletMap.current.invalidateSize();
-    }, 300);
-
-    return () => { if (leafletMap.current) { leafletMap.current.remove(); leafletMap.current = null; } };
-  }, []);
-
-  // Fetch Main Trip Route
-  useEffect(() => {
-    if (pickupPos && destPos) {
-      fetch(`https://router.project-osrm.org/route/v1/driving/${pickupPos.lng},${pickupPos.lat};${destPos.lng},${destPos.lat}?overview=full&geometries=geojson`)
-        .then(r => r.json())
-        .then(data => {
-          if (data.routes?.[0]?.geometry?.coordinates) {
-            setMainRoute(data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]));
-          }
-        }).catch(() => setMainRoute(null));
-    }
-  }, [pickupPos?.lat, pickupPos?.lng, destPos?.lat, destPos?.lng]);
-
-  // Fetch Driver Tracking Route
-  useEffect(() => {
-    if (riderPos && pickupPos) {
-      fetch(`https://router.project-osrm.org/route/v1/driving/${riderPos.lng},${riderPos.lat};${pickupPos.lng},${pickupPos.lat}?overview=full&geometries=geojson`)
-        .then(r => r.json())
-        .then(data => {
-          if (data.routes?.[0]?.geometry?.coordinates) {
-            setDriverRoute(data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]));
-          }
-        }).catch(() => setDriverRoute(null));
-    }
-  }, [riderPos?.lat, riderPos?.lng, pickupPos?.lat, pickupPos?.lng]);
-
-  useEffect(() => {
-    const L = window.L;
-    if (!leafletMap.current || !L) return;
-
-    // Clear prev layers
-    leafletMap.current.eachLayer((layer) => {
-      if (layer instanceof L.Marker || layer instanceof L.Polyline) {
-        leafletMap.current.removeLayer(layer);
-      }
-    });
-
-    const markers = [];
-
-    // Rider Marker
-    if (riderPos) {
-      L.marker([riderPos.lat, riderPos.lng], {
-        icon: L.icon({
-          iconUrl: 'https://cdn-icons-png.flaticon.com/512/3063/3063822.png',
-          iconSize: [32, 32], iconAnchor: [16, 16]
-        })
-      }).addTo(leafletMap.current).bindPopup('<b>Driver</b>');
-      markers.push([riderPos.lat, riderPos.lng]);
-    }
-
-    // Pickup Marker
-    if (pickupPos) {
-      L.marker([pickupPos.lat, pickupPos.lng], {
-        icon: L.icon({
-          iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
-          iconSize: [25, 41], iconAnchor: [12, 41]
-        })
-      }).addTo(leafletMap.current).bindPopup('<b>Pickup Point</b>');
-      markers.push([pickupPos.lat, pickupPos.lng]);
-    }
-
-    // Destination Marker
-    if (destPos) {
-      L.marker([destPos.lat, destPos.lng], {
-        icon: L.icon({
-          iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-          iconSize: [25, 41], iconAnchor: [12, 41]
-        })
-      }).addTo(leafletMap.current).bindPopup('<b>Destination</b>');
-      markers.push([destPos.lat, destPos.lng]);
-    }
-
-    // Draw lines
-    // Driver to Pickup Tracking Line
-    if (driverRoute) {
-      L.polyline(driverRoute, {
-        color: '#0f62fe', weight: 4, dashArray: '5, 8', opacity: 0.8, lineJoin: 'round'
-      }).addTo(leafletMap.current);
-    } else if (riderPos && pickupPos) {
-      // Fallback to straight line
-      L.polyline([[riderPos.lat, riderPos.lng], [pickupPos.lat, pickupPos.lng]], {
-        color: '#0f62fe', weight: 4, dashArray: '5, 8', opacity: 0.8, lineJoin: 'round'
-      }).addTo(leafletMap.current);
-    }
-
-    // Main Trip Route
-    if (mainRoute) {
-      L.polyline(mainRoute, {
-        color: '#161616', weight: 6, opacity: 1, lineJoin: 'round'
-      }).addTo(leafletMap.current);
-    } else if (pickupPos && destPos) {
-      // Fallback to straight line
-      L.polyline([[pickupPos.lat, pickupPos.lng], [destPos.lat, destPos.lng]], {
-        color: '#1c1917', weight: 6, opacity: 1, lineJoin: 'round'
-      }).addTo(leafletMap.current);
-    }
-
-    if (markers.length > 0) {
-      setTimeout(() => {
-        if (leafletMap.current) {
-          leafletMap.current.invalidateSize();
-          leafletMap.current.fitBounds(markers, { padding: [50, 50] });
-        }
-      }, 100);
-    }
-  }, [riderPos, pickupPos, destPos, status, mainRoute, driverRoute]);
-
-  return <div ref={mapRef} className="w-full h-full" />;
-};
 
 // Main App Component
 export default function RestaurantApp() {
@@ -547,11 +182,11 @@ export default function RestaurantApp() {
   }, []);
 
   // Clear cart function
-  const clearCart = () => {
+  const clearCart = useCallback(() => {
     setCartItems([]);
-  };
+  }, []);
 
-  const addToCart = (item, selectedSize = null) => {
+  const addToCart = useCallback((item, selectedSize = null) => {
     console.log('addToCart called:', { item, selectedSize, hasSizes: !!item.sizes });
 
     // For items with sizes, we need size info
@@ -567,60 +202,62 @@ export default function RestaurantApp() {
       ? { ...item, selectedSize: selectedSize.name, price: selectedSize.price, displayName: `${item.name} (${selectedSize.name})` }
       : item;
 
-    // Find existing item by id AND size (if applicable)
-    const existingItem = cartItems.find(i =>
-      i.id === item.id && (!selectedSize || i.selectedSize === selectedSize.name)
-    );
+    setCartItems(prevItems => {
+      // Find existing item by id AND size (if applicable)
+      const existingItem = prevItems.find(i =>
+        i.id === item.id && (!selectedSize || i.selectedSize === selectedSize.name)
+      );
 
-    if (existingItem) {
-      setCartItems(cartItems.map(i =>
-        (i.id === item.id && (!selectedSize || i.selectedSize === selectedSize.name))
-          ? { ...i, quantity: i.quantity + 1 }
-          : i
-      ));
-    } else {
-      setCartItems([...cartItems, { ...cartItem, quantity: 1 }]);
-    }
+      if (existingItem) {
+        return prevItems.map(i =>
+          (i.id === item.id && (!selectedSize || i.selectedSize === selectedSize.name))
+            ? { ...i, quantity: i.quantity + 1 }
+            : i
+        );
+      } else {
+        return [...prevItems, { ...cartItem, quantity: 1 }];
+      }
+    });
 
     // Close modal if it was open
     setShowSizeModal(false);
     setSelectedProduct(null);
-  };
+  }, []); // cartItems is used via functional update
 
-  const removeFromCart = (id, selectedSize = null) => {
-    setCartItems(cartItems.filter(item =>
+  const removeFromCart = useCallback((id, selectedSize = null) => {
+    setCartItems(prevItems => prevItems.filter(item =>
       !(item.id === id && (!selectedSize || item.selectedSize === selectedSize))
     ));
-  };
+  }, []);
 
-  const updateQuantity = (id, newQuantity, selectedSize = null) => {
+  const updateQuantity = useCallback((id, newQuantity, selectedSize = null) => {
     if (newQuantity === 0) {
       removeFromCart(id, selectedSize);
     } else {
-      setCartItems(cartItems.map(item =>
+      setCartItems(prevItems => prevItems.map(item =>
         (item.id === id && (!selectedSize || item.selectedSize === selectedSize))
           ? { ...item, quantity: newQuantity }
           : item
       ));
     }
-  };
+  }, [removeFromCart]);
 
-  const getTotalItems = () => {
+  const getTotalItems = useCallback(() => {
     return cartItems.reduce((sum, item) => sum + item.quantity, 0);
-  };
+  }, [cartItems]);
 
-  const getTotalPrice = () => {
+  const getTotalPrice = useCallback(() => {
     return cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  };
+  }, [cartItems]);
 
-  const contextValue = {
+  const contextValue = useMemo(() => ({
     cartItems,
     addToCart,
     removeFromCart,
     updateQuantity,
     getTotalItems,
     getTotalPrice
-  };
+  }), [cartItems, addToCart, removeFromCart, updateQuantity, getTotalItems, getTotalPrice]);
 
   const renderPage = () => {
     switch (currentPage) {
@@ -1027,881 +664,6 @@ function SizeModal({ product, onClose, onSelectSize }) {
   );
 }
 
-// Appointment Form Component
-function AppointmentForm() {
-  const [formData, setFormData] = useState({
-    fullName: '',
-    phoneNumber: '',
-    email: '',
-    serviceType: '',
-    preferredDate: '',
-    preferredTime: '',
-    notes: '',
-    agentCode: '',
-    pickupLocation: '',
-    destinationLocation: '',
-    pickupCoords: null,
-    destCoords: null
-  });
-  const [confirmedAppointment, setConfirmedAppointment] = useState(null);
-  const [mapAction, setMapAction] = useState(null); // For syncing input -> map
-  const [distance, setDistance] = useState(0); // in km
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitStatus, setSubmitStatus] = useState({ type: '', message: '' });
-  const [availableSlots, setAvailableSlots] = useState([]);
-  const [loadingSlots, setLoadingSlots] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('local'); // local, paypal, stripe
-  const [showMapInForm, setShowMapInForm] = useState(true);
-
-  const calculateFees = () => {
-    if (!selectedService) return { subtotal: 0, tax: 0, total: 0 };
-
-    let subtotal = 0;
-    const cat = (selectedService.category || '').trim().toUpperCase();
-
-    let base = 0;
-    let rate = 0;
-    let transportFees = 0;
-    let flatPrice = 0;
-
-    // Check if it's a transport service with dynamic pricing
-    if (cat === 'TRANSPORT') {
-      base = parseFloat((selectedService.base_fare || '0').toString().replace(/[^\d.]/g, '')) || 0;
-      rate = parseFloat((selectedService.per_km_rate || '0').toString().replace(/[^\d.]/g, '')) || 0;
-      const dist = parseFloat(distance || 0) || 0;
-
-      if (base > 0 || rate > 0) {
-        transportFees = base + (dist * rate);
-        subtotal = transportFees;
-      } else {
-        const priceStr = (selectedService.price || '0').toString();
-        flatPrice = parseFloat(priceStr.replace(/[^\d.]/g, '')) || 0;
-        subtotal = flatPrice;
-      }
-    } else {
-      const priceStr = (selectedService.price || '0').toString();
-      flatPrice = parseFloat(priceStr.replace(/[^\d.]/g, '')) || 0;
-      subtotal = flatPrice;
-    }
-
-    const tax = subtotal * 0.12;
-    const total = subtotal + tax;
-
-    return {
-      subtotal: parseFloat(subtotal) || 0,
-      tax: parseFloat(tax) || 0,
-      total: parseFloat(total) || 0,
-      base,
-      rate,
-      transportFees,
-      flatPrice,
-      isTransport: cat === 'TRANSPORT' && (base > 0 || rate > 0)
-    };
-  };
-
-  // Fetch available slots when date changes
-  useEffect(() => {
-    const fetchAvailableSlots = async () => {
-      if (!formData.preferredDate) {
-        setAvailableSlots([]);
-        return;
-      }
-
-      setLoadingSlots(true);
-      try {
-        const response = await fetch(`/api/available-slots?date=${formData.preferredDate}`);
-        const data = await response.json();
-        if (data.success && Array.isArray(data.availableSlots)) {
-          setAvailableSlots(data.availableSlots);
-          // Reset time if previously selected time is no longer available
-          if (formData.preferredTime && !data.availableSlots.includes(formData.preferredTime)) {
-            setFormData(prev => ({ ...prev, preferredTime: '' }));
-          }
-        } else {
-          setAvailableSlots([]);
-        }
-      } catch (error) {
-        console.error('Error fetching slots:', error);
-        // Fallback to all slots if API fails
-        const fallbackSlots = [];
-        for (let i = 0; i < 24; i++) {
-          const h = i % 12 || 12;
-          const ampm = i < 12 ? 'AM' : 'PM';
-          fallbackSlots.push(`${h}:00 ${ampm}`);
-        }
-        setAvailableSlots(fallbackSlots);
-      } finally {
-        setLoadingSlots(false);
-      }
-    };
-
-    if (isSubmitting || confirmedAppointment) return;
-    fetchAvailableSlots();
-  }, [formData.preferredDate, confirmedAppointment, isSubmitting]);
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleLocationSelect = useCallback((pickup, dest, dist) => {
-    if (pickup && pickup.address) {
-      setFormData(prev => ({
-        ...prev,
-        pickupLocation: pickup.address,
-        pickupCoords: pickup.coords || prev.pickupCoords
-      }));
-    }
-    if (dest && dest.address) {
-      setFormData(prev => ({
-        ...prev,
-        destinationLocation: dest.address,
-        destCoords: dest.coords || prev.destCoords
-      }));
-    }
-    if (dist !== undefined) {
-      setDistance(prev => Math.abs(prev - dist) < 0.01 ? prev : dist);
-    }
-  }, []);
-
-  const handleSubmit = async (e) => {
-    if (e) e.preventDefault();
-    if (isSubmitting) return;
-
-    setIsSubmitting(true);
-    setShowMapInForm(false); // Force unmount map immediately
-    setSubmitStatus({ type: '', message: '' });
-
-    try {
-      // Synchronize serviceType and specialist before submitting
-      const currentFees = calculateFees();
-      const finalFormData = {
-        ...formData,
-        serviceType: selectedService?.name,
-        specialistId: selectedStaff?.id,
-        pickupLocation: formData.pickupLocation,
-        destinationLocation: formData.destinationLocation,
-        pickupLat: formData.pickupCoords?.lat,
-        pickupLng: formData.pickupCoords?.lng,
-        destLat: formData.destCoords?.lat,
-        destLng: formData.destCoords?.lng,
-        totalAmount: currentFees.total
-      };
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
-
-      const response = await fetch('/api/appointments', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify(finalFormData),
-        signal: controller.signal
-      });
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Server error response:', errorText);
-        throw new Error(`Server responded with status ${response.status}`);
-      }
-
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-         throw new TypeError("Server returned non-JSON response");
-      }
-
-      const data = await response.json();
-
-      if (data.success) {
-        setConfirmedAppointment(data.appointment);
-        setSubmitStatus({ type: 'success', message: data.message });
-        setFormData({
-          fullName: '',
-          phoneNumber: '',
-          email: '',
-          serviceType: '',
-          preferredDate: '',
-          preferredTime: '',
-          notes: '',
-          pickupLocation: '',
-          destinationLocation: '',
-          pickupCoords: null,
-          destCoords: null
-        });
-      } else {
-        setSubmitStatus({ type: 'error', message: data.message || 'Booking failed. Please check your information.' });
-      }
-    } catch (error) {
-      console.error('Submission detailed error:', error);
-      if (error.name === 'AbortError') {
-        setSubmitStatus({ type: 'error', message: 'Request timed out. The server is taking too long.' });
-      } else {
-        setSubmitStatus({ type: 'error', message: error.message || 'Failed to connect to server. Please try again.' });
-      }
-    } finally {
-      // Ensure we always unlock the UI
-      setTimeout(() => setIsSubmitting(false), 500); 
-    }
-  };
-
-  const [step, setStep] = useState('service'); // service, staff, datetime, details, summary
-  const [selectedService, setSelectedService] = useState(null);
-  const [selectedStaff, setSelectedStaff] = useState(null);
-  const [liveServices, setLiveServices] = useState([]);
-  const [staffMembers, setStaffMembers] = useState([]);
-  const [isLoadingStaff, setIsLoadingStaff] = useState(false);
-  const [activeCategory, setActiveCategory] = useState('All');
-  const [isLoadingServices, setIsLoadingServices] = useState(false);
-
-  useEffect(() => {
-    const fetchStaffAndServices = async () => {
-      try {
-        setIsLoadingStaff(true);
-        setIsLoadingServices(true);
-
-        const [staffRes, servicesRes] = await Promise.all([
-          fetch('/api/specialists'),
-          fetch('/api/booking-services')
-        ]);
-
-        const staffData = await staffRes.json();
-        const servicesData = await servicesRes.json();
-
-        if (staffData.success) {
-          setStaffMembers([
-            { id: 'any', name: 'Any Staff', email: 'Next available member', image_url: null },
-            ...staffData.specialists
-          ]);
-        }
-
-        if (servicesData.success) {
-          setLiveServices(servicesData.services);
-        }
-      } catch (err) {
-        console.error('Error fetching data:', err);
-      } finally {
-        setIsLoadingStaff(false);
-        setIsLoadingServices(false);
-      }
-    };
-    fetchStaffAndServices();
-  }, []);
-
-  const steps = [
-    { id: 'service', label: 'Services', icon: <ShoppingCart className="w-4 h-4" /> },
-    { id: 'staff', label: 'Staff', icon: <Search className="w-4 h-4" /> },
-    { id: 'datetime', label: 'Date & Time', icon: <Settings className="w-4 h-4" /> },
-    { id: 'details', label: 'Basic Details', icon: <Settings className="w-4 h-4" /> },
-    { id: 'summary', label: 'Summary', icon: <Check className="w-4 h-4" /> }
-  ];
-
-  const categories = ['All', ...new Set(liveServices.map(s => (s.category || '').trim().toUpperCase()).filter(Boolean))];
-  const filteredServices = activeCategory === 'All'
-    ? liveServices
-    : liveServices.filter(s => (s.category || '').trim().toUpperCase() === activeCategory.toUpperCase());
-
-  return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      {confirmedAppointment ? (
-        <div className="max-w-2xl mx-auto bg-white border border-[#1c1917] p-10 shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 right-0 p-4">
-            <div className="flex items-center justify-center w-12 h-12 bg-green-100 text-green-600 rounded-full">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
-            </div>
-          </div>
-
-          <h3 className="text-3xl font-black text-[#1c1917] mb-2 uppercase tracking-tighter italic">Booking Confirmed</h3>
-          <p className="text-sm text-[#666] mb-8 uppercase tracking-widest font-bold">Thank you, {confirmedAppointment.full_name}!</p>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10 border-t border-b border-[#f4f4f4] py-8">
-            <div>
-              <p className="text-[10px] font-bold text-[#666] uppercase mb-1">Reference ID</p>
-              <p className="text-2xl font-black text-[#1c1917]">#{confirmedAppointment.id}</p>
-            </div>
-            <div>
-              <p className="text-[10px] font-bold text-[#666] uppercase mb-1">Total Amount</p>
-              <p className="text-2xl font-black text-[#fa4d56]">PHP {(parseFloat(confirmedAppointment.total_amount) || 0).toFixed(2)}</p>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            {confirmedAppointment.service_type?.toUpperCase().includes('TRANSPORT') && (
-              <button
-                onClick={() => {
-                  setAppointmentToken(confirmedAppointment.cancel_token);
-                  setCurrentPage('my-appointment');
-                  window.scrollTo(0, 0);
-                }}
-                className="w-full py-5 bg-blue-600 text-white font-black text-xs uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl flex items-center justify-center gap-3"
-              >
-                <span>[LIVE]</span> Track Driver Real-Time
-              </button>
-            )}
-            <button
-              onClick={() => {
-                setConfirmedAppointment(null);
-                setStep('service');
-                setSelectedService(null);
-              }}
-              className="w-full py-5 border-2 border-[#1c1917] text-[#1c1917] font-black text-xs uppercase tracking-widest hover:bg-gray-50 transition-all"
-            >
-              Book Another Service
-            </button>
-          </div>
-
-          <div className="mt-10 p-4 bg-gray-50 border border-gray-100 text-center">
-            <p className="text-[10px] text-[#999] uppercase tracking-[2px] leading-relaxed">
-              A confirmation has been sent to <strong>{confirmedAppointment.email}</strong>.<br />
-              Please present your Reference ID upon arrival.
-            </p>
-          </div>
-        </div>
-      ) : (
-        <>
-          <div className="bg-white border border-[#e0e0e0] overflow-hidden">
-            {/* Top Horizontal Stepper */}
-            <div className="bg-[#f4f4f4] border-b border-[#e0e0e0] p-10 pb-12">
-              <div className="max-w-5xl mx-auto flex items-center justify-between relative">
-                {/* Connecting Dotted Line Background */}
-                <div className="absolute top-5 left-0 right-0 h-0 border-t-2 border-dotted border-gray-300 z-0 mx-10 hidden md:block" />
-                
-                {steps.map((s, i) => {
-                  const isActive = step === s.id;
-                  const isCompleted = steps.findIndex(x => x.id === step) > i;
-                  return (
-                    <div key={s.id} className="relative z-10 flex flex-col items-center group">
-                      <div className={`w-10 h-10 force-circle flex items-center justify-center transition-all duration-300 border-2 ${
-                        isActive ? 'bg-[#0f62fe] text-white border-[#0f62fe] shadow-xl scale-125' :
-                        isCompleted ? 'bg-[#24a148] text-white border-[#24a148]' : 
-                        'bg-white text-[#525252] border-gray-200'
-                      }`}>
-                        {isCompleted ? <Check className="w-5 h-5" /> : s.icon}
-                      </div>
-                      <div className="absolute -bottom-8 flex flex-col items-center">
-                        <span className={`text-[10px] font-bold uppercase tracking-widest whitespace-nowrap hidden sm:block transition-colors ${
-                          isActive ? 'text-[#0f62fe]' : 'text-[#8d8d8d]'
-                        }`}>
-                          {s.label}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Main Content Area */}
-            <div className="p-8 lg:p-16 bg-white flex flex-col h-full mt-6">
-              {step === 'service' && (
-                <div className="flex-1">
-                  <h3 className="text-3xl font-light text-[#161616] mb-4 uppercase tracking-tighter">Select Service</h3>
-
-                  {/* Category Tabs */}
-                  <div className="flex flex-wrap gap-2 mb-8">
-                    {categories.map(cat => (
-                      <button
-                        key={cat}
-                        onClick={() => setActiveCategory(cat)}
-                        className={`px-4 py-2 text-xs font-bold uppercase tracking-widest transition-all ${activeCategory === cat ? 'bg-[#0f62fe] text-white' : 'bg-[#e0e0e0] text-[#525252] hover:bg-gray-300'
-                          }`}
-                      >
-                        {cat}
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {filteredServices.map(s => (
-                      <div
-                        key={s.id}
-                        onClick={() => { setSelectedService(s); setStep('staff'); }}
-                        className={`p-6 border border-[#e0e0e0] border-b-4 transition-all cursor-pointer group hover:bg-[#f4f4f4] ${selectedService?.id === s.id ? 'border-b-[#0f62fe] bg-[#f4f4f4]' : 'border-b-[#e0e0e0] bg-white'
-                          }`}
-                      >
-                        <div className="flex justify-between items-start mb-4">
-                          <ServiceIconRender iconName={s.icon} className="text-4xl text-[#0f62fe]" />
-                          <div className="text-right">
-                            <div className="text-xl font-mono text-[#161616] tracking-tight">
-                              {s.category?.toUpperCase() === 'TRANSPORT' && parseFloat(s.base_fare || 0) > 0
-                                ? `PHP ${parseFloat(s.base_fare).toLocaleString()}`
-                                : s.price}
-                            </div>
-                            <div className="text-[10px] text-[#525252] uppercase font-bold tracking-widest">
-                              {s.category?.toUpperCase() === 'TRANSPORT' ? 'Starts At' : s.duration}
-                            </div>
-                          </div>
-                        </div>
-                        <h4 className="text-lg font-bold text-[#161616] group-hover:text-[#0f62fe] transition-colors">{s.name}</h4>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {step === 'staff' && (
-                <div className="flex-1">
-                  <h3 className="text-3xl font-light text-[#161616] mb-8 uppercase tracking-tighter">Choose Staff</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {staffMembers.map(m => (
-                      <div
-                        key={m.id}
-                        onClick={() => { setSelectedStaff(m); setStep('datetime'); }}
-                        className={`p-6 bg-[#f4f4f4] border-b-4 transition-all cursor-pointer flex items-center gap-6 group hover:bg-white border-l border-t border-r border-[#e0e0e0] ${selectedStaff?.id === m.id ? 'border-[#0f62fe]' : 'border-transparent'
-                          }`}
-                      >
-                        <div className="w-16 h-16 bg-[#e0e0e0] flex items-center justify-center overflow-hidden force-circle border-2 border-white shadow-sm flex-shrink-0">
-                          {m.image_url ? <img src={m.image_url} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[#8d8d8d]"><User className="w-8 h-8" /></div>}
-                        </div>
-                        <div>
-                          <h4 className="font-bold text-[#161616] group-hover:text-[#0f62fe] transition-colors">{m.name}</h4>
-                          <p className="text-xs text-[#525252]">{m.title || m.email}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <button onClick={() => setStep('service')} className="mt-12 text-[#0f62fe] font-bold uppercase text-[12px] flex items-center gap-2 hover:underline">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg> Back to Services
-                  </button>
-                </div>
-              )}
-
-              {step === 'datetime' && (
-                <div className="flex-1">
-                  <h3 className="text-3xl font-light text-[#161616] mb-8 uppercase tracking-tighter">Select date & time</h3>
-
-                  <div className="grid lg:grid-cols-2 gap-12">
-                    {/* Custom Calendar */}
-                    <div>
-                      <div className="flex items-center justify-between mb-6 bg-[#f4f4f4] p-4">
-                        <button onClick={() => {
-                          const d = new Date(formData.preferredDate || new Date());
-                          d.setMonth(d.getMonth() - 1);
-                          setFormData({ ...formData, preferredDate: d.toISOString().split('T')[0] });
-                        }} className="p-2 hover:bg-white transition-all"><ChevronLeft className="w-4 h-4" /></button>
-                        <span className="font-bold text-sm uppercase tracking-widest text-[#161616]">
-                          {new Date(formData.preferredDate || new Date()).toLocaleString('default', { month: 'long', year: 'numeric' })}
-                        </span>
-                        <button onClick={() => {
-                          const d = new Date(formData.preferredDate || new Date());
-                          d.setMonth(d.getMonth() + 1);
-                          setFormData({ ...formData, preferredDate: d.toISOString().split('T')[0] });
-                        }} className="p-2 hover:bg-white transition-all"><ChevronRight className="w-4 h-4" /></button>
-                      </div>
-
-                      <div className="grid grid-cols-7 gap-1 text-center mb-2">
-                        {['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].map(d => (
-                          <div key={d} className="text-[10px] font-bold text-[#8d8d8d] uppercase p-2">{d}</div>
-                        ))}
-                      </div>
-
-                      <div className="grid grid-cols-7 gap-1">
-                        {(() => {
-                          const date = new Date(formData.preferredDate || new Date());
-                          const firstDay = new Date(date.getFullYear(), date.getMonth(), 1).getDay();
-                          const daysInMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-                          const startingDay = firstDay === 0 ? 6 : firstDay - 1;
-
-                          const days = [];
-                          for (let i = 0; i < startingDay; i++) days.push(<div key={`empty-${i}`} className="p-4" />);
-                          for (let i = 1; i <= daysInMonth; i++) {
-                            const dayStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
-                            const isSelected = formData.preferredDate === dayStr;
-                            const isToday = new Date().toISOString().split('T')[0] === dayStr;
-
-                            days.push(
-                              <button
-                                key={i}
-                                onClick={() => setFormData({ ...formData, preferredDate: dayStr })}
-                                className={`p-4 text-sm transition-all border ${isSelected ? 'bg-[#0f62fe] text-white border-[#0f62fe]' :
-                                  isToday ? 'border-[#0f62fe] text-[#0f62fe] font-bold' : 'border-transparent hover:bg-[#f4f4f4] text-[#161616]'
-                                  }`}
-                              >
-                                {i}
-                              </button>
-                            );
-                          }
-                          return days;
-                        })()}
-                      </div>
-                    </div>
-
-                    {/* Time Slots */}
-                    <div>
-                      <h4 className="text-[12px] font-bold text-[#8d8d8d] uppercase tracking-widest mb-6 border-b border-[#e0e0e0] pb-2">Available Slots</h4>
-
-                      {loadingSlots ? (
-                        <div className="py-12 text-center text-[#8d8d8d] animate-pulse">Checking availability...</div>
-                      ) : availableSlots.length > 0 ? (
-                        <div className="space-y-8 h-[400px] overflow-y-auto pr-4 custom-scrollbar">
-                          {(() => {
-                            const getHour24 = (s) => {
-                              const hr = parseInt(s.split(':')[0]);
-                              const isPM = s.includes('PM');
-                              if (isPM && hr !== 12) return hr + 12;
-                              if (!isPM && hr === 12) return 0;
-                              return hr;
-                            };
-
-                            const earlyMorning = availableSlots.filter(s => getHour24(s) < 6);
-                            const morning = availableSlots.filter(s => getHour24(s) >= 6 && getHour24(s) < 12);
-                            const afternoon = availableSlots.filter(s => getHour24(s) >= 12 && getHour24(s) < 18);
-                            const evening = availableSlots.filter(s => getHour24(s) >= 18);
-
-                            const TimeGroup = ({ title, slots }) => slots.length > 0 && (
-                              <div>
-                                <p className="text-[10px] font-bold text-[#161616] uppercase mb-4 tracking-widest">{title}</p>
-                                <div className="grid grid-cols-2 gap-2">
-                                  {slots.map(s => (
-                                    <button
-                                      key={s}
-                                      onClick={() => setFormData({ ...formData, preferredTime: s })}
-                                      className={`p-3 text-xs border transition-all ${formData.preferredTime === s ? 'bg-[#0f62fe] text-white border-[#0f62fe]' : 'border-[#e0e0e0] hover:border-[#0f62fe] text-[#161616]'
-                                        }`}
-                                    >
-                                      {s}
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-                            );
-
-                            return (
-                              <>
-                                <TimeGroup title="Early Morning" slots={earlyMorning} />
-                                <TimeGroup title="Morning" slots={morning} />
-                                <TimeGroup title="Afternoon" slots={afternoon} />
-                                <TimeGroup title="Evening & Night" slots={evening} />
-                              </>
-                            );
-                          })()}
-                        </div>
-                      ) : (
-                        <div className="py-24 text-center">
-                          <p className="text-[#8d8d8d] text-sm uppercase font-mono">No slots available for this date</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="mt-12 flex justify-between items-center bg-[#f4f4f4] p-6">
-                    <button onClick={() => setStep('staff')} className="text-[#0f62fe] font-bold uppercase text-[12px] flex items-center gap-2 hover:underline">
-                      <ChevronLeft className="w-3 h-3" /> Back to Specialist
-                    </button>
-                    <div className="flex items-center gap-8">
-                      {formData.preferredDate && formData.preferredTime && (
-                        <div className="text-right hidden sm:block">
-                          <p className="text-[10px] text-[#8d8d8d] uppercase font-bold tracking-widest">Selected</p>
-                          <p className="text-sm font-bold text-[#161616]">{formData.preferredDate} @ {formData.preferredTime}</p>
-                        </div>
-                      )}
-                      <button
-                        disabled={!formData.preferredDate || !formData.preferredTime}
-                        onClick={() => setStep('details')}
-                        className="carbon-btn-primary px-12 py-3 font-bold uppercase tracking-widest text-sm disabled:opacity-50"
-                      >
-                        Next: Patient Details
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {step === 'details' && (
-                <div className="flex-1">
-                  <h3 className="text-3xl font-light text-[#161616] mb-8 uppercase tracking-tighter">Your Details</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                    <div className="space-y-1">
-                      <label className="block text-[12px] font-medium text-[#525252] uppercase tracking-[0.32px]">Full Name</label>
-                      <input
-                        type="text"
-                        name="fullName"
-                        value={formData.fullName}
-                        onChange={handleChange}
-                        placeholder="Ex. Juan Dela Cruz"
-                        required
-                        className="carbon-input w-full p-4"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="block text-[12px] font-medium text-[#525252] uppercase tracking-[0.32px]">Phone Number</label>
-                      <input
-                        type="tel"
-                        name="phoneNumber"
-                        value={formData.phoneNumber}
-                        onChange={handleChange}
-                        placeholder="09XXXXXXXXX"
-                        required
-                        className="carbon-input w-full p-4"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                    <div className="space-y-1">
-                      <label className="block text-[12px] font-medium text-[#525252] uppercase tracking-[0.32px]">Email Address</label>
-                      <input
-                        type="email"
-                        name="email"
-                        value={formData.email}
-                        onChange={handleChange}
-                        placeholder="juan@example.com"
-                        required
-                        className="carbon-input w-full p-4"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="block text-[12px] font-medium text-[#525252] uppercase tracking-[0.32px]">Agent Code (Optional)</label>
-                      <input
-                        type="text"
-                        name="agentCode"
-                        value={formData.agentCode}
-                        onChange={handleChange}
-                        placeholder="Ex. AGT-1234"
-                        className="carbon-input w-full p-4"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                    <div className="space-y-1 relative">
-                      <label className="block text-[12px] font-medium text-[#525252] uppercase tracking-[0.32px]">Pickup From</label>
-                      <LocationAutocomplete
-                        value={formData.pickupLocation}
-                        onChange={(val) => setFormData(prev => ({ ...prev, pickupLocation: val }))}
-                        onSelect={(place) => {
-                          if (place && place.address && place.coords) {
-                            setFormData(prev => ({
-                              ...prev,
-                              pickupLocation: place.address,
-                              pickupCoords: place.coords
-                            }));
-                            setMapAction({ type: 'MOVE_PICKUP', lat: place.coords.lat, lng: place.coords.lng });
-                          }
-                        }}
-                        placeholder="Search pickup location..."
-                      />
-                    </div>
-                    <div className="space-y-1 relative">
-                      <label className="block text-[12px] font-medium text-[#525252] uppercase tracking-[0.32px]">Destination To</label>
-                      <LocationAutocomplete
-                        value={formData.destinationLocation}
-                        onChange={(val) => setFormData(prev => ({ ...prev, destinationLocation: val }))}
-                        onSelect={(place) => {
-                          if (place && place.address && place.coords) {
-                            setFormData(prev => ({
-                              ...prev,
-                              destinationLocation: place.address,
-                              destCoords: place.coords
-                            }));
-                            setMapAction({ type: 'MOVE_DEST', lat: place.coords.lat, lng: place.coords.lng });
-                          }
-                        }}
-                        placeholder="Search destination..."
-                      />
-                    </div>
-                  </div>
-
-                  {selectedService?.category?.toUpperCase() === 'TRANSPORT' && showMapInForm && (
-                    <div className="mb-8 animate-fadeIn">
-                      <p className="text-[10px] font-bold text-[#0f62fe] uppercase tracking-widest mb-2 flex items-center justify-between">
-                        <span className="flex items-center gap-2">
-                          <span className="w-2 h-2 bg-[#0f62fe] rounded-full animate-pulse"></span>
-                          Interactive Route Picker
-                        </span>
-                        {distance > 0 && <span className="text-[#24a148]">Route Computed: {distance.toFixed(2)} km</span>}
-                      </p>
-                      <TransportMap
-                        mapAction={mapAction}
-                        onLocationSelect={handleLocationSelect}
-                      />
-                    </div>
-                  )}
-                  <div className="space-y-1 mb-12">
-                    <label className="block text-[12px] font-medium text-[#525252] uppercase tracking-[0.32px]">Notes (Optional)</label>
-                    <textarea
-                      name="notes"
-                      value={formData.notes}
-                      onChange={handleChange}
-                      rows={2}
-                      placeholder="Any specific concerns..."
-                      className="carbon-input w-full p-4 resize-none"
-                    ></textarea>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <button onClick={() => setStep('datetime')} className="text-[#0f62fe] font-bold uppercase text-[12px] flex items-center gap-2 hover:underline">
-                      <ChevronLeft className="w-3 h-3" /> Back to Time
-                    </button>
-                    <button
-                      disabled={!formData.fullName || !formData.phoneNumber || !formData.email}
-                      onClick={() => setStep('summary')}
-                      className="carbon-btn-primary px-10 py-3 font-bold uppercase tracking-wider text-sm disabled:opacity-50"
-                    >
-                      Next: Review & Payment
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {step === 'summary' && (
-                <div className="flex-1">
-                  <h3 className="text-3xl font-light text-[#161616] mb-8 uppercase tracking-tighter">Your Booking Summary</h3>
-
-                  {/* Header: Service & Date Overview */}
-                  <div className="flex flex-col md:flex-row border border-[#e0e0e0] mb-8">
-                    <div className="flex-1 p-6 border-b md:border-b-0 md:border-r border-[#e0e0e0]">
-                      <div className="flex items-center justify-between mb-4">
-                        <span className="text-[10px] font-bold text-[#525252] uppercase tracking-[2px]">Service</span>
-                        <span className="p-2 bg-blue-50 text-[#0f62fe] rounded-full">{selectedService?.icon}</span>
-                      </div>
-                      <div className="text-2xl font-bold text-[#161616] leading-tight mb-1">{selectedService?.name}</div>
-                      <div className="text-sm text-[#525252]">By {selectedStaff?.name}</div>
-                    </div>
-                    <div className="flex-1 p-6">
-                      <div className="text-[10px] font-bold text-[#525252] uppercase tracking-[2px] mb-4 text-center md:text-left">Date & Time</div>
-                      <div className="text-xl font-medium text-[#161616] text-center md:text-left">
-                        {formData.preferredDate ? new Date(formData.preferredDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '---'}
-                      </div>
-                      <div className="text-2xl font-bold text-[#0f62fe] text-center md:text-left mt-1">{formData.preferredTime || '---'}</div>
-                    </div>
-                  </div>
-
-                  {/* Price Breakdown */}
-                  <div className="space-y-4 mb-8 border-b border-[#e0e0e0] pb-8">
-                    {calculateFees().isTransport ? (
-                      <>
-                        <div className="flex justify-between text-sm text-[#525252]">
-                          <span>Base Fare</span>
-                          <span className="font-mono">PHP {calculateFees().base.toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-between text-sm text-[#525252]">
-                          <span>Distance Rate (PHP {calculateFees().rate}/km)</span>
-                          <span className="font-mono">PHP {(calculateFees().rate * distance).toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-between text-[10px] text-[#0f62fe] italic font-medium px-4 py-2 bg-blue-50">
-                          <span>Calculated distance: {distance.toFixed(2)} KM</span>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="flex justify-between text-sm text-[#525252]">
-                        <span>Service Price</span>
-                        <span className="font-mono">PHP {calculateFees().subtotal.toFixed(2)}</span>
-                      </div>
-                    )}
-
-                    <div className="pt-2 flex justify-between text-sm font-bold text-[#161616]">
-                      <span>Subtotal</span>
-                      <span className="font-mono">PHP {calculateFees().subtotal.toFixed(2)}</span>
-                    </div>
-
-                    <div className="flex justify-between text-sm text-[#525252]">
-                      <span>Tax (12%)</span>
-                      <span className="font-mono text-[#24a148]">PHP {calculateFees().tax.toFixed(2)}</span>
-                    </div>
-                  </div>
-
-                  {/* Promo Section */}
-                  <div className="pt-4 space-y-4">
-                    <div className="flex gap-2">
-                      <input disabled placeholder="Select package" className="flex-1 bg-white border border-[#e0e0e0] px-4 py-2 text-sm italic text-gray-400" />
-                      <button disabled className="px-6 py-2 bg-[#fa4d56] text-white text-xs font-bold uppercase opacity-80">Redeem</button>
-                    </div>
-                    {formData.agentCode && (
-                      <div className="text-[10px] text-[#fa4d56] font-medium uppercase tracking-[1px]">Agent Code Applied: {formData.agentCode}</div>
-                    )}
-                    <div className="flex gap-2">
-                      <input placeholder="Enter coupon code" className="flex-1 border border-[#e0e0e0] px-4 py-2 text-sm focus:border-[#0f62fe] outline-none" />
-                      <button className="px-8 py-2 border border-[#fa4d56] text-[#fa4d56] text-xs font-bold uppercase hover:bg-[#fa4d56] hover:text-white transition-all">Apply</button>
-                    </div>
-                  </div>
-
-                  {/* Total */}
-                  <div className="flex justify-between items-center mb-12">
-                    <span className="text-lg font-bold text-[#161616] uppercase tracking-tighter">Total Amount Payable</span>
-                    <span className="text-3xl font-bold text-[#fa4d56] font-mono">PHP {calculateFees().total.toFixed(2)}</span>
-                  </div>
-
-                  {/* Payment Methods */}
-                  <div className="mb-12">
-                    <h4 className="text-[12px] font-bold text-[#525252] uppercase tracking-[1px] mb-6">Select Payment Method</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {[
-                        { id: 'local', label: 'Pay Locally', icon: <Store className="w-4 h-4 text-[#0f62fe]" /> },
-                        { id: 'paypal', label: 'PayPal', icon: <CreditCard className="w-4 h-4 text-[#0f62fe]" /> },
-                        { id: 'stripe', label: 'Stripe', icon: <Lock className="w-4 h-4 text-[#0f62fe]" /> },
-                      ].map(method => (
-                        <button
-                          key={method.id}
-                          onClick={() => setPaymentMethod(method.id)}
-                          className={`p-4 border flex items-center justify-center gap-3 transition-all ${paymentMethod === method.id ? 'border-[#0f62fe] bg-blue-50/50 ring-1 ring-[#0f62fe]' : 'border-[#e0e0e0] hover:border-[#8d8d8d]'}`}
-                        >
-                          <span className="text-xl">{method.icon}</span>
-                          <span className={`text-[12px] font-bold uppercase ${paymentMethod === method.id ? 'text-[#0f62fe]' : 'text-[#525252]'}`}>
-                            {method.label}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Transport Info if exists */}
-                  {(formData.pickupLocation || formData.destinationLocation) && (
-                    <div className="mb-12 p-6 bg-yellow-50/50 border-l-2 border-yellow-400">
-                      <h4 className="text-[10px] font-bold text-yellow-800 uppercase tracking-widest mb-4">Special Logistics</h4>
-                      <div className="grid grid-cols-2 gap-8 text-sm">
-                        {formData.pickupLocation && (
-                          <div>
-                            <div className="text-gray-500 mb-1">Pickup</div>
-                            <div className="font-bold text-gray-800">{formData.pickupLocation}</div>
-                          </div>
-                        )}
-                        {formData.destinationLocation && (
-                          <div>
-                            <div className="text-gray-500 mb-1">Destination</div>
-                            <div className="font-bold text-gray-800">{formData.destinationLocation}</div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {submitStatus.message && (
-                    <div className={`mb-8 p-4 text-sm ${submitStatus.type === 'success' ? 'bg-[#24a148]/10 text-[#24a148] border border-[#24a148]/20' : 'bg-[#da1e28]/10 text-[#da1e28] border border-[#da1e28]/20'}`}>
-                      {submitStatus.message}
-                    </div>
-                  )}
-
-                  <div className="flex justify-between items-center pt-8 border-t border-[#e0e0e0]">
-                    <button onClick={() => setStep('details')} disabled={isSubmitting} className="text-[#525252] font-bold uppercase text-[12px] flex items-center gap-2 hover:text-[#0f62fe] disabled:opacity-50">
-                      <ChevronLeft className="w-3 h-3" /> Go Back
-                    </button>
-                    <button onClick={handleSubmit} disabled={isSubmitting} className="carbon-btn-primary px-16 py-4 font-bold uppercase tracking-widest text-[13px] disabled:opacity-50">
-                      {isSubmitting ? 'Processing...' : 'Book Appointment'}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="mt-8 pt-6 border-t border-gray-100 flex flex-wrap justify-center gap-6 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-            <div className="flex items-center gap-2">
-              <svg className="w-3 h-3 text-[#0f62fe]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-              <span>Real-time Tracking</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <svg className="w-3 h-3 text-[#0f62fe]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-              <span>Verified Dispatch</span>
-            </div>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-// Admin Dashboard Component
 function AdminDashboard({ setCurrentPage }) {
   // Auth state
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -3083,6 +1845,11 @@ function AdminDashboard({ setCurrentPage }) {
                   </div>
                 </div>
               </div>
+            )}
+
+            {/* ==================== CORPORATE ACCOUNTS TAB ==================== */}
+            {activeTab === 'corporate' && (
+              <CorporateAccountsManagement />
             )}
 
             {/* ==================== RIDERS TAB ==================== */}
@@ -4334,7 +3101,7 @@ function MenuItem({ item }) {
         <div className="flex flex-col gap-3 mt-auto">
           {item.sizes ? (
             <span className="text-sm sm:text-base md:text-lg font-semibold text-blue-900 break-words">
-              From Php {Math.min(...item.sizes.map(s => s.price)).toFixed(2)}
+              From Php {item.sizes && item.sizes.length > 0 ? Math.min(...item.sizes.map(s => s.price)).toFixed(2) : "0.00"}
             </span>
           ) : (
             <span className="text-sm sm:text-base md:text-lg font-semibold text-blue-900 break-words">Php {item.price.toFixed(2)}</span>
@@ -5895,1130 +4662,20 @@ function QueueAdminTab({ setCurrentPage }) {
 
 // Queue Page
 
-function SurveyPage({ setCurrentPage }) {
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const [formData, setFormData] = useState({
-    sex: '', age: '', region: '', clientType: '',
-    cc1: '', cc2: '', cc3: '',
-    sqd0: 0, sqd1: 0, sqd2: 0, sqd3: 0, sqd4: 0, sqd5: 0, sqd6: 0, sqd7: 0, sqd8: 0,
-    comments: ''
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleRating = (name, value) => setFormData(prev => ({ ...prev, [name]: value }));
 
-  const submitSurvey = async () => {
-    // Basic validation
-    if (!formData.sex || !formData.clientType || !formData.cc1 || formData.sqd0 === 0) {
-      alert('Please fill in all required fields (Sex, Client Type, CC Awareness, and Overall Satisfaction)');
-      return;
-    }
-    setIsSubmitting(true);
-    try {
-      const res = await fetch('/api/survey', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-          name: 'Anonymous',
-          contactNumber: '00000000000',
-          suggestions: formData.comments,
-          serviceAvailed: 'Queuing Service'
-        })
-      });
-      const data = await res.json();
-      if (data.success) {
-        setIsSubmitted(true);
-      } else {
-        alert(data.message || 'Submission failed');
-      }
-    } catch (err) {
-      alert('Error submitting survey');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
-  const likertScale = [
-    { v: 5, l: 'Strongly Agree' },
-    { v: 4, l: 'Agree' },
-    { v: 3, l: 'Neither' },
-    { v: 2, l: 'Disagree' },
-    { v: 1, l: 'Strongly Disagree' }
-  ];
 
-  if (isSubmitted) {
-    return (
-      <div className="min-h-screen bg-white pt-[148px] px-8 flex justify-center text-center">
-        <div className="max-w-xl w-full bg-[#f4f4f4] p-16 border-t-8 border-[#24a148]">
-          <h2 className="text-5xl font-light text-[#161616] mb-8">Thank You!</h2>
-          <p className="text-xl text-[#525252] mb-12">Your feedback helps us provide better service for everyone.</p>
-          <button onClick={() => setCurrentPage('home')} className="carbon-btn-primary px-12 py-4 font-bold uppercase tracking-widest">Return Home</button>
-        </div>
-      </div>
-    );
-  }
 
-  return (
-    <div className="min-h-screen bg-white pt-[148px] px-8 pb-32">
-      <div className="max-w-3xl mx-auto bg-[#f4f4f4] border-t-4 border-[#0f62fe] p-12">
-
-        {/* Header */}
-        <div className="mb-12">
-          <h2 className="text-3xl font-light text-[#161616] mb-2 uppercase tracking-tight">Client Satisfaction Measurement</h2>
-          <p className="text-xs text-[#525252] uppercase font-bold tracking-[0.2em] border-b pb-4 border-[#e0e0e0]">Harmonized ARTA CSM 2024 Standard</p>
-        </div>
-
-        <div className="space-y-16">
-          {/* Step 1: Client Profile */}
-          <div className="space-y-8">
-            <h3 className="text-xl font-bold uppercase text-[#161616] border-l-4 border-[#0f62fe] pl-4">I. Client Profile</h3>
-            <div className="grid grid-cols-2 gap-8">
-              <div className="space-y-2">
-                <label className="text-[10px] uppercase font-bold text-[#525252]">Sex</label>
-                <select value={formData.sex} onChange={e => handleRating('sex', e.target.value)} className="carbon-input w-full p-4">
-                  <option value="">Select...</option>
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                  <option value="Others">Others</option>
-                </select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] uppercase font-bold text-[#525252]">Age</label>
-                <input type="number" value={formData.age} onChange={e => handleRating('age', e.target.value)} className="carbon-input w-full p-4" placeholder="Enter age" />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] uppercase font-bold text-[#525252]">Region</label>
-              <input value={formData.region} onChange={e => handleRating('region', e.target.value)} className="carbon-input w-full p-4" placeholder="Ex. Region IV-A" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] uppercase font-bold text-[#525252]">Client Type</label>
-              <select value={formData.clientType} onChange={e => handleRating('clientType', e.target.value)} className="carbon-input w-full p-4">
-                <option value="">Select...</option>
-                <option value="Citizen">Citizen</option>
-                <option value="Business">Business</option>
-                <option value="Government">Government (Employee or other Agency)</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Step 2: Citizen's Charter (CC) */}
-          <div className="space-y-12">
-            <h3 className="text-xl font-bold uppercase text-[#161616] border-l-4 border-[#0f62fe] pl-4">II. Citizen's Charter (CC)</h3>
-
-            <div className="space-y-4">
-              <p className="text-sm font-bold text-[#161616]">CC1: Which of the following best describes your awareness of a CC?</p>
-              {[
-                "I know what a CC is and I saw this office's CC.",
-                "I know what a CC is but I did NOT see this office's CC.",
-                "I learned of the CC only when I saw this office's CC.",
-                "I do not know what a CC is and I did not see one in this office."
-              ].map((opt, i) => (
-                <button key={i} onClick={() => handleRating('cc1', opt)} className={`w-full text-left p-4 text-xs transition-all ${formData.cc1 === opt ? 'bg-[#0f62fe] text-white' : 'bg-white border hover:bg-[#e8e8e8]'}`}>{opt}</button>
-              ))}
-            </div>
-
-            <div className="space-y-4">
-              <p className="text-sm font-bold text-[#161616]">CC2: If aware of CC, would you say that the CC of this office was...?</p>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {["Easy to see", "Somewhat easy to see", "Difficult to see", "Not visible at all", "N/A"].map(opt => (
-                  <button key={opt} onClick={() => handleRating('cc2', opt)} className={`p-4 text-xs transition-all ${formData.cc2 === opt ? 'bg-[#161616] text-white' : 'bg-white border hover:bg-[#e8e8e8]'}`}>{opt}</button>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <p className="text-sm font-bold text-[#161616]">CC3: How much did the CC help you in your transaction?</p>
-              <div className="grid grid-cols-2 gap-2">
-                {["Helped very much", "Somewhat helped", "Did not help", "N/A"].map(opt => (
-                  <button key={opt} onClick={() => handleRating('cc3', opt)} className={`p-4 text-xs transition-all ${formData.cc3 === opt ? 'bg-[#161616] text-white' : 'bg-white border hover:bg-[#e8e8e8]'}`}>{opt}</button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Step 3: Service Quality */}
-          <div className="space-y-12">
-            <div className="flex flex-col md:flex-row md:justify-between md:items-baseline gap-2">
-              <h3 className="text-xl font-bold uppercase text-[#161616] border-l-4 border-[#0f62fe] pl-4">III. Service Quality</h3>
-              <p className="text-[10px] text-[#525252] font-mono">1 = Strongly Disagree | 5 = Strongly Agree</p>
-            </div>
-
-            <div className="space-y-8">
-              {[
-                { id: '0', q: 'I am satisfied with the service that I availed.', d: 'Overall' },
-                { id: '1', q: 'I spent a reasonable amount of time for my transaction.', d: 'Responsiveness' },
-                { id: '2', q: 'The office followed the transaction requirements and steps based on the transaction.', d: 'Reliability' },
-                { id: '3', q: 'The steps (including payment) were easy and simple.', d: 'Access' },
-                { id: '4', q: 'I easily found information about my transaction from the office or its website.', d: 'Communication' },
-                { id: '5', q: 'I paid an acceptable amount of fees for my transaction.', d: 'Costs' },
-                { id: '6', q: 'I felt the office was secure.', d: 'Integrity' },
-                { id: '7', q: 'I was treated courteously by the staff, and (if asked for help) the staff was helpful.', d: 'Assurance' },
-                { id: '8', q: 'I got what I needed from the government office.', d: 'Outcome' }
-              ].map(sqd => (
-                <div key={sqd.id} className="space-y-4 border-b border-[#e0e0e0] pb-8">
-                  <p className="text-sm font-bold">{sqd.q}</p>
-                  <div className="flex gap-1">
-                    {likertScale.map(l => (
-                      <button
-                        key={l.v}
-                        onClick={() => handleRating(`sqd${sqd.id}`, l.v)}
-                        className={`flex-1 flex flex-col items-center p-2 border transition-all ${formData[`sqd${sqd.id}`] === l.v ? 'bg-[#0f62fe] text-white border-[#0f62fe]' : 'bg-white border-[#e0e0e0] hover:bg-[#f4f4f4]'}`}
-                      >
-                        <span className="text-lg font-bold">{l.v}</span>
-                        <span className="text-[8px] uppercase font-bold text-center mt-1 hidden md:block">{l.l}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Step 4: Comments */}
-          <div className="space-y-8">
-            <h3 className="text-xl font-bold uppercase text-[#161616] border-l-4 border-[#0f62fe] pl-4">IV. Comments</h3>
-            <div className="space-y-2">
-              <label className="text-[10px] uppercase font-bold text-[#525252]">Suggestions on how we can further improve our services (Optional)</label>
-              <textarea
-                value={formData.comments}
-                onChange={e => handleRating('comments', e.target.value)}
-                className="carbon-input w-full p-6 min-h-[150px]"
-                placeholder="Type your feedback here..."
-              ></textarea>
-            </div>
-
-            <button onClick={submitSurvey} disabled={isSubmitting} className="carbon-btn-primary w-full p-6 font-bold uppercase tracking-widest text-lg disabled:opacity-30 mt-12 shadow-xl hover:-translate-y-1 transition-all">
-              {isSubmitting ? 'Submitting...' : 'Submit Final Feedback'}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function QueuePage({ setCurrentPage }) {
-  const [view, setView] = useState('initial');
-  const [formData, setFormData] = useState({ customerName: '', cellphoneNumber: '', transactionType: '', isPriority: false, priorityType: '' });
-  const [transactionTypes, setTransactionTypes] = useState([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [ticket, setTicket] = useState(null);
-
-  useEffect(() => {
-    fetch('/api/queue/transaction-types')
-      .then(res => res.json())
-      .then(data => { if (data.success) setTransactionTypes(data.types); })
-      .catch(err => console.error('Error fetching types:', err));
-  }, []);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    try {
-      const res = await fetch('/api/queue/tickets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
-      const data = await res.json();
-      if (data.success) {
-        setTicket(data.ticket);
-        setView('receipt');
-      } else {
-        alert(data.message || 'Failed to create ticket');
-      }
-    } catch (err) { alert('Server error'); }
-    finally { setIsSubmitting(false); }
-  };
-
-  if (view === 'receipt' && ticket) {
-    return (
-      <div className="min-h-screen bg-white pt-[148px] px-8 flex justify-center">
-        <div className="w-full max-w-sm bg-[#f4f4f4] p-12 text-center border-t-4 border-[#0f62fe]">
-          <p className="text-xs uppercase text-[#525252] mb-8 font-bold tracking-widest">Queue Number</p>
-          <h2 className="text-8xl font-light text-[#161616] mb-4">{ticket.ticket_number}</h2>
-          <p className="text-[#525252] text-sm mb-12 uppercase tracking-wide">{ticket.customer_name}</p>
-          <button
-            onClick={() => {
-              localStorage.setItem('lastTicketId', ticket.id);
-              setCurrentPage('survey');
-            }}
-            className="carbon-btn-primary w-full p-4 font-bold uppercase tracking-wider"
-          >
-            Go to Feedback
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-white pt-[148px] px-8 flex justify-center pb-24">
-      <div className="w-full max-w-lg bg-[#f4f4f4] p-12 border-t-4 border-[#0f62fe]">
-        <h2 className="text-3xl font-light text-[#161616] mb-10 uppercase tracking-tight">Generate Ticket</h2>
-        <form onSubmit={handleSubmit} className="space-y-8">
-          <div className="space-y-2">
-            <label className="text-xs uppercase text-[#525252] font-bold">Full Name</label>
-            <input
-              value={formData.customerName}
-              onChange={e => setFormData({ ...formData, customerName: e.target.value })}
-              className="carbon-input w-full p-4"
-              placeholder="Ex. Juan Dela Cruz"
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="text-xs uppercase text-[#525252] font-bold">Phone Number</label>
-            <input
-              value={formData.cellphoneNumber}
-              onChange={e => setFormData({ ...formData, cellphoneNumber: e.target.value })}
-              className="carbon-input w-full p-4"
-              placeholder="09XXXXXXXXX"
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="text-xs uppercase text-[#525252] font-bold">Transaction Type</label>
-            <select
-              value={formData.transactionType}
-              onChange={e => setFormData({ ...formData, transactionType: e.target.value })}
-              className="carbon-input w-full p-4"
-              required
-            >
-              <option value="">Select Service...</option>
-              {transactionTypes.map(t => (
-                <option key={t.id} value={t.name}>{t.name}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex items-center space-x-4 p-4 bg-white border border-[#e0e0e0]">
-            <input
-              type="checkbox"
-              checked={formData.isPriority}
-              onChange={e => setFormData({ ...formData, isPriority: e.target.checked })}
-              className="w-5 h-5 accent-[#0f62fe]"
-            />
-            <label className="text-xs uppercase font-bold text-[#525252]">Priority Lane (Senior/PWD/Pregnant)</label>
-          </div>
-
-          <button type="submit" disabled={isSubmitting} className="carbon-btn-primary w-full p-5 font-bold uppercase tracking-widest text-lg disabled:opacity-50">
-            {isSubmitting ? 'Processing...' : 'Generate Number'}
-          </button>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-function QueueDisplayPage() {
-  const [serving, setServing] = useState([]);
-  const [waiting, setWaiting] = useState([]);
-  const [currentTime, setCurrentTime] = useState(new Date());
-  const [marqueeText, setMarqueeText] = useState('');
-
-  useEffect(() => {
-    const fetchDisplay = () => {
-      fetch('/api/queue/display')
-        .then(res => res.json())
-        .then(data => {
-          if (data.success) {
-            setServing(data.serving);
-            setWaiting(data.waiting);
-          }
-        })
-        .catch(err => console.error(err));
-    };
-    const fetchMarquee = () => {
-      fetch('/api/queue/marquee')
-        .then(res => res.json())
-        .then(data => { if (data.success) setMarqueeText(data.text); });
-    };
-    fetchDisplay();
-    fetchMarquee();
-    const interval = setInterval(fetchDisplay, 3000);
-    const marqueeInt = setInterval(fetchMarquee, 10000);
-    const clock = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => { clearInterval(interval); clearInterval(marqueeInt); clearInterval(clock); };
-  }, []);
-
-  return (
-    <div className="fixed inset-0 bg-white z-[100] flex flex-col overflow-hidden">
-      {/* Header Bar */}
-      <div className="bg-[#161616] text-white px-12 py-6 flex justify-between items-center border-b border-[#393939]">
-        <div>
-          <h1 className="text-4xl font-light uppercase tracking-[0.2em]">Live <span className="font-bold text-[#0f62fe]">Queue</span></h1>
-        </div>
-        <div className="text-4xl font-mono font-light text-[#c6c6c6]">
-          {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-        </div>
-      </div>
-
-      {/* Main Display Area */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left: Now Serving (Big) */}
-        <div className="flex-[2] bg-[#f4f4f4] p-12 border-r border-[#e0e0e0] flex flex-col">
-          <h2 className="text-xs font-bold uppercase text-[#525252] mb-12 tracking-[0.3em]">Now Serving</h2>
-          <div className="flex-1 grid grid-cols-2 gap-8 content-start">
-            {serving.map((ticket, i) => (
-              <div key={ticket.id} className={`bg-white p-8 border-t-8 border-[#0f62fe] shadow-sm transform transition-all ${i === 0 ? 'scale-105 ring-4 ring-[#0f62fe]/10' : ''}`}>
-                <p className="text-xs uppercase font-bold text-[#525252] mb-2">{ticket.teller_window}</p>
-                <p className="text-8xl font-light text-[#161616] tracking-tighter">{ticket.ticket_number}</p>
-                <p className="text-sm text-[#525252] mt-4 font-medium uppercase truncate">{ticket.customer_name}</p>
-              </div>
-            ))}
-            {serving.length === 0 && (
-              <div className="col-span-2 h-[400px] flex items-center justify-center border-2 border-dashed border-[#e0e0e0]">
-                <p className="text-[#c6c6c6] text-2xl uppercase tracking-widest font-light">Waiting for Next Customer</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Right: Waiting List */}
-        <div className="flex-1 bg-white p-12 flex flex-col overflow-hidden">
-          <h2 className="text-xs font-bold uppercase text-[#525252] mb-12 tracking-[0.3em]">Waiting List</h2>
-          <div className="flex-1 space-y-4 overflow-y-auto pr-4">
-            {waiting.slice(0, 10).map((ticket) => (
-              <div key={ticket.id} className="p-6 bg-[#f4f4f4] flex justify-between items-center border-l-4 border-[#393939]">
-                <span className="text-4xl font-light text-[#161616]">{ticket.ticket_number}</span>
-                <span className="text-xs font-mono text-[#525252] uppercase">{ticket.transaction_type}</span>
-              </div>
-            ))}
-            {waiting.length === 0 && <p className="text-[#c6c6c6] italic">No pending tickets</p>}
-          </div>
-        </div>
-      </div>
-
-      {/* Marquee Footer */}
-      {marqueeText && (
-        <div className="h-[60px] bg-[#0f62fe] text-white flex items-center overflow-hidden border-t border-[#0353e9]">
-          <div className="animate-marquee whitespace-nowrap">
-            <span className="text-xl font-medium mx-12 uppercase tracking-wide">{marqueeText}</span>
-            <span className="text-xl font-medium mx-12 uppercase tracking-wide">{marqueeText}</span>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function QueueTellerPage({ setCurrentPage }) {
-  const [tellers, setTellers] = useState([]);
-  const [selectedWindow, setSelectedWindow] = useState('');
-  const [tellerName, setTellerName] = useState('');
-  const [currentTicket, setCurrentTicket] = useState(null);
-  const [skippedTickets, setSkippedTickets] = useState([]);
-  const [completedCount, setCompletedCount] = useState(0);
-  const [waitingCount, setWaitingCount] = useState(0);
-  const [waitingTickets, setWaitingTickets] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [showTransferModal, setShowTransferModal] = useState(false);
-  const [assignedTypes, setAssignedTypes] = useState([]);
-  const [avgServingTime, setAvgServingTime] = useState(0);
-  const [, setTick] = useState(0);
-
-  useEffect(() => {
-    const timer = setInterval(() => setTick(t => t + 1), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    fetch('/api/queue/tellers')
-      .then(res => res.json())
-      .then(data => { if (data.success) setTellers(data.tellers); });
-  }, []);
-
-  const fetchCurrentTicket = async () => {
-    if (!selectedWindow) return;
-    try {
-      const res = await fetch(`/api/queue/teller/${encodeURIComponent(selectedWindow)}/current`);
-      const data = await res.json();
-      if (data.success) {
-        setCurrentTicket(data.current);
-        setSkippedTickets(data.skipped);
-        setCompletedCount(data.completedCount);
-        setWaitingCount(data.waitingCount);
-        setWaitingTickets(data.waitingTickets || []);
-        setAssignedTypes(data.assignedTypes || []);
-        setAvgServingTime(data.avgServingTime || 0);
-      }
-    } catch (err) { }
-  };
-
-  useEffect(() => {
-    if (selectedWindow) {
-      fetchCurrentTicket();
-      const interval = setInterval(fetchCurrentTicket, 5000);
-      return () => clearInterval(interval);
-    }
-  }, [selectedWindow]);
-
-  const callNext = async () => {
-    setIsLoading(true);
-    try {
-      const res = await fetch('/api/queue/teller/next', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ windowName: selectedWindow, tellerName })
-      });
-      const data = await res.json();
-      if (data.success) {
-        setCurrentTicket(data.ticket);
-        fetchCurrentTicket();
-      } else alert(data.message);
-    } catch (err) { } finally { setIsLoading(false); }
-  };
-
-  const completeTicket = async () => {
-    if (!currentTicket) return;
-    await fetch(`/api/queue/tickets/${currentTicket.id}/complete`, { method: 'PATCH' });
-    setCurrentTicket(null);
-    fetchCurrentTicket();
-  };
-
-  const skipTicket = async () => {
-    if (!currentTicket) return;
-    await fetch(`/api/queue/tickets/${currentTicket.id}/skip`, { method: 'PATCH' });
-    setCurrentTicket(null);
-    fetchCurrentTicket();
-  };
-
-  const recallTicket = async (id) => {
-    try {
-      const res = await fetch(`/api/queue/tickets/${id}/recall`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ windowName: selectedWindow, tellerName })
-      });
-      const data = await res.json();
-      if (data.success) {
-        setCurrentTicket(data.ticket);
-        fetchCurrentTicket();
-      } else {
-        alert(data.message);
-      }
-    } catch (err) { }
-  };
-
-  if (!selectedWindow) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center pt-[100px]">
-        <div className="w-full max-w-lg bg-[#f4f4f4] p-12 border-t-4 border-[#0f62fe]">
-          <h2 className="text-3xl font-light text-[#161616] mb-8 uppercase tracking-tighter">Teller Access</h2>
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <label className="text-xs uppercase text-[#525252] font-bold">Teller Name</label>
-              <input value={tellerName} onChange={e => setTellerName(e.target.value)} className="carbon-input w-full p-4" placeholder="Staff Name" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs uppercase text-[#525252] font-bold">Active Window</label>
-              <div className="grid grid-cols-2 gap-2">
-                {tellers.map(t => (
-                  <button key={t.id} onClick={() => setSelectedWindow(t.window_name)} disabled={!tellerName} className="carbon-btn-primary p-4 text-sm disabled:opacity-30 uppercase font-bold tracking-widest">{t.window_name}</button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-white pt-[148px] px-8 pb-24">
-      <div className="max-w-[1584px] mx-auto grid grid-cols-1 lg:grid-cols-4 gap-8">
-        <div className="lg:col-span-3 space-y-8">
-          <div className="bg-[#161616] p-8 text-white flex justify-between items-center">
-            <div>
-              <p className="text-xs text-[#c6c6c6] uppercase mb-1 font-mono">{selectedWindow}</p>
-              <h3 className="text-2xl font-light">{tellerName}</h3>
-            </div>
-            <div className="flex space-x-4">
-              <div className="text-center px-6 border-r border-[#393939]">
-                <p className="text-xs text-[#c6c6c6] uppercase font-bold">Waiting</p>
-                <p className="text-2xl font-bold text-[#0f62fe]">{waitingCount}</p>
-              </div>
-              <button onClick={() => setSelectedWindow('')} className="p-2 border border-[#393939] hover:bg-[#262626] transition-colors font-bold text-white text-lg flex items-center justify-center w-10 h-10">
-                X
-              </button>
-            </div>
-          </div>
-
-          <div className="bg-[#f4f4f4] p-12 border-t-4 border-[#0f62fe]">
-            {currentTicket ? (
-              <div className="text-center">
-                <p className="text-xs uppercase text-[#525252] mb-4 font-bold tracking-widest">Serving Now</p>
-                <h2 className="text-9xl font-light text-[#161616] mb-8 tracking-tighter">{currentTicket.ticket_number}</h2>
-                <div className="space-y-2 mb-12">
-                  <p className="text-2xl font-medium">{currentTicket.customer_name}</p>
-                  <p className="text-sm font-mono text-[#525252] uppercase">{currentTicket.transaction_type}</p>
-                </div>
-                <div className="grid grid-cols-2 gap-4 max-w-md mx-auto">
-                  <button onClick={completeTicket} className="carbon-btn-primary p-5 font-bold uppercase tracking-widest text-lg">COMPLETE</button>
-                  <button onClick={skipTicket} className="p-5 border border-[#da1e28] text-[#da1e28] font-bold hover:bg-[#fff1f1] uppercase tracking-widest text-lg transition-colors">SKIP</button>
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-24">
-                <p className="text-[#525252] mb-8 uppercase tracking-widest font-bold text-sm">Waiting for next client...</p>
-                <button onClick={callNext} disabled={waitingCount === 0} className="carbon-btn-primary px-16 py-6 text-2xl font-bold flex items-center justify-center space-x-6 mx-auto disabled:opacity-30">
-                  <span>CALL NEXT</span>
-                  <span className="text-3xl">+</span>
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="space-y-8">
-          {/* Waiting Queue */}
-          <div className="bg-[#f4f4f4] p-8 border-t-4 border-[#0f62fe]">
-            <div className="flex justify-between items-center mb-6">
-              <h4 className="text-xs font-bold uppercase text-[#525252] tracking-widest">Waiting Queue</h4>
-              <span className="bg-[#0f62fe] text-white text-[10px] font-bold px-2 py-0.5">{waitingCount}</span>
-            </div>
-            <div className="space-y-2 overflow-y-auto max-h-[400px]">
-              {waitingTickets.map((t, idx) => (
-                <div key={t.id} className="bg-white p-4 flex justify-between items-center border-l-2 border-[#0f62fe] shadow-sm">
-                  <span className="font-bold text-[#161616] text-lg">{t.ticket_number}</span>
-                  <span className="text-[10px] text-[#525252] font-mono">{t.transaction_type}</span>
-                </div>
-              ))}
-              {waitingTickets.length === 0 && <p className="text-[#c6c6c6] text-center italic py-8">No clients waiting</p>}
-            </div>
-          </div>
-
-          {/* Skipped Tickets */}
-          <div className="bg-[#f4f4f4] p-8 border-t-4 border-[#da1e28]">
-            <div className="flex justify-between items-center mb-6">
-              <h4 className="text-xs font-bold uppercase text-[#525252] tracking-widest">Skipped</h4>
-              <span className="bg-[#da1e28] text-white text-[10px] font-bold px-2 py-0.5">{skippedTickets.length}</span>
-            </div>
-            <div className="space-y-2 overflow-y-auto max-h-[300px]">
-              {skippedTickets.map((t, idx) => (
-                <div key={t.id} className="bg-white p-4 flex flex-col border-l-2 border-[#da1e28] shadow-sm relative group">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="font-bold text-[#161616]">{t.ticket_number}</span>
-                    <span className="text-[9px] text-[#525252] font-mono uppercase">{t.transaction_type}</span>
-                  </div>
-                  <button
-                    onClick={() => recallTicket(t.id)}
-                    disabled={!!currentTicket}
-                    className="w-full py-1.5 text-[10px] bg-[#f4f4f4] hover:bg-[#e0e0e0] font-bold uppercase border border-[#e0e0e0] transition-colors disabled:opacity-30"
-                  >
-                    Recall Ticket
-                  </button>
-                </div>
-              ))}
-              {skippedTickets.length === 0 && <p className="text-[#c6c6c6] text-center italic py-8">None skipped</p>}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 /* ==========================================================================
    RIDERS MANAGEMENT MODULE
    ========================================================================== */
 
-function RidersManagement({ riders, setRiders }) {
-  const [selectedRiderId, setSelectedRiderId] = useState(null);
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [editingRider, setEditingRider] = useState(null);
 
-  const selectedRider = riders.find(r => r.id === selectedRiderId);
 
-  if (selectedRider && !editingRider) {
-    return <RiderProfile rider={selectedRider} onBack={() => setSelectedRiderId(null)} onEdit={() => setEditingRider(selectedRider)} />;
-  }
 
-  if (showAddForm || editingRider) {
-    return (
-      <AddRiderForm 
-        rider={editingRider} 
-        onCancel={() => { setShowAddForm(false); setEditingRider(null); }} 
-        onSave={(updatedRider) => {
-          if (editingRider) {
-            setRiders(riders.map(r => r.id === updatedRider.id ? updatedRider : r));
-          } else {
-            setRiders([...riders, updatedRider]);
-          }
-          setShowAddForm(false);
-          setEditingRider(null);
-        }}
-      />
-    );
-  }
 
-  return (
-    <div className="space-y-6 animate-fadeIn">
-      <div className="flex justify-between items-center bg-white p-6 border border-gray-100 shadow-sm">
-        <div>
-          <h2 className="text-xl font-bold text-[#0F172A]">Rider Management</h2>
-          <p className="text-[#64748B] text-sm mt-1">Manage, verify and monitor rider performance</p>
-        </div>
-        <button 
-          onClick={() => setShowAddForm(true)}
-          className="px-6 py-3 bg-[#0f62fe] text-white text-[12px] font-bold uppercase tracking-widest hover:bg-[#465a8f] transition-all flex items-center gap-2"
-        >
-          <Users className="w-4 h-4" /> Add New Rider
-        </button>
-      </div>
-      
-      <RidersList riders={riders} onSelect={(r) => setSelectedRiderId(r.id)} />
-    </div>
-  );
-}
-
-function RidersList({ riders, onSelect }) {
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-
-  const filtered = riders.filter((r) => {
-    const matchesSearch = 
-      r.name?.toLowerCase().includes(search.toLowerCase()) ||
-      r.plate_number?.toLowerCase().includes(search.toLowerCase()) ||
-      String(r.id).includes(search);
-    const matchesStatus = statusFilter === "all" || r.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
-
-  return (
-    <div className="bg-white border border-gray-100 shadow-sm overflow-hidden animate-fadeIn">
-      <div className="p-6 border-b border-gray-100 flex flex-col md:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-          <input
-            className="w-full pl-10 pr-4 py-2.5 bg-[#f4f4f4] border border-transparent focus:bg-white focus:border-[#0f62fe] outline-none text-sm transition-all"
-            placeholder="Search by name, ID or plate number..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-        <div className="flex gap-2">
-          <select 
-            className="px-4 py-2.5 bg-[#f4f4f4] border border-transparent focus:bg-white focus:border-[#0f62fe] outline-none text-sm transition-all cursor-pointer"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="all">All Status</option>
-            <option value="online">Online</option>
-            <option value="offline">Offline</option>
-            <option value="suspended">Suspended</option>
-          </select>
-        </div>
-      </div>
-
-      <div className="overflow-x-auto">
-        <table className="w-full text-left">
-          <thead>
-            <tr className="bg-[#f4f4f4]">
-              <th className="px-6 py-4 text-[10px] font-bold text-[#525252] uppercase tracking-widest">Rider</th>
-              <th className="px-6 py-4 text-[10px] font-bold text-[#525252] uppercase tracking-widest">Status</th>
-              <th className="px-6 py-4 text-[10px] font-bold text-[#525252] uppercase tracking-widest">Vehicle Details</th>
-              <th className="px-6 py-4 text-[10px] font-bold text-[#525252] uppercase tracking-widest">Rating</th>
-              <th className="px-6 py-4 text-[10px] font-bold text-[#525252] uppercase tracking-widest text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {filtered.map((rider) => (
-              <tr key={rider.id} className="hover:bg-gray-50 transition-colors group">
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-blue-100 rounded-0 flex items-center justify-center text-blue-600 font-bold">
-                      {rider.name?.charAt(0)}
-                    </div>
-                    <div>
-                      <p className="font-bold text-[#161616] text-sm">{rider.name}</p>
-                      <p className="text-[10px] text-[#525252] font-mono uppercase tracking-tighter">ID: #{rider.id}</p>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <span className={`inline-flex items-center px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest border ${
-                    rider.status === 'online' ? 'bg-green-50 border-green-600 text-green-700' :
-                    rider.status === 'offline' ? 'bg-gray-50 border-gray-400 text-gray-600' :
-                    'bg-red-50 border-red-600 text-red-700'
-                  }`}>
-                    {rider.status}
-                  </span>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex flex-col">
-                    <span className="text-sm text-[#161616] font-medium">{rider.vehicle_type || 'N/A'}</span>
-                    <span className="text-[10px] text-[#525252] font-mono">{rider.plate_number || 'No Plate'}</span>
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-1">
-                    <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
-                    <span className="text-sm font-bold text-[#161616]">{rider.rating || '4.8'}</span>
-                  </div>
-                </td>
-                <td className="px-6 py-4 text-right">
-                  <button
-                    onClick={() => onSelect(rider)}
-                    className="text-[#0f62fe] text-[10px] font-bold uppercase tracking-widest hover:underline"
-                  >
-                    View Profile
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {filtered.length === 0 && (
-              <tr>
-                <td colSpan="5" className="px-6 py-12 text-center">
-                  <p className="text-gray-400 italic text-sm">No riders found matching your search</p>
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-function RiderProfile({ rider, onBack, onEdit }) {
-  const [trips, setTrips] = useState([]);
-  const [isLoadingTrips, setIsLoadingTrips] = useState(false);
-
-  useEffect(() => {
-    const fetchTrips = async () => {
-      setIsLoadingTrips(true);
-      try {
-        const res = await fetch(`/api/admin/riders/${rider.id}/trips`);
-        const data = await res.json();
-        if (data.success) setTrips(data.trips);
-      } catch (err) { }
-      finally { setIsLoadingTrips(false); }
-    };
-    fetchTrips();
-  }, [rider.id]);
-
-  return (
-    <div className="space-y-6 animate-fadeIn">
-      <div className="flex items-center gap-4">
-        <button onClick={onBack} className="p-2 bg-white border border-gray-200 hover:bg-gray-50 transition-all">
-          <ChevronLeft className="w-5 h-5" />
-        </button>
-        <h2 className="text-xl font-bold text-[#0F172A]">Rider Profile</h2>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column: Stats & Actions */}
-        <div className="space-y-6">
-          <div className="bg-white p-8 border border-gray-100 shadow-sm flex flex-col items-center">
-            <div className="w-24 h-24 bg-blue-100 rounded-0 flex items-center justify-center text-blue-600 text-3xl font-bold mb-4">
-              {rider.name?.charAt(0)}
-            </div>
-            <h3 className="text-xl font-bold text-[#161616]">{rider.name}</h3>
-            <p className="text-[10px] text-[#525252] font-mono uppercase tracking-widest mt-1">Ref ID: {rider.id}</p>
-            
-            <div className="mt-6 w-full pt-6 border-t border-gray-100 space-y-3">
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-[#525252] font-bold uppercase tracking-wider">Status</span>
-                <span className={`font-bold uppercase tracking-widest ${rider.status === 'online' ? 'text-green-600' : 'text-gray-400'}`}>{rider.status}</span>
-              </div>
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-[#525252] font-bold uppercase tracking-wider">Rating</span>
-                <div className="flex items-center gap-1 font-bold text-[#161616]">
-                  <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" /> {rider.rating || '4.8'}
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-8 w-full space-y-2">
-              <button 
-                onClick={onEdit}
-                className="w-full py-3 bg-[#0f62fe] text-white text-[10px] font-bold uppercase tracking-widest hover:bg-[#465a8f] transition-all"
-              >
-                Edit Information
-              </button>
-              <button className="w-full py-3 bg-[#da1e28] text-white text-[10px] font-bold uppercase tracking-widest hover:bg-[#750e13] transition-all">
-                Suspend Rider
-              </button>
-            </div>
-          </div>
-
-          <div className="bg-[#161616] p-8 text-white">
-            <div className="flex justify-between items-start mb-6">
-              <div>
-                <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-1">Rider Wallet</p>
-                <h4 className="text-3xl font-bold">₱2,350.00</h4>
-              </div>
-              <Wallet className="text-gray-600 w-8 h-8" />
-            </div>
-            <button className="w-full py-3 bg-[#393939] text-white text-[10px] font-bold uppercase tracking-widest hover:bg-[#525252] transition-all">
-              Request Payout
-            </button>
-          </div>
-        </div>
-
-        {/* Right Column: Details & History */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <section className="bg-white p-6 border border-gray-100 shadow-sm h-full">
-              <h4 className="text-xs font-bold text-[#525252] uppercase tracking-widest border-b border-gray-100 pb-4 mb-4">Personal Details</h4>
-              <div className="space-y-4">
-                <div>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Phone Number</p>
-                  <p className="text-sm font-medium">{rider.phone || 'N/A'}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Email Address</p>
-                  <p className="text-sm font-medium">{rider.email || 'N/A'}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Current Address</p>
-                  <p className="text-sm font-medium">{rider.address || 'N/A'}</p>
-                </div>
-              </div>
-            </section>
-
-            <section className="bg-white p-6 border border-gray-100 shadow-sm h-full">
-              <h4 className="text-xs font-bold text-[#525252] uppercase tracking-widest border-b border-gray-100 pb-4 mb-4">Vehicle Information</h4>
-              <div className="space-y-4">
-                <div>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Vehicle Type</p>
-                  <p className="text-sm font-medium">{rider.vehicle_type || 'N/A'}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Plate Number</p>
-                  <p className="text-sm font-medium font-mono">{rider.plate_number || 'N/A'}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Brand / Model</p>
-                  <p className="text-sm font-medium">{rider.brand_model || 'N/A'}</p>
-                </div>
-              </div>
-            </section>
-          </div>
-
-          <div className="bg-white border border-gray-100 shadow-sm">
-            <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-              <h3 className="font-bold text-[#0F172A]">Trip History</h3>
-              <span className="text-[10px] font-bold text-[#525252] uppercase tracking-widest">{trips.length} Total Trips</span>
-            </div>
-            <div className="overflow-x-auto min-h-[300px]">
-              {isLoadingTrips ? (
-                <div className="p-12 text-center text-gray-400 italic">Fetching history...</div>
-              ) : trips.length > 0 ? (
-                <table className="w-full text-left">
-                  <thead>
-                    <tr className="bg-[#f4f4f4]">
-                      <th className="px-6 py-4 text-[9px] font-bold text-[#525252] uppercase tracking-widest">Trip ID</th>
-                      <th className="px-6 py-4 text-[9px] font-bold text-[#525252] uppercase tracking-widest">Date</th>
-                      <th className="px-6 py-4 text-[9px] font-bold text-[#525252] uppercase tracking-widest">Fare</th>
-                      <th className="px-6 py-4 text-[9px] font-bold text-[#525252] uppercase tracking-widest text-right">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100 text-sm">
-                    {trips.map(trip => (
-                      <tr key={trip.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4 font-mono">#{trip.id}</td>
-                        <td className="px-6 py-4">{new Date(trip.created_at).toLocaleDateString()}</td>
-                        <td className="px-6 py-4 font-bold">PHP {parseFloat(trip.total_amount).toFixed(2)}</td>
-                        <td className="px-6 py-4 text-right">
-                          <span className={`px-2 py-0.5 text-[9px] font-bold uppercase tracking-tighter ${trip.status === 'completed' ? 'text-green-600 bg-green-50' : 'text-blue-600 bg-blue-50'}`}>
-                            {trip.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : (
-                <div className="p-12 text-center text-gray-300 italic text-sm">This rider hasn't completed any trips yet</div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function AddRiderForm({ rider, onCancel, onSave }) {
-  const [form, setForm] = useState(rider || {
-    name: "",
-    username: "",
-    password: "",
-    email: "",
-    phone: "",
-    address: "",
-    vehicle_type: "",
-    plate_number: "",
-    brand_model: "",
-    status: "offline"
-  });
-  const [isSaving, setIsSaving] = useState(false);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsSaving(true);
-    try {
-      const url = rider ? `/api/admin/riders/${rider.id}` : '/api/admin/riders';
-      const method = rider ? 'PUT' : 'POST';
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form)
-      });
-      const data = await res.json();
-      if (data.success) {
-        onSave(data.rider || { ...form, id: rider?.id });
-      } else {
-        alert(data.message || 'Error saving rider');
-      }
-    } catch (err) {
-      alert('Network error while saving');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  return (
-    <div className="bg-white border border-gray-100 shadow-sm animate-fadeIn max-w-4xl mx-auto">
-      <div className="p-8 border-b border-gray-100">
-        <h2 className="text-xl font-bold text-[#161616]">{rider ? 'Edit Rider Profile' : 'Register New Rider'}</h2>
-        <p className="text-[#64748B] text-sm mt-1">Ensure all information is accurate and verified</p>
-      </div>
-
-      <form onSubmit={handleSubmit} className="p-8 space-y-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-          <div className="space-y-6">
-            <h4 className="text-xs font-bold text-[#0f62fe] uppercase tracking-widest border-b pb-2">Personal Information</h4>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-[10px] font-bold text-[#525252] uppercase tracking-widest mb-2">Full Name</label>
-                <input 
-                  required
-                  className="w-full bg-[#f4f4f4] border-b-2 border-transparent focus:border-[#0f62fe] p-3 text-sm outline-none transition-all"
-                  value={form.name} onChange={e => setForm({...form, name: e.target.value})}
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-[#525252] uppercase tracking-widest mb-2">Email Address</label>
-                <input 
-                  type="email"
-                  className="w-full bg-[#f4f4f4] border-b-2 border-transparent focus:border-[#0f62fe] p-3 text-sm outline-none transition-all"
-                  value={form.email} onChange={e => setForm({...form, email: e.target.value})}
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-[#525252] uppercase tracking-widest mb-2">Phone Number</label>
-                <input 
-                  required
-                  className="w-full bg-[#f4f4f4] border-b-2 border-transparent focus:border-[#0f62fe] p-3 text-sm outline-none transition-all"
-                  value={form.phone} onChange={e => setForm({...form, phone: e.target.value})}
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-6">
-            <h4 className="text-xs font-bold text-[#0f62fe] uppercase tracking-widest border-b pb-2">Account Credentials</h4>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-[10px] font-bold text-[#525252] uppercase tracking-widest mb-2">Login Username</label>
-                <input 
-                  required
-                  disabled={!!rider}
-                  className="w-full bg-[#f4f4f4] border-b-2 border-transparent focus:border-[#0f62fe] p-3 text-sm outline-none transition-all disabled:opacity-50"
-                  value={form.username} onChange={e => setForm({...form, username: e.target.value})}
-                />
-              </div>
-              {!rider && (
-                <div>
-                  <label className="block text-[10px] font-bold text-[#525252] uppercase tracking-widest mb-2">Password</label>
-                  <input 
-                    type="password"
-                    required
-                    className="w-full bg-[#f4f4f4] border-b-2 border-transparent focus:border-[#0f62fe] p-3 text-sm outline-none transition-all"
-                    value={form.password} onChange={e => setForm({...form, password: e.target.value})}
-                  />
-                </div>
-              )}
-              {rider && (
-                <div>
-                   <label className="block text-[10px] font-bold text-[#525252] uppercase tracking-widest mb-2">Rider Account Status</label>
-                   <select 
-                    className="w-full bg-[#f4f4f4] border-b-2 border-transparent focus:border-[#0f62fe] p-3 text-sm outline-none transition-all"
-                    value={form.status} onChange={e => setForm({...form, status: e.target.value})}
-                   >
-                     <option value="offline">Offline</option>
-                     <option value="online">Online</option>
-                     <option value="suspended">Suspended</option>
-                   </select>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-6 pt-4">
-          <h4 className="text-xs font-bold text-[#0f62fe] uppercase tracking-widest border-b pb-2">Vehicle Specification</h4>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div>
-              <label className="block text-[10px] font-bold text-[#525252] uppercase tracking-widest mb-2">Vehicle Type</label>
-              <select 
-                required
-                className="w-full bg-[#f4f4f4] border-b-2 border-transparent focus:border-[#0f62fe] p-3 text-sm outline-none transition-all"
-                value={form.vehicle_type} onChange={e => setForm({...form, vehicle_type: e.target.value})}
-              >
-                <option value="">Select Type</option>
-                <option value="Motorcycle">Motorcycle</option>
-                <option value="Car">Car (Sedan/SUV)</option>
-                <option value="Luxury Van">Luxury White Van</option>
-                <option value="Truck">Logistics Truck</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold text-[#525252] uppercase tracking-widest mb-2">Plate Number</label>
-              <input 
-                required
-                className="w-full bg-[#f4f4f4] border-b-2 border-transparent focus:border-[#0f62fe] p-3 text-sm outline-none transition-all font-mono"
-                value={form.plate_number} onChange={e => setForm({...form, plate_number: e.target.value})}
-                placeholder="ABC-1234"
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold text-[#525252] uppercase tracking-widest mb-2">Brand / Model</label>
-              <input 
-                className="w-full bg-[#f4f4f4] border-b-2 border-transparent focus:border-[#0f62fe] p-3 text-sm outline-none transition-all"
-                value={form.brand_model} onChange={e => setForm({...form, brand_model: e.target.value})}
-                placeholder="Toyota Hiace, etc."
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="flex justify-end gap-4 pt-8 border-t border-gray-100">
-          <button 
-            type="button" 
-            onClick={onCancel}
-            className="px-8 py-3 text-[10px] font-bold uppercase tracking-widest hover:bg-gray-100 transition-all border border-gray-200"
-          >
-            Cancel
-          </button>
-          <button 
-            type="submit" 
-            disabled={isSaving}
-            className="px-12 py-3 bg-[#161616] text-white text-[10px] font-bold uppercase tracking-widest hover:bg-black transition-all disabled:opacity-50 shadow-lg"
-          >
-            {isSaving ? 'Saving...' : 'Save Rider Profile'}
-          </button>
-        </div>
-      </form>
-    </div>
-  );
-}
 
 /* ==========================================================================
    END RIDERS MANAGEMENT MODULE
@@ -7107,282 +4764,6 @@ function LocationAutocomplete({ value, onChange, onSelect, placeholder }) {
 }
 
 // Interactive Map Component using Leaflet and OSRM
-const TransportMapBase = ({ onLocationSelect, mapAction }) => {
-  const mapRef = React.useRef(null);
-  const leafletMap = React.useRef(null);
-  const routingControl = React.useRef(null);
-  const pickupMarker = React.useRef(null);
-  const destMarker = React.useRef(null);
-
-  const resetMarkers = () => {
-    if (pickupMarker.current) { leafletMap.current.removeLayer(pickupMarker.current); pickupMarker.current = null; }
-    if (destMarker.current) { leafletMap.current.removeLayer(destMarker.current); destMarker.current = null; }
-    if (routingControl.current) { leafletMap.current.removeControl(routingControl.current); routingControl.current = null; }
-    onLocationSelect(null, null);
-  };
-
-  const [isRouting, setIsRouting] = React.useState(false);
-  const routeTimeout = React.useRef(null);
-
-  const recenterMap = () => {
-    if (!leafletMap.current) return;
-    leafletMap.current.invalidateSize();
-    const markers = [];
-    if (pickupMarker.current) markers.push(pickupMarker.current.getLatLng());
-    if (destMarker.current) markers.push(destMarker.current.getLatLng());
-
-    if (markers.length > 0) {
-      const bounds = window.L.latLngBounds(markers);
-      leafletMap.current.fitBounds(bounds, { padding: [50, 50] });
-    } else {
-      leafletMap.current.setView([11.0500, 124.0000], 10);
-    }
-  };
-
-  const useCurrentLocation = () => {
-    if (!navigator.geolocation) {
-      alert("Geolocation is not supported by your browser");
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(async (position) => {
-      const { latitude, longitude } = position.coords;
-      const address = await reverseGeocode(latitude, longitude);
-      const L = window.L;
-
-      if (pickupMarker.current) leafletMap.current.removeLayer(pickupMarker.current);
-      pickupMarker.current = L.marker([latitude, longitude], {
-        draggable: true, icon: L.icon({
-          iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
-          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-          iconSize: [25, 41], iconAnchor: [12, 41]
-        })
-      }).addTo(leafletMap.current).bindPopup('<b>Your Location</b>').openPopup();
-
-      pickupMarker.current.on('dragend', async () => {
-        const pos = pickupMarker.current.getLatLng();
-        const adr = await reverseGeocode(pos.lat, pos.lng);
-        onLocationSelect({ address: adr, coords: { lat: pos.lat, lng: pos.lng } }, null);
-        updateRoute();
-      });
-
-      leafletMap.current.setView([latitude, longitude], 15);
-      onLocationSelect({ address, coords: { lat: latitude, lng: longitude } }, null);
-      updateRoute();
-    }, (error) => {
-      // Fallback: If GPS fails, drop a pin in the current map center
-      let errorMsg = "Could not get GPS.";
-      if (error.code === 1) errorMsg = "Location permission denied. Dropping pin in center as fallback.";
-      else if (error.code === 2) errorMsg = "Position unavailable. Dropping pin in center as fallback.";
-
-      alert(errorMsg);
-
-      const center = leafletMap.current.getCenter();
-      const L = window.L;
-
-      if (pickupMarker.current) leafletMap.current.removeLayer(pickupMarker.current);
-      pickupMarker.current = L.marker([center.lat, center.lng], {
-        draggable: true, icon: L.icon({
-          iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
-          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-          iconSize: [25, 41], iconAnchor: [12, 41]
-        })
-      }).addTo(leafletMap.current).bindPopup('<b>Dropped in Center</b><br>Drag to your house').openPopup();
-
-      onLocationSelect({ address: "Center Point - Please refine", coords: { lat: center.lat, lng: center.lng } }, null);
-      leafletMap.current.setView([center.lat, center.lng], 15);
-    }, {
-      enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 0
-    });
-  };
-
-  const updateRoute = React.useCallback(() => {
-    if (!leafletMap.current || !window.L || !window.L.Routing) return;
-
-    // Clear previous timeout
-    if (routeTimeout.current) clearTimeout(routeTimeout.current);
-
-    routeTimeout.current = setTimeout(() => {
-      if (pickupMarker.current && destMarker.current) {
-        setIsRouting(true);
-        if (routingControl.current) {
-          try {
-            leafletMap.current.removeControl(routingControl.current);
-          } catch (e) { }
-        }
-
-        const p1 = pickupMarker.current.getLatLng();
-        const p2 = destMarker.current.getLatLng();
-
-        routingControl.current = window.L.Routing.control({
-          waypoints: [p1, p2],
-          lineOptions: { styles: [{ color: '#0f62fe', weight: 6, opacity: 0.8 }] },
-          addWaypoints: false,
-          draggableWaypoints: false,
-          fitSelectedRoutes: true,
-          show: false,
-          router: window.L.Routing.osrmv1({
-            serviceUrl: 'https://router.project-osrm.org/route/v1',
-            timeout: 10000
-          })
-        }).on('routesfound', (e) => {
-          setIsRouting(false);
-          const routes = e.routes;
-          if (routes && routes[0]) {
-            const dist = routes[0].summary.totalDistance / 1000;
-            onLocationSelect(null, null, dist);
-          }
-        }).on('routingerror', (e) => {
-          setIsRouting(false);
-          console.error("Routing error:", e);
-        }).addTo(leafletMap.current);
-      }
-    }, 500); // 500ms debounce
-  }, [onLocationSelect]);
-
-  React.useEffect(() => {
-    if (!leafletMap.current || !mapAction) return;
-    const L = window.L;
-    const { type, lat, lng } = mapAction;
-
-    if (type === 'MOVE_PICKUP') {
-      if (lat === undefined || lng === undefined) return;
-      if (pickupMarker.current) leafletMap.current.removeLayer(pickupMarker.current);
-      pickupMarker.current = L.marker([lat, lng], {
-        draggable: true, icon: L.icon({
-          iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
-          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-          iconSize: [25, 41], iconAnchor: [12, 41]
-        })
-      }).addTo(leafletMap.current).bindPopup('Pickup');
-      pickupMarker.current.on('dragend', async () => {
-        const pos = pickupMarker.current.getLatLng();
-        const address = await reverseGeocode(pos.lat, pos.lng);
-        onLocationSelect({ address, coords: { lat: pos.lat, lng: pos.lng } }, null);
-        updateRoute();
-      });
-      leafletMap.current.setView([lat, lng], 15);
-      updateRoute();
-    }
-
-    if (type === 'MOVE_DEST') {
-      if (lat === undefined || lng === undefined) return;
-      if (destMarker.current) leafletMap.current.removeLayer(destMarker.current);
-      destMarker.current = L.marker([lat, lng], {
-        draggable: true, icon: L.icon({
-          iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-          iconSize: [25, 41], iconAnchor: [12, 41]
-        })
-      }).addTo(leafletMap.current).bindPopup('Destination');
-      destMarker.current.on('dragend', async () => {
-        const pos = destMarker.current.getLatLng();
-        const address = await reverseGeocode(pos.lat, pos.lng);
-        onLocationSelect(null, { address, coords: { lat: pos.lat, lng: pos.lng } });
-        updateRoute();
-      });
-      leafletMap.current.setView([lat, lng], 15);
-      updateRoute();
-    }
-  }, [mapAction]);
-
-  React.useEffect(() => {
-    if (!mapRef.current || leafletMap.current || mapRef.current._leaflet_id) return;
-    const L = window.L;
-    if (!L) return;
-
-    leafletMap.current = L.map(mapRef.current).setView([11.0500, 124.0000], 10);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-      subdomains: 'abcd',
-      maxZoom: 20
-    }).addTo(leafletMap.current);
-
-    // Fix for blank map tiles in conditional containers
-    setTimeout(() => {
-      if (leafletMap.current) leafletMap.current.invalidateSize();
-    }, 200);
-
-    leafletMap.current.on('click', async (e) => {
-      const { lat, lng } = e.latlng;
-      const address = await reverseGeocode(lat, lng);
-
-      if (!pickupMarker.current) {
-        pickupMarker.current = L.marker([lat, lng], {
-          draggable: true, icon: L.icon({
-            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
-            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-            iconSize: [25, 41], iconAnchor: [12, 41]
-          })
-        }).addTo(leafletMap.current).bindPopup('<b>Pickup</b>').openPopup();
-        pickupMarker.current.on('dragend', async () => {
-          const pos = pickupMarker.current.getLatLng();
-          const adr = await reverseGeocode(pos.lat, pos.lng);
-          onLocationSelect({ address: adr, coords: { lat: pos.lat, lng: pos.lng } }, null);
-          updateRoute();
-        });
-        onLocationSelect({ address, coords: { lat, lng } }, null);
-      } else if (!destMarker.current) {
-        destMarker.current = L.marker([lat, lng], {
-          draggable: true, icon: L.icon({
-            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-            iconSize: [25, 41], iconAnchor: [12, 41]
-          })
-        }).addTo(leafletMap.current).bindPopup('<b>Destination</b>').openPopup();
-        destMarker.current.on('dragend', async () => {
-          const pos = destMarker.current.getLatLng();
-          const adr = await reverseGeocode(pos.lat, pos.lng);
-          onLocationSelect(null, { address: adr, coords: { lat: pos.lat, lng: pos.lng } });
-          updateRoute();
-        });
-        onLocationSelect(null, { address, coords: { lat, lng } });
-        updateRoute();
-      }
-    });
-
-    return () => {
-      if (routeTimeout.current) clearTimeout(routeTimeout.current);
-      try {
-        if (leafletMap.current) {
-          leafletMap.current.remove();
-          leafletMap.current = null;
-        }
-      } catch (e) {
-        console.warn("Transport map cleanup error:", e);
-      }
-    };
-  }, []);
-
-  return (
-    <div className="relative">
-      <div ref={mapRef} className="w-full h-[450px] border border-[#e0e0e0] shadow-inner z-10" style={{ background: '#f4f4f4' }} />
-      {isRouting && (
-        <div className="absolute inset-0 z-[1001] bg-white/40 flex items-center justify-center backdrop-blur-[1px]">
-          <div className="bg-[#1c1917] text-white px-4 py-2 text-[10px] font-black uppercase tracking-widest shadow-2xl animate-pulse">
-            Calculating Route...
-          </div>
-        </div>
-      )}
-      <div className="absolute top-4 left-4 z-[1000] flex flex-col gap-2">
-        <button onClick={useCurrentLocation} className="bg-white border border-[#e0e0e0] p-2 text-[#0f62fe] hover:bg-blue-50 transition-all shadow-md" title="Use My Location">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-        </button>
-        <button onClick={recenterMap} className="bg-white border border-[#e0e0e0] p-2 text-[#525252] hover:bg-gray-50 transition-all shadow-md" title="Recenter Map">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" /></svg>
-        </button>
-      </div>
-      {(pickupMarker.current || destMarker.current) && (
-        <button onClick={resetMarkers} className="absolute top-4 right-4 z-[1000] bg-white border border-[#da1e28] px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-[#da1e28] hover:bg-red-50 transition-all shadow-sm">Reset Map</button>
-      )}
-    </div>
-  );
-};
-
-const TransportMap = React.memo(TransportMapBase);
-
 /* ==========================================================================
    TRIP MONITORING MODULE
    ========================================================================== */
@@ -7924,7 +5305,7 @@ function DispatchMap({ trips, riders, selectedBooking }) {
     };
   }, [leafletReady]);
 
-  // Render markers — MUST be declared before any early return (Rules of Hooks)
+  // Render markers â€” MUST be declared before any early return (Rules of Hooks)
   React.useEffect(() => {
     if (!leafletMap.current || !leafletReady) return;
 
@@ -8011,6 +5392,7 @@ function RideDispatch({ trips, stats, riders, onRefresh }) {
   const [isCreatingBooking, setIsCreatingBooking] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [isReady, setIsReady] = useState(false);
+  const [corporateAccounts, setCorporateAccounts] = useState([]);
 
   const [newBookingData, setNewBookingData] = useState({
     fullName: '',
@@ -8033,6 +5415,17 @@ function RideDispatch({ trips, stats, riders, onRefresh }) {
   useEffect(() => {
     onRefresh();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (isCreatingBooking) {
+      fetch('/api/corporate-accounts')
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) setCorporateAccounts(data.accounts);
+        })
+        .catch(err => console.error('Error fetching corporate accounts', err));
+    }
+  }, [isCreatingBooking]);
 
   useEffect(() => {
     // Mark ready after first data load (trips array populated, or after a short timeout)
@@ -8372,7 +5765,7 @@ function RideDispatch({ trips, stats, riders, onRefresh }) {
                                           <p className="text-xs font-bold text-white">{rider.name}</p>
                                           {!isMatch && <span className="text-[8px] font-bold bg-orange-500/20 text-orange-500 px-1 py-0.5 uppercase">Mismatch</span>}
                                        </div>
-                                       <p className="text-[9px] text-gray-500">{rider.vehicle_type} • 0.8 KM away</p>
+                                       <p className="text-[9px] text-gray-500">{rider.vehicle_type} â€¢ 0.8 KM away</p>
                                     </div>
                                  </div>
                                  <button 
@@ -8524,15 +5917,21 @@ function RideDispatch({ trips, stats, riders, onRefresh }) {
                   <div className="space-y-3">
                      {newBookingData.paymentMethod === 'Corporate' && (
                         <div>
-                           <label className="text-[9px] font-bold text-[#24a148] uppercase tracking-widest">Corporate Account Number</label>
-                           <input 
+                           <label className="text-[9px] font-bold text-[#24a148] uppercase tracking-widest">Corporate Account</label>
+                           <select 
                               name="accountNumber" 
                               value={newBookingData.accountNumber}
                               onChange={e => setNewBookingData({...newBookingData, accountNumber: e.target.value})}
                               required 
                               className="w-full bg-[#f4f4f4] border-0 border-b border-[#24a148] p-2 text-[12px] text-black focus:outline-none focus:ring-0 mt-1" 
-                              placeholder="Enter Account ID / Cost Center" 
-                           />
+                           >
+                              <option value="">Select Account / Cost Center</option>
+                              {corporateAccounts.map(acct => (
+                                 <option key={acct.id} value={acct.account_number}>
+                                    {acct.company_name} ({acct.account_number}) - Lmt: ${parseFloat(acct.credit_limit).toFixed(2)}
+                                 </option>
+                              ))}
+                           </select>
                         </div>
                      )}
                      <div>
@@ -8635,7 +6034,7 @@ function GeofenceDashboard({ geofences, onEdit }) {
                     'bg-purple-50 text-purple-600 border-purple-100'
                   }`}>{g.type}</span>
                 </td>
-                <td className="p-4 text-sm text-gray-500">{g.coverage} km²</td>
+                <td className="p-4 text-sm text-gray-500">{g.coverage} kmÂ²</td>
                 <td className="p-4">
                   <div className="flex items-center gap-2">
                     <div className={`w-2 h-2 force-circle ${g.status === 'Active' ? 'bg-green-500' : 'bg-gray-300'}`}></div>
@@ -8706,10 +6105,10 @@ function GeofenceForm({ geofence, onCancel, onSave }) {
 
       if (type === 'polygon') {
         const latlngs = layer.getLatLngs()[0];
-        setCoordinates(latlngs.map(ll => `${ll.lat.toFixed(4)}°N, ${ll.lng.toFixed(4)}°E`));
+        setCoordinates(latlngs.map(ll => `${ll.lat.toFixed(4)}Â°N, ${ll.lng.toFixed(4)}Â°E`));
         setShapeData({ type: 'polygon', data: latlngs });
         
-        // --- Accurate Spherical Area Calculation (m²) ---
+        // --- Accurate Spherical Area Calculation (mÂ²) ---
         let areaSqM = 0;
         const R = 6378137; // Standard Earth Radius
         
@@ -8735,7 +6134,7 @@ function GeofenceForm({ geofence, onCancel, onSave }) {
         setCoordinates([`Center: ${center.lat.toFixed(4)}, ${center.lng.toFixed(4)}`, `Radius: ${radius.toFixed(0)}m`]);
         setShapeData({ type: 'circle', data: { center, radius } });
         
-        // A = πr²
+        // A = Ï€rÂ²
         const areaSqM = Math.PI * Math.pow(radius, 2);
         const km2 = areaSqM / 1000000;
         setAreaSize(km2.toFixed(3));
@@ -8857,7 +6256,7 @@ function GeofenceForm({ geofence, onCancel, onSave }) {
           <div className="text-right">
             <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">Calculated Area</p>
             <div className="flex flex-col items-end">
-              <p className="text-lg font-bold text-[#161616]">{areaSize} <span className="text-xs text-gray-400">km²</span></p>
+              <p className="text-lg font-bold text-[#161616]">{areaSize} <span className="text-xs text-gray-400">kmÂ²</span></p>
               <p className="text-[10px] font-medium text-blue-600 bg-blue-50 px-2 py-0.5 border border-blue-100 mt-0.5">
                 {(parseFloat(areaSize) * 100).toFixed(2)} <span className="text-[9px] uppercase">Hectares (ha)</span>
               </p>
@@ -8918,7 +6317,7 @@ function GeofenceMonitoring({ geofences }) {
         }
         
         if (layer) {
-          layer.bindPopup(`<b>${g.name}</b><br/>Type: ${g.type}<br/>Area: ${g.coverage} km²`);
+          layer.bindPopup(`<b>${g.name}</b><br/>Type: ${g.type}<br/>Area: ${g.coverage} kmÂ²`);
         }
       }
     });
@@ -9198,7 +6597,7 @@ function GeneralSettings() {
         </div>
         <div>
           <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Currency</label>
-          <input type="text" defaultValue="PHP (₱)" readOnly className="w-full px-4 py-3 bg-gray-100 border border-gray-200 text-sm cursor-not-allowed" />
+          <input type="text" defaultValue="PHP (â‚±)" readOnly className="w-full px-4 py-3 bg-gray-100 border border-gray-200 text-sm cursor-not-allowed" />
         </div>
       </div>
     </SettingsSection>
@@ -9317,7 +6716,7 @@ function PricingFareSettings() {
     <SettingsSection title="Pricing & Fare Rules" subtitle="Configure Revenue Model and Surcharges" onSave={() => {}}>
       <div className="grid grid-cols-3 gap-6">
         <div className="bg-[#f4f4f4] p-6 border-l-4 border-[#0f62fe]">
-          <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Base Fare (₱)</label>
+          <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Base Fare (â‚±)</label>
           <input type="number" defaultValue="45" className="w-full bg-transparent border-0 text-3xl font-light focus:outline-none" />
         </div>
         <div className="bg-[#f4f4f4] p-6 border-l-4 border-[#24a148]">
@@ -9339,11 +6738,11 @@ function PricingFareSettings() {
             </div>
             <div className="flex justify-between items-center text-sm">
               <span>Night Differential (22:00 - 05:00)</span>
-              <span className="font-bold">+₱20.00</span>
+              <span className="font-bold">+â‚±20.00</span>
             </div>
             <div className="flex justify-between items-center text-sm">
               <span>Cancellation Fee</span>
-              <span className="font-bold">₱30.00</span>
+              <span className="font-bold">â‚±30.00</span>
             </div>
           </div>
         </div>
@@ -9352,11 +6751,11 @@ function PricingFareSettings() {
           <div className="space-y-3">
             <div className="flex justify-between items-center text-sm">
               <span>Minimum Fare</span>
-              <span className="font-bold">₱50.00</span>
+              <span className="font-bold">â‚±50.00</span>
             </div>
             <div className="flex justify-between items-center text-sm">
               <span>Maximum Fare Cap</span>
-              <span className="font-bold">₱1,500.00</span>
+              <span className="font-bold">â‚±1,500.00</span>
             </div>
           </div>
         </div>
@@ -9422,7 +6821,7 @@ function PaymentWalletSettings() {
             <h4 className="text-xs font-bold uppercase tracking-widest mb-4">Wallet Config</h4>
             <div className="space-y-4">
               <div>
-                <label className="block text-[10px] text-gray-400 uppercase mb-1">Minimum Balance (₱)</label>
+                <label className="block text-[10px] text-gray-400 uppercase mb-1">Minimum Balance (â‚±)</label>
                 <input type="number" defaultValue="50" className="w-full border-b border-gray-200 py-2 focus:outline-none focus:border-[#0f62fe] font-bold" />
               </div>
               <div className="flex items-center justify-between">
@@ -9442,7 +6841,7 @@ function PaymentWalletSettings() {
                 </select>
               </div>
               <div>
-                <label className="block text-[10px] text-gray-400 uppercase mb-1">Min Payout (₱)</label>
+                <label className="block text-[10px] text-gray-400 uppercase mb-1">Min Payout (â‚±)</label>
                 <input type="number" defaultValue="1000" className="w-full border-b border-gray-200 py-2 focus:outline-none focus:border-[#0f62fe] font-bold" />
               </div>
             </div>

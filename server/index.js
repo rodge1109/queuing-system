@@ -198,6 +198,20 @@ const initMessagingTables = async () => {
     )
   `);
   await pool.query(`ALTER TABLE staff_pm ADD COLUMN IF NOT EXISTS attachment_url TEXT`);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS corporate_accounts (
+      id SERIAL PRIMARY KEY,
+      account_number TEXT UNIQUE NOT NULL,
+      company_name TEXT NOT NULL,
+      contact_person TEXT,
+      contact_email TEXT,
+      contact_phone TEXT,
+      credit_limit DECIMAL(12, 2) DEFAULT 0,
+      balance DECIMAL(12, 2) DEFAULT 0,
+      status TEXT DEFAULT 'active',
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
   await pool.query(`ALTER TABLE staff_pm ADD COLUMN IF NOT EXISTS attachment_name TEXT`);
   await pool.query(`ALTER TABLE staff_pm ADD COLUMN IF NOT EXISTS attachment_mime TEXT`);
   await pool.query(`ALTER TABLE staff_pm ALTER COLUMN message DROP NOT NULL`);
@@ -2208,7 +2222,7 @@ app.patch('/api/queue/tickets/:id/transfer', async (req, res) => {
     );
 
     if (existing.rows.length > 0) {
-      // Target window is busy â€” put ticket back to waiting, it will be next in line
+      // Target window is busy Ã¢â‚¬â€ put ticket back to waiting, it will be next in line
       const result = await pool.query(
         "UPDATE queue_tickets SET status = 'waiting', teller_window = NULL, called_at = NULL WHERE id = $1 AND status = 'serving' RETURNING *",
         [id]
@@ -2218,7 +2232,7 @@ app.patch('/api/queue/tickets/:id/transfer', async (req, res) => {
       }
       res.json({ success: true, ticket: result.rows[0], message: `Ticket transferred. ${targetWindow} is busy, ticket is back in the waiting queue.` });
     } else {
-      // Target window is free â€” assign directly
+      // Target window is free Ã¢â‚¬â€ assign directly
       const result = await pool.query(
         "UPDATE queue_tickets SET status = 'serving', teller_window = $1, called_at = NOW() WHERE id = $2 AND status = 'serving' RETURNING *",
         [targetWindow, id]
@@ -2547,6 +2561,77 @@ app.get('/api/queue/reports', async (req, res) => {
   }
 });
 
+// Corporate Accounts
+app.get('/api/corporate-accounts', async (req, res) => {
+  try {
+    const { rows } = await pool.query("SELECT * FROM corporate_accounts ORDER BY created_at DESC");
+    res.json({ success: true, accounts: rows });
+  } catch (error) {
+    console.error('Error fetching corporate accounts:', error);
+    res.status(500).json({ success: false });
+  }
+});
+  } catch (error) {
+    console.error('Error fetching corporate accounts:', error);
+    res.status(500).json({ success: false });
+  }
+});
+
+app.post('/api/corporate-accounts', async (req, res) => {
+  try {
+    const { account_number, company_name, contact_person, contact_email, contact_phone, credit_limit } = req.body;
+    
+    // Explicit check for unique account number
+    const existing = await pool.query('SELECT id FROM corporate_accounts WHERE account_number = $1', [account_number]);
+    if (existing.rows.length > 0) {
+      return res.status(400).json({ success: false, message: `Account number ${account_number} already exists.` });
+    }
+
+    await pool.query(
+      `INSERT INTO corporate_accounts (account_number, company_name, contact_person, contact_email, contact_phone, credit_limit) 
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [account_number, company_name, contact_person, contact_email, contact_phone, credit_limit || 0]
+    );
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error creating corporate account:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+app.put('/api/corporate-accounts/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { account_number, company_name, contact_person, contact_email, contact_phone, credit_limit, status } = req.body;
+    await pool.query(
+      `UPDATE corporate_accounts 
+       SET account_number = $1, company_name = $2, contact_person = $3, contact_email = $4, contact_phone = $5, credit_limit = $6, status = $7
+       WHERE id = $8`,
+      [account_number, company_name, contact_person, contact_email, contact_phone, credit_limit, status, id]
+    );
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error updating corporate account:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+app.delete('/api/corporate-accounts/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.query('DELETE FROM corporate_accounts WHERE id = $1', [id]);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting corporate account:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+  } catch (error) {
+    console.error('Error creating corporate account:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // Queue CSV Export
 app.get('/api/export/queue-tickets', async (req, res) => {
   try {
@@ -2706,7 +2791,7 @@ app.post('/api/booking-services', async (req, res) => {
       String(name || 'Unnamed Service'),
       String(duration || '30m'),
       String(price || 'PHP 0.00'),
-      String(icon || '🚗'),
+      String(icon || 'ðŸš—'),
       String(category || 'Transport'),
       parseFloat(String(base_fare).replace(/[^0-9.]/g, '')) || 0,
       parseFloat(String(per_km_rate).replace(/[^0-9.]/g, '')) || 0
