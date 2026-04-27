@@ -251,26 +251,69 @@ function AppointmentForm() {
   }
 
   return (
-    <div className="bg-white border border-[#e0e0e0] shadow-sm overflow-hidden flex flex-col md:flex-row min-h-[700px]">
-      {/* Steps Sidebar */}
-      <div className="w-full md:w-64 bg-[#f4f4f4] border-r border-[#e0e0e0] p-0 flex flex-row md:flex-col overflow-x-auto md:overflow-x-visible">
-        {steps.map((s, idx) => (
+    <div className="bg-white border border-[#e0e0e0] shadow-sm overflow-hidden flex flex-col min-h-[700px]">
+      {/* Horizontal Stepper Top */}
+      <div className="w-full bg-[#f4f4f4] border-b border-[#e0e0e0] p-8 md:p-12">
+        <div className="max-w-4xl mx-auto relative">
+          {/* Progress Line Background */}
+          <div className="absolute top-5 left-0 w-full h-1 bg-gray-200 -z-0"></div>
+          
+          {/* Active Progress Line */}
           <div 
-            key={s.id}
-            className={`flex-1 md:flex-none p-6 flex flex-col md:flex-row items-center gap-4 border-b border-[#e0e0e0] transition-all relative ${step === s.id ? 'bg-white' : 'opacity-60'}`}
-          >
-            {step === s.id && <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#0f62fe] hidden md:block"></div>}
-            {step === s.id && <div className="absolute top-0 left-0 right-0 h-1 bg-[#0f62fe] md:hidden"></div>}
-            
-            <div className={`w-8 h-8 flex items-center justify-center font-bold text-xs ${step === s.id ? 'bg-[#0f62fe] text-white' : 'bg-[#e0e0e0] text-[#525252]'}`}>
-              {idx + 1}
-            </div>
-            <div className="hidden md:block">
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Step {idx + 1}</p>
-              <p className={`text-xs font-bold uppercase tracking-tight ${step === s.id ? 'text-[#161616]' : 'text-[#8d8d8d]'}`}>{s.label}</p>
-            </div>
+            className="absolute top-5 left-0 h-1 bg-[#24a148] transition-all duration-500 ease-in-out -z-0"
+            style={{ 
+              width: `${(steps.findIndex(s => s.id === step) / (steps.length - 1)) * 100}%` 
+            }}
+          ></div>
+
+          <div className="flex justify-between items-start relative z-10">
+            {steps.map((s, idx) => {
+              const isActive = step === s.id;
+              const isCompleted = steps.findIndex(stepObj => stepObj.id === step) > idx;
+              
+              return (
+                <div key={s.id} className="flex flex-col items-center group cursor-pointer" onClick={() => {
+                  // Only allow jumping back to completed steps
+                  if (isCompleted || isActive) {
+                    setStep(s.id);
+                  }
+                }}>
+                  <div className={`w-10 h-10 rounded-full force-circle flex items-center justify-center border-4 transition-all duration-300 ${
+                    isActive 
+                    ? 'bg-[#24a148] border-[#24a148] shadow-lg scale-110' 
+                    : isCompleted 
+                    ? 'bg-[#24a148] border-[#24a148] text-white' 
+                    : 'bg-white border-gray-200 text-[#525252]'
+                  }`}>
+                    {isCompleted ? (
+                      <Check className="w-5 h-5 text-white" />
+                    ) : (
+                      <span className={`text-xs font-black ${isActive ? 'text-white' : 'text-[#525252]'}`}>{idx + 1}</span>
+                    )}
+                  </div>
+                  
+                  <div className="mt-4 text-center hidden md:block">
+                    <p className={`text-[9px] font-black uppercase tracking-widest mb-1 ${isActive ? 'text-[#24a148]' : 'text-gray-400'}`}>
+                      Step {idx + 1}
+                    </p>
+                    <p className={`text-[10px] font-bold uppercase tracking-tight ${isActive ? 'text-[#161616]' : 'text-[#8d8d8d]'}`}>
+                      {s.label}
+                    </p>
+                  </div>
+                  
+                  {/* Mobile Label */}
+                  {isActive && (
+                    <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 md:hidden">
+                      <p className="text-[10px] font-black text-[#161616] uppercase tracking-widest whitespace-nowrap">
+                        {s.label}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
-        ))}
+        </div>
       </div>
 
       {/* Main Content Area */}
@@ -285,36 +328,74 @@ function AppointmentForm() {
                 <button
                   key={cat}
                   onClick={() => setActiveCategory(cat)}
-                  className={`px-6 py-2 text-[10px] font-bold uppercase tracking-widest whitespace-nowrap transition-all border ${activeCategory === cat ? 'bg-[#161616] text-white border-[#161616]' : 'bg-white text-[#525252] border-[#e0e0e0] hover:border-[#8d8d8d]'}`}
+                  className={`px-6 py-2 text-[9px] font-bold uppercase tracking-widest whitespace-nowrap transition-all border ${activeCategory === cat ? 'bg-[#161616] text-white border-[#161616]' : 'bg-white text-[#525252] border-[#e0e0e0] hover:border-[#8d8d8d]'}`}
                 >
                   {cat}
                 </button>
               ))}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {isLoadingServices ? (
                 <div className="col-span-full py-20 text-center text-gray-400 italic">Loading services...</div>
               ) : liveServices.filter(s => activeCategory === 'All' || s.category === activeCategory).map(service => (
                 <button
                   key={service.id}
                   onClick={() => { setSelectedService(service); setStep('staff'); }}
-                  className={`p-6 border text-left transition-all flex items-start gap-6 group ${selectedService?.id === service.id ? 'border-[#0f62fe] bg-blue-50/30' : 'border-[#e0e0e0] hover:border-[#8d8d8d] hover:bg-gray-50'}`}
+                  className={`relative group flex flex-col bg-white border-2 transition-all duration-500 overflow-hidden ${
+                    selectedService?.id === service.id 
+                    ? 'border-[#24a148] shadow-2xl shadow-green-100 -translate-y-2' 
+                    : 'border-gray-100 hover:border-gray-300 hover:shadow-xl hover:-translate-y-1'
+                  }`}
                 >
-                  <div className="w-16 h-16 bg-white border border-[#e0e0e0] flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">
-                    {service.icon || '🏥'}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex justify-between items-start mb-1">
-                      <h4 className="font-bold text-[#161616] uppercase tracking-tight">{service.name}</h4>
-                      <span className="text-[#0f62fe] font-mono font-bold text-sm">{service.price}</span>
+                  {/* Service Icon/Photo Container */}
+                  <div className="h-48 w-full bg-gray-50 flex items-center justify-center relative overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-br from-white/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                    <div className="w-[104px] h-[104px] bg-white rounded-full force-circle shadow-lg border border-gray-100 flex items-center justify-center text-5xl transform group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 ease-out z-10">
+                      {service.icon && (service.icon.startsWith('http') || service.icon.startsWith('/uploads')) ? (
+                        <img src={service.icon} alt={service.name} className="w-full h-full object-contain rounded-full force-circle" />
+                      ) : (
+                        service.icon || '🏥'
+                      )}
                     </div>
-                    <p className="text-[11px] text-[#525252] leading-relaxed mb-4 line-clamp-2">{service.description}</p>
-                    <div className="flex items-center gap-4 text-[9px] font-bold text-gray-400 uppercase tracking-widest">
-                      <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {service.duration || '30m'}</span>
-                      <span className="flex items-center gap-1"><Star className="w-3 h-3 text-yellow-400" /> 4.9</span>
+                    {/* Category Tag */}
+                    <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 text-[8px] font-black uppercase tracking-[2px] text-[#525252] border border-gray-100 shadow-sm">
+                      {service.category || 'General'}
                     </div>
                   </div>
+
+                  {/* Service Details */}
+                  <div className="p-6 flex-1 flex flex-col">
+                    <div className="flex justify-between items-start mb-3">
+                      <h4 className="font-black text-[#161616] uppercase tracking-tighter text-[15px] leading-tight group-hover:text-[#24a148] transition-colors">
+                        {service.name}
+                      </h4>
+                      <div className="text-[#24a148] font-mono font-black text-sm whitespace-nowrap bg-green-50 px-2 py-0.5">
+                        {service.price}
+                      </div>
+                    </div>
+                    
+                    <p className="text-[11px] text-[#525252] leading-relaxed mb-6 line-clamp-3 font-medium opacity-80 italic">
+                      "{service.description || 'Experience our professional and dedicated healthcare service tailored to your specific needs.'}"
+                    </p>
+                    
+                    <div className="mt-auto pt-4 border-t border-gray-50 flex items-center justify-between">
+                      <div className="flex items-center gap-4 text-[9px] font-black text-gray-400 uppercase tracking-widest">
+                        <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-[#24a148]" /> {service.duration || '30M'}</span>
+                        <span className="flex items-center gap-1.5"><Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" /> 4.9</span>
+                      </div>
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-all duration-300 ${selectedService?.id === service.id ? 'bg-[#24a148] text-white scale-125' : 'bg-gray-100 text-gray-400 group-hover:bg-[#161616] group-hover:text-white'}`}>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Selection Indicator */}
+                  {selectedService?.id === service.id && (
+                    <div className="absolute top-0 right-0 w-12 h-12 bg-[#24a148] flex items-center justify-center translate-x-6 -translate-y-6 rotate-45 shadow-lg">
+                      <Check className="w-4 h-4 text-white -rotate-45 translate-y-2" />
+                    </div>
+                  )}
                 </button>
               ))}
             </div>
@@ -331,22 +412,22 @@ function AppointmentForm() {
                 <button
                   key={staff.id}
                   onClick={() => { setSelectedStaff(staff); setStep('datetime'); }}
-                  className={`p-6 border text-left transition-all flex items-center gap-6 group ${selectedStaff?.id === staff.id ? 'border-[#0f62fe] bg-blue-50/30' : 'border-[#e0e0e0] hover:border-[#8d8d8d] hover:bg-gray-50'}`}
+                  className={`p-6 border text-left transition-all flex items-center gap-6 group ${selectedStaff?.id === staff.id ? 'border-[#24a148] bg-green-50/30' : 'border-[#e0e0e0] hover:border-[#8d8d8d] hover:bg-gray-50'}`}
                 >
                   <div className="w-20 h-20 bg-[#e0e0e0] flex items-center justify-center overflow-hidden grayscale group-hover:grayscale-0 transition-all">
                     {staff.image_url ? <img src={staff.image_url} alt={staff.name} className="w-full h-full object-cover" /> : <User className="w-10 h-10 text-gray-400" />}
                   </div>
                   <div className="flex-1">
-                    <h4 className="font-bold text-[#161616] uppercase tracking-tight">{staff.name}</h4>
-                    <p className="text-[10px] text-[#0f62fe] font-bold uppercase tracking-widest mb-4">{staff.title || 'Specialist'}</p>
+                    <h4 className="font-bold text-[#161616] uppercase tracking-tight text-[13px]">{staff.name}</h4>
+                    <p className="text-[9px] text-[#24a148] font-bold uppercase tracking-widest mb-4">{staff.title || 'Specialist'}</p>
                     <p className="text-[10px] text-gray-400 line-clamp-1 italic">{staff.email}</p>
                   </div>
-                  <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-[#0f62fe] transition-colors" />
+                  <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-[#24a148] transition-colors" />
                 </button>
               ))}
             </div>
             
-            <button onClick={() => setStep('service')} className="mt-12 text-[#0f62fe] font-bold uppercase text-[12px] flex items-center gap-2 hover:underline">
+            <button onClick={() => setStep('service')} className="mt-12 text-[#24a148] font-bold uppercase text-[11px] flex items-center gap-2 hover:underline tracking-widest">
               <ChevronLeft className="w-3 h-3" /> Back to Services
             </button>
           </div>
@@ -358,19 +439,19 @@ function AppointmentForm() {
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
               <div className="space-y-4">
-                <label className="block text-[12px] font-medium text-[#525252] uppercase tracking-[0.32px]">Select Date</label>
+                <label className="block text-[9px] font-bold text-[#525252] uppercase tracking-widest">Select Date</label>
                 <input
                   type="date"
                   name="preferredDate"
                   min={new Date().toISOString().split('T')[0]}
                   value={formData.preferredDate}
                   onChange={handleChange}
-                  className="carbon-input w-full p-4"
+                  className="w-full bg-[#f4f4f4] border-0 border-b border-gray-300 p-2.5 text-[12px] text-black focus:outline-none focus:border-[#24a148] focus:ring-0"
                 />
               </div>
 
               <div className="space-y-4">
-                <label className="block text-[12px] font-medium text-[#525252] uppercase tracking-[0.32px]">Available Time Slots</label>
+                <label className="block text-[9px] font-bold text-[#525252] uppercase tracking-widest">Available Time Slots</label>
                 {!formData.preferredDate ? (
                   <div className="p-12 border border-dashed border-[#e0e0e0] text-center text-gray-400 text-xs italic">
                     Please select a date first
@@ -385,7 +466,7 @@ function AppointmentForm() {
                       <button
                         key={time}
                         onClick={() => setFormData({ ...formData, preferredTime: time })}
-                        className={`py-3 text-[11px] font-bold border transition-all ${formData.preferredTime === time ? 'bg-[#0f62fe] text-white border-[#0f62fe]' : 'bg-white text-[#161616] border-[#e0e0e0] hover:border-[#8d8d8d]'}`}
+                        className={`py-3 text-[11px] font-bold border transition-all uppercase tracking-tight ${formData.preferredTime === time ? 'bg-[#24a148] text-white border-[#24a148]' : 'bg-white text-[#161616] border-[#e0e0e0] hover:border-[#8d8d8d]'}`}
                       >
                         {time}
                       </button>
@@ -399,13 +480,13 @@ function AppointmentForm() {
             </div>
 
             <div className="mt-12 flex justify-between items-center">
-              <button onClick={() => setStep('staff')} className="text-[#0f62fe] font-bold uppercase text-[12px] flex items-center gap-2 hover:underline">
+              <button onClick={() => setStep('staff')} className="text-[#24a148] font-bold uppercase text-[11px] flex items-center gap-2 hover:underline tracking-widest">
                 <ChevronLeft className="w-3 h-3" /> Back to Staff
               </button>
               <button
                 disabled={!formData.preferredDate || !formData.preferredTime}
                 onClick={() => setStep('details')}
-                className="carbon-btn-primary px-10 py-3 font-bold uppercase tracking-wider text-sm disabled:opacity-50"
+                className="w-auto py-3 px-10 bg-[#24a148] text-white text-[12px] font-bold uppercase tracking-widest shadow-lg hover:shadow-xl hover:bg-[#1e8a3d] active:scale-[0.98] transition-all disabled:opacity-50"
               >
                 Next: Basic Details
               </button>
@@ -419,54 +500,54 @@ function AppointmentForm() {
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
               <div className="space-y-1">
-                <label className="block text-[12px] font-medium text-[#525252] uppercase tracking-[0.32px]">Full Name</label>
+                <label className="block text-[9px] font-bold text-[#525252] uppercase tracking-widest">Full Name</label>
                 <input
                   type="text"
                   name="fullName"
                   value={formData.fullName}
                   onChange={handleChange}
                   placeholder="John Doe"
-                  className="carbon-input w-full p-4"
+                  className="w-full bg-[#f4f4f4] border-0 border-b border-gray-300 p-2.5 text-[12px] text-black focus:outline-none focus:border-[#24a148] focus:ring-0"
                 />
               </div>
               <div className="space-y-1">
-                <label className="block text-[12px] font-medium text-[#525252] uppercase tracking-[0.32px]">Phone Number</label>
+                <label className="block text-[9px] font-bold text-[#525252] uppercase tracking-widest">Phone Number</label>
                 <input
                   type="tel"
                   name="phoneNumber"
                   value={formData.phoneNumber}
                   onChange={handleChange}
                   placeholder="+63 900 000 0000"
-                  className="carbon-input w-full p-4"
+                  className="w-full bg-[#f4f4f4] border-0 border-b border-gray-300 p-2.5 text-[12px] text-black focus:outline-none focus:border-[#24a148] focus:ring-0"
                 />
               </div>
               <div className="space-y-1">
-                <label className="block text-[12px] font-medium text-[#525252] uppercase tracking-[0.32px]">Email Address</label>
+                <label className="block text-[9px] font-bold text-[#525252] uppercase tracking-widest">Email Address</label>
                 <input
                   type="email"
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
                   placeholder="john@example.com"
-                  className="carbon-input w-full p-4"
+                  className="w-full bg-[#f4f4f4] border-0 border-b border-gray-300 p-2.5 text-[12px] text-black focus:outline-none focus:border-[#24a148] focus:ring-0"
                 />
               </div>
               <div className="space-y-1">
-                <label className="block text-[12px] font-medium text-[#525252] uppercase tracking-[0.32px]">Agent / Promo Code</label>
+                <label className="block text-[9px] font-bold text-[#525252] uppercase tracking-widest">Agent / Promo Code</label>
                 <input
                   type="text"
                   name="agentCode"
                   value={formData.agentCode}
                   onChange={handleChange}
                   placeholder="Optional"
-                  className="carbon-input w-full p-4"
+                  className="w-full bg-[#f4f4f4] border-0 border-b border-gray-300 p-2.5 text-[12px] text-black focus:outline-none focus:border-[#24a148] focus:ring-0"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
               <div className="space-y-1">
-                <label className="block text-[12px] font-medium text-[#525252] uppercase tracking-[0.32px]">Pickup Location</label>
+                <label className="block text-[9px] font-bold text-[#525252] uppercase tracking-widest">Pickup Location</label>
                 <input
                   type="text"
                   name="pickupLocation"
@@ -476,11 +557,11 @@ function AppointmentForm() {
                     setMapAction({ type: 'pickup', address: e.target.value });
                   }}
                   placeholder="Search pickup..."
-                  className="carbon-input w-full p-4"
+                  className="w-full bg-[#f4f4f4] border-0 border-b border-gray-300 p-2.5 text-[12px] text-black focus:outline-none focus:border-[#24a148] focus:ring-0"
                 />
               </div>
               <div className="space-y-1">
-                <label className="block text-[12px] font-medium text-[#525252] uppercase tracking-[0.32px]">Destination</label>
+                <label className="block text-[9px] font-bold text-[#525252] uppercase tracking-widest">Destination</label>
                 <input
                   type="text"
                   name="destinationLocation"
@@ -490,16 +571,16 @@ function AppointmentForm() {
                     setMapAction({ type: 'dest', address: e.target.value });
                   }}
                   placeholder="Search destination..."
-                  className="carbon-input w-full p-4"
+                  className="w-full bg-[#f4f4f4] border-0 border-b border-gray-300 p-2.5 text-[12px] text-black focus:outline-none focus:border-[#24a148] focus:ring-0"
                 />
               </div>
             </div>
 
             {selectedService?.category?.toUpperCase() === 'TRANSPORT' && showMapInForm && TransportMap && (
               <div className="mb-8 animate-fadeIn">
-                <p className="text-[10px] font-bold text-[#0f62fe] uppercase tracking-widest mb-2 flex items-center justify-between">
+                <p className="text-[9px] font-bold text-[#24a148] uppercase tracking-widest mb-2 flex items-center justify-between">
                   <span className="flex items-center gap-2">
-                    <span className="w-2 h-2 bg-[#0f62fe] rounded-full animate-pulse"></span>
+                    <span className="w-2 h-2 bg-[#24a148] rounded-full animate-pulse"></span>
                     Interactive Route Picker
                   </span>
                   {distance > 0 && <span className="text-[#24a148]">Route Computed: {distance.toFixed(2)} km</span>}
@@ -512,25 +593,25 @@ function AppointmentForm() {
             )}
 
             <div className="space-y-1 mb-12">
-              <label className="block text-[12px] font-medium text-[#525252] uppercase tracking-[0.32px]">Notes (Optional)</label>
+              <label className="block text-[9px] font-bold text-[#525252] uppercase tracking-widest">Notes (Optional)</label>
               <textarea
                 name="notes"
                 value={formData.notes}
                 onChange={handleChange}
                 rows={2}
                 placeholder="Any specific concerns..."
-                className="carbon-input w-full p-4 resize-none"
+                className="w-full bg-[#f4f4f4] border-0 border-b border-gray-300 p-2.5 text-[12px] text-black focus:outline-none focus:border-[#24a148] focus:ring-0 mt-1 resize-none h-14"
               ></textarea>
             </div>
 
             <div className="flex justify-between items-center">
-              <button onClick={() => setStep('datetime')} className="text-[#0f62fe] font-bold uppercase text-[12px] flex items-center gap-2 hover:underline">
+              <button onClick={() => setStep('datetime')} className="text-[#24a148] font-bold uppercase text-[11px] flex items-center gap-2 hover:underline tracking-widest">
                 <ChevronLeft className="w-3 h-3" /> Back to Time
               </button>
               <button
                 disabled={!formData.fullName || !formData.phoneNumber || !formData.email}
                 onClick={() => setStep('summary')}
-                className="carbon-btn-primary px-10 py-3 font-bold uppercase tracking-wider text-sm disabled:opacity-50"
+                className="w-auto py-3 px-10 bg-[#24a148] text-white text-[12px] font-bold uppercase tracking-widest shadow-lg hover:shadow-xl hover:bg-[#1e8a3d] active:scale-[0.98] transition-all disabled:opacity-50"
               >
                 Next: Review & Payment
               </button>
@@ -545,18 +626,18 @@ function AppointmentForm() {
             <div className="flex flex-col md:flex-row border border-[#e0e0e0] mb-8">
               <div className="flex-1 p-6 border-b md:border-b-0 md:border-r border-[#e0e0e0]">
                 <div className="flex items-center justify-between mb-4">
-                  <span className="text-[10px] font-bold text-[#525252] uppercase tracking-[2px]">Service</span>
-                  <span className="p-2 bg-blue-50 text-[#0f62fe] rounded-full">{selectedService?.icon}</span>
+                  <span className="text-[9px] font-bold text-[#525252] uppercase tracking-[2px]">Service</span>
+                  <span className="p-2 bg-green-50 text-[#24a148] rounded-full">{selectedService?.icon}</span>
                 </div>
-                <div className="text-2xl font-bold text-[#161616] leading-tight mb-1">{selectedService?.name}</div>
-                <div className="text-sm text-[#525252]">By {selectedStaff?.name}</div>
+                <div className="text-xl font-bold text-[#161616] leading-tight mb-1 uppercase italic tracking-tighter">{selectedService?.name}</div>
+                <div className="text-[11px] text-[#525252] font-medium uppercase tracking-widest">By {selectedStaff?.name}</div>
               </div>
               <div className="flex-1 p-6">
-                <div className="text-[10px] font-bold text-[#525252] uppercase tracking-[2px] mb-4 text-center md:text-left">Date & Time</div>
-                <div className="text-xl font-medium text-[#161616] text-center md:text-left">
+                <div className="text-[9px] font-bold text-[#525252] uppercase tracking-[2px] mb-4 text-center md:text-left">Date & Time</div>
+                <div className="text-lg font-medium text-[#161616] text-center md:text-left uppercase tracking-tight">
                   {formData.preferredDate ? new Date(formData.preferredDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '---'}
                 </div>
-                <div className="text-2xl font-bold text-[#0f62fe] text-center md:text-left mt-1">{formData.preferredTime || '---'}</div>
+                <div className="text-xl font-bold text-[#24a148] text-center md:text-left mt-1 italic">{formData.preferredTime || '---'}</div>
               </div>
             </div>
 
@@ -571,7 +652,7 @@ function AppointmentForm() {
                     <span>Distance Rate (PHP {calculateFees().rate}/km)</span>
                     <span className="font-mono">PHP {(calculateFees().rate * distance).toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between text-[10px] text-[#0f62fe] italic font-medium px-4 py-2 bg-blue-50">
+                  <div className="flex justify-between text-[9px] text-[#24a148] italic font-bold px-4 py-2 bg-green-50 uppercase tracking-widest">
                     <span>Calculated distance: {distance.toFixed(2)} KM</span>
                   </div>
                 </>
@@ -599,20 +680,20 @@ function AppointmentForm() {
             </div>
 
             <div className="mb-12">
-              <h4 className="text-[12px] font-bold text-[#525252] uppercase tracking-[1px] mb-6">Select Payment Method</h4>
+              <h4 className="text-[9px] font-bold text-[#525252] uppercase tracking-[1px] mb-6">Select Payment Method</h4>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {[
-                  { id: 'local', label: 'Pay Locally', icon: <Store className="w-4 h-4 text-[#0f62fe]" /> },
-                  { id: 'paypal', label: 'PayPal', icon: <CreditCard className="w-4 h-4 text-[#0f62fe]" /> },
-                  { id: 'stripe', label: 'Stripe', icon: <Lock className="w-4 h-4 text-[#0f62fe]" /> },
+                  { id: 'local', label: 'Pay Locally', icon: <Store className="w-4 h-4 text-[#24a148]" /> },
+                  { id: 'paypal', label: 'PayPal', icon: <CreditCard className="w-4 h-4 text-[#24a148]" /> },
+                  { id: 'stripe', label: 'Stripe', icon: <Lock className="w-4 h-4 text-[#24a148]" /> },
                 ].map(method => (
                   <button
                     key={method.id}
                     onClick={() => setPaymentMethod(method.id)}
-                    className={`p-4 border flex items-center justify-center gap-3 transition-all ${paymentMethod === method.id ? 'border-[#0f62fe] bg-blue-50/50 ring-1 ring-[#0f62fe]' : 'border-[#e0e0e0] hover:border-[#8d8d8d]'}`}
+                    className={`p-4 border flex items-center justify-center gap-3 transition-all ${paymentMethod === method.id ? 'border-[#24a148] bg-green-50/50 ring-1 ring-[#24a148]' : 'border-[#e0e0e0] hover:border-[#8d8d8d]'}`}
                   >
                     <span className="text-xl">{method.icon}</span>
-                    <span className={`text-[12px] font-bold uppercase ${paymentMethod === method.id ? 'text-[#0f62fe]' : 'text-[#525252]'}`}>
+                    <span className={`text-[10px] font-bold uppercase tracking-widest ${paymentMethod === method.id ? 'text-[#24a148]' : 'text-[#525252]'}`}>
                       {method.label}
                     </span>
                   </button>
@@ -621,13 +702,13 @@ function AppointmentForm() {
             </div>
 
             <div className="flex justify-between items-center">
-              <button onClick={() => setStep('details')} className="text-[#0f62fe] font-bold uppercase text-[12px] flex items-center gap-2 hover:underline">
+              <button onClick={() => setStep('details')} className="text-[#24a148] font-bold uppercase text-[11px] flex items-center gap-2 hover:underline tracking-widest">
                 <ChevronLeft className="w-3 h-3" /> Back to Details
               </button>
               <button
                 disabled={isSubmitting}
                 onClick={handleSubmit}
-                className="carbon-btn-primary px-16 py-4 font-bold uppercase tracking-[2px] text-sm flex items-center gap-4 group"
+                className="w-auto py-4 px-16 bg-[#24a148] text-white text-[12px] font-bold uppercase tracking-[2px] shadow-lg hover:shadow-xl hover:bg-[#1e8a3d] active:scale-[0.98] transition-all flex items-center gap-4 group"
               >
                 {isSubmitting ? 'Processing...' : 'Confirm & Book Appointment'}
                 {!isSubmitting && <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />}

@@ -276,8 +276,8 @@ const RideBooking = ({
                   : 'border-transparent bg-gray-50 hover:bg-gray-100'
                 }`}
               >
-                <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
-                  selectedService?.id === service.id ? 'bg-[#00B14F] text-white' : 'bg-white text-gray-400'
+                <div className={`w-[68px] h-[68px] rounded-full force-circle flex items-center justify-center shadow-md border ${
+                  selectedService?.id === service.id ? 'bg-[#00B14F] border-[#00B14F] text-white' : 'bg-white border-gray-100 text-gray-400'
                 }`}>
                   {service.name.toLowerCase().includes('bike') ? <Activity size={24} /> : <Car size={24} />}
                 </div>

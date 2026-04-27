@@ -5,6 +5,9 @@ import { ShoppingCart, Plus, Minus, Trash2, ChevronRight, ChevronLeft, ArrowRigh
 const LucideIcons = { ShoppingCart, Plus, Minus, Trash2, ChevronRight, ChevronLeft, ArrowRight, Check, X, Search, Settings, Smartphone, Printer, Download, Store, CreditCard, Lock, User, Users, Wallet, Calendar, MapPin, Clock, Phone, Mail, Star, Car, Truck, Shield, Activity, Clipboard, Stethoscope, Hospital, Pill, Syringe, HeartPulse, Map: MapIcon, Navigation, AlertTriangle, AlertCircle, RefreshCw };
 
 const ServiceIconRender = ({ iconName, className }) => {
+  if (iconName && (iconName.startsWith('http') || iconName.startsWith('/uploads'))) {
+    return <img src={iconName} alt="Icon" className={className || "w-8 h-8 object-contain"} />;
+  }
   const Icon = LucideIcons[iconName];
   if (Icon) return <Icon className={className || "w-8 h-8"} />;
   return <span className={className || "text-4xl"}>{iconName}</span>;
@@ -498,17 +501,30 @@ export default function RestaurantApp() {
         .via-green-900 {
           --tw-gradient-via: #1e3a5f !important;
         }
+        :root {
+          --admin-primary: #10B981 !important;
+          --admin-primary-hover: #059669 !important;
+          --admin-bg: #F9FAFB !important;
+          font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+        }
+
+        .bg-blue-600 { background-color: #10B981 !important; }
+        .hover\:bg-blue-700:hover { background-color: #059669 !important; }
+        .text-blue-600 { color: #10B981 !important; }
+        .border-blue-600 { border-color: #10B981 !important; }
+        .focus\:ring-blue-500:focus { --tw-ring-color: #10B981 !important; }
+
         .from-green-400 {
-          --tw-gradient-from: #60A5FA !important;
+          --tw-gradient-from: #34D399 !important;
         }
         .to-green-500 {
-          --tw-gradient-to: #3B82F6 !important;
+          --tw-gradient-to: #10B981 !important;
         }
         .focus\\:border-green-500:focus {
-          border-color: #3B82F6 !important;
+          border-color: #10B981 !important;
         }
         .focus\\:border-green-700:focus {
-          border-color: #1D4ED8 !important;
+          border-color: #047857 !important;
         }
       `}</style>
       <div className={`min-h-screen bg-white ${currentPage === 'admin' ? 'p-0 flex flex-col' : 'pb-16 md:pb-0 pt-[100px]'}`}>
@@ -544,7 +560,7 @@ export default function RestaurantApp() {
               <div className="relative">
                 <button
                   onClick={() => setShowLoginMenu(!showLoginMenu)}
-                  className={`flex flex-col items-center px-4 py-1 ${showLoginMenu ? 'text-[#0f62fe]' : 'text-[#302B27]'}`}
+                  className={`flex flex-col items-center px-4 py-1 ${showLoginMenu ? 'text-[#10b981]' : 'text-[#302B27]'}`}
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
@@ -589,7 +605,7 @@ export default function RestaurantApp() {
               </button>
               <button
                 onClick={() => setCurrentPage('queue-display')}
-                className={`flex flex-col items-center px-4 py-1 ${currentPage === 'queue-display' ? 'text-[#0f62fe]' : 'text-[#302B27]'}`}
+                className={`flex flex-col items-center px-4 py-1 ${currentPage === 'queue-display' ? 'text-[#10b981]' : 'text-[#302B27]'}`}
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 4h14a2 2 0 012 2v7H3V6a2 2 0 012-2z" />
@@ -598,7 +614,7 @@ export default function RestaurantApp() {
               </button>
               <button
                 onClick={() => setCurrentPage('queue-teller')}
-                className={`flex flex-col items-center px-4 py-1 ${currentPage === 'queue-teller' ? 'text-[#0f62fe]' : 'text-[#302B27]'}`}
+                className={`flex flex-col items-center px-4 py-1 ${currentPage === 'queue-teller' ? 'text-[#10b981]' : 'text-[#302B27]'}`}
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
@@ -1306,7 +1322,7 @@ function AdminDashboard({ setCurrentPage }) {
           <div className="bg-white rounded-0 p-8 border border-[#e0e0e0] shadow-lg">
             <div className="text-center mb-8">
               <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-[#0f62fe]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-8 h-8 text-[#10b981]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
               </div>
@@ -1327,7 +1343,7 @@ function AdminDashboard({ setCurrentPage }) {
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="w-full px-4 py-3 bg-blue-50 border border-[#e0e0e0] rounded-0 text-gray-800 placeholder-gray-400 focus:outline-none focus:border-blue-500"
+                  className="w-full px-4 py-3 bg-gray-50 border border-[#e0e0e0] rounded-lg text-gray-800 placeholder-gray-400 focus:outline-none focus:border-green-500"
                   placeholder="Enter username"
                   required
                 />
@@ -1339,7 +1355,7 @@ function AdminDashboard({ setCurrentPage }) {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 bg-blue-50 border border-[#e0e0e0] rounded-0 text-gray-800 placeholder-gray-400 focus:outline-none focus:border-blue-500"
+                  className="w-full px-4 py-3 bg-gray-50 border border-[#e0e0e0] rounded-lg text-gray-800 placeholder-gray-400 focus:outline-none focus:border-green-500"
                   placeholder="Enter password"
                   required
                 />
@@ -1348,7 +1364,7 @@ function AdminDashboard({ setCurrentPage }) {
               <button
                 type="submit"
                 disabled={isLoggingIn}
-                className="w-full py-3 bg-[#0f62fe] text-white font-semibold rounded-0 hover:bg-[#465a8f] transition-all disabled:opacity-50"
+                className="w-full py-3 bg-[#10B981] text-white font-semibold rounded-lg hover:bg-[#059669] transition-all disabled:opacity-50"
               >
                 {isLoggingIn ? 'Signing in...' : 'Sign In'}
               </button>
@@ -1519,7 +1535,7 @@ function AdminDashboard({ setCurrentPage }) {
                           {newService.category === 'NEW_CATEGORY' && (
                             <input
                               autoFocus
-                              className="w-full px-4 py-3 bg-white border-2 border-[#0f62fe] rounded-0 text-gray-800 placeholder-gray-400 focus:outline-none"
+                              className="w-full px-4 py-3 bg-white border-2 border-[#10b981] rounded-0 text-gray-800 placeholder-gray-400 focus:outline-none"
                               placeholder="Enter new category name"
                               value={newService.customCategory || ''}
                               onChange={(e) => setNewService({ ...newService, customCategory: e.target.value })}
@@ -1557,7 +1573,7 @@ function AdminDashboard({ setCurrentPage }) {
                               key={ico.id}
                               type="button"
                               onClick={() => setNewService({ ...newService, icon: ico.id })}
-                              className={`aspect-square flex items-center justify-center border transition-all ${newService.icon === ico.id ? 'bg-[#0f62fe] text-white border-[#0f62fe] shadow-md' : 'bg-white text-[#525252] border-gray-200 hover:border-blue-400'}`}
+                              className={`aspect-square flex items-center justify-center border transition-all ${newService.icon === ico.id ? 'bg-[#10b981] text-white border-[#10b981] shadow-md' : 'bg-white text-[#525252] border-gray-200 hover:border-blue-400'}`}
                               title={ico.id}
                             >
                               {ico.icon}
@@ -1571,26 +1587,59 @@ function AdminDashboard({ setCurrentPage }) {
                             value={newService.icon}
                             onChange={(e) => setNewService({ ...newService, icon: e.target.value })}
                           />
+                          <div className="relative">
+                            <input 
+                              type="file" 
+                              id="service-icon-upload"
+                              className="hidden" 
+                              accept="image/*"
+                              onChange={async (e) => {
+                                if (e.target.files?.[0]) {
+                                  const file = e.target.files[0];
+                                  const formData = new FormData();
+                                  formData.append('file', file);
+                                  try {
+                                    const res = await fetch('/api/staff/upload', {
+                                      method: 'POST',
+                                      body: formData
+                                    });
+                                    const data = await res.json();
+                                    if (data.success) {
+                                      setNewService({ ...newService, icon: data.url });
+                                    }
+                                  } catch (err) {
+                                    alert('Upload failed');
+                                  }
+                                }
+                              }}
+                            />
+                            <label 
+                              htmlFor="service-icon-upload"
+                              className="px-3 py-2 bg-[#f4f4f4] border border-[#e0e0e0] text-[10px] font-bold uppercase cursor-pointer hover:bg-gray-100"
+                            >
+                              Upload PNG
+                            </label>
+                          </div>
                         </div>
                       </div>
 
                       {newService.category?.toUpperCase() === 'TRANSPORT' || newService.category === 'NEW_CATEGORY' ? (
                         <div className="grid grid-cols-2 gap-4 pt-2 border-t border-[#f4f4f4]">
                           <div className="space-y-1">
-                            <label className="text-[10px] font-bold text-[#0f62fe] uppercase tracking-widest">Base Fare (Min)</label>
+                            <label className="text-[10px] font-bold text-[#10b981] uppercase tracking-widest">Base Fare (Min)</label>
                             <input
                               type="number"
-                              className="w-full px-4 py-3 bg-blue-50 border border-[#0f62fe] rounded-0 text-gray-800"
+                              className="w-full px-4 py-3 bg-blue-50 border border-[#10b981] rounded-0 text-gray-800"
                               placeholder="50"
                               value={newService.base_fare}
                               onChange={(e) => setNewService({ ...newService, base_fare: e.target.value })}
                             />
                           </div>
                           <div className="space-y-1">
-                            <label className="text-[10px] font-bold text-[#0f62fe] uppercase tracking-widest">Rate per KM</label>
+                            <label className="text-[10px] font-bold text-[#10b981] uppercase tracking-widest">Rate per KM</label>
                             <input
                               type="number"
-                              className="w-full px-4 py-3 bg-blue-50 border border-[#0f62fe] rounded-0 text-gray-800"
+                              className="w-full px-4 py-3 bg-blue-50 border border-[#10b981] rounded-0 text-gray-800"
                               placeholder="15"
                               value={newService.per_km_rate}
                               onChange={(e) => setNewService({ ...newService, per_km_rate: e.target.value })}
@@ -1640,7 +1689,7 @@ function AdminDashboard({ setCurrentPage }) {
                             setIsAddingService(false);
                           }
                         }}
-                        className="w-full py-3 bg-[#0f62fe] text-white font-bold uppercase tracking-widest text-[12px] disabled:opacity-50 hover:bg-[#465a8f] transition-all"
+                        className="w-full py-3 bg-[#10b981] text-white font-bold uppercase tracking-widest text-[12px] disabled:opacity-50 hover:bg-[#465a8f] transition-all"
                       >
                         {isAddingService ? 'Saving...' : (editingService ? 'Update Service' : 'Add Service')}
                       </button>
@@ -1658,7 +1707,7 @@ function AdminDashboard({ setCurrentPage }) {
                     </div>
                     {bookingServices.map(s => (
                       <div key={s.id} className="bg-white p-4 border-b border-[#e0e0e0] flex items-center gap-4 group hover:bg-gray-50">
-                        <div className="w-12 text-[#0f62fe]">
+                        <div className="w-12 text-[#10b981]">
                           <ServiceIconRender iconName={s.icon} className="w-6 h-6" />
                         </div>
                         <div className="flex-1">
@@ -1666,12 +1715,12 @@ function AdminDashboard({ setCurrentPage }) {
                           <p className="text-[10px] text-[#8d8d8d]">{s.duration}</p>
                         </div>
                         <div className="w-32">
-                          <span className="bg-[#edf5ff] text-[#0f62fe] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">{s.category}</span>
+                          <span className="bg-[#edf5ff] text-[#10b981] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">{s.category}</span>
                         </div>
                         <div className="w-24 font-mono font-bold text-[#161616]">
                           {s.category?.toUpperCase() === 'TRANSPORT' && parseFloat(s.base_fare) > 0 ? (
                             <div className="text-[10px]">
-                              <div className="text-[#0f62fe]">PHP {parseFloat(s.base_fare).toFixed(0)} Base</div>
+                              <div className="text-[#10b981]">PHP {parseFloat(s.base_fare).toFixed(0)} Base</div>
                               <div className="text-[#24a148]">PHP {parseFloat(s.per_km_rate).toFixed(0)}/km</div>
                             </div>
                           ) : s.price}
@@ -1687,7 +1736,7 @@ function AdminDashboard({ setCurrentPage }) {
                                 per_km_rate: s.per_km_rate || 15
                               });
                             }}
-                            className="text-[#0f62fe] text-[10px] uppercase font-bold tracking-widest hover:underline text-left"
+                            className="text-[#10b981] text-[10px] uppercase font-bold tracking-widest hover:underline text-left"
                           >
                             Edit
                           </button>
@@ -1799,7 +1848,7 @@ function AdminDashboard({ setCurrentPage }) {
                             setIsAddingSpecialist(false);
                           }
                         }}
-                        className="w-full py-3 bg-[#0f62fe] text-white font-bold uppercase tracking-widest text-[12px] disabled:opacity-50 hover:bg-[#465a8f] transition-all"
+                        className="w-full py-3 bg-[#10b981] text-white font-bold uppercase tracking-widest text-[12px] disabled:opacity-50 hover:bg-[#465a8f] transition-all"
                       >
                         {isAddingSpecialist ? 'Saving...' : 'Add Specialist'}
                       </button>
@@ -1816,7 +1865,7 @@ function AdminDashboard({ setCurrentPage }) {
                           </div>
                           <div className="flex-1">
                             <h4 className="font-bold text-[#161616]">{s.name}</h4>
-                            <p className="text-xs text-[#0f62fe] font-medium">{s.title}</p>
+                            <p className="text-xs text-[#10b981] font-medium">{s.title}</p>
                             <p className="text-[10px] text-[#8d8d8d] mt-1">{s.email}</p>
                             <button
                               onClick={async () => {
@@ -1874,7 +1923,7 @@ function AdminDashboard({ setCurrentPage }) {
                 trips={trips} 
                 stats={tripStats} 
                 riders={riders}
-                onRefresh={fetchTrips}
+                onRefresh={() => { fetchTrips(); fetchAppointments(); }}
               />
             )}
 
@@ -1925,7 +1974,7 @@ function AdminDashboard({ setCurrentPage }) {
                     {(searchQuery || startDate || endDate) && (
                       <button
                         onClick={clearFilters}
-                        className="mt-3 text-sm text-[#0f62fe] hover:underline"
+                        className="mt-3 text-sm text-[#10b981] hover:underline"
                       >
                         Clear all filters
                       </button>
@@ -1939,7 +1988,7 @@ function AdminDashboard({ setCurrentPage }) {
                         key={f}
                         onClick={() => setFilter(f)}
                         className={`px-4 py-2 rounded-0 text-sm font-medium whitespace-nowrap transition-all ${filter === f
-                          ? 'bg-[#0f62fe] text-white'
+                          ? 'bg-[#10b981] text-white'
                           : 'bg-white text-gray-600 hover:bg-blue-100 border border-[#e0e0e0]'
                           }`}
                       >
@@ -1951,7 +2000,7 @@ function AdminDashboard({ setCurrentPage }) {
                   {/* Appointments List */}
                   {isLoading ? (
                     <div className="text-center py-16">
-                      <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#0f62fe] mb-4"></div>
+                      <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#10b981] mb-4"></div>
                       <p className="text-gray-500">Loading appointments...</p>
                     </div>
                   ) : filteredAppointments.length === 0 ? (
@@ -1961,7 +2010,7 @@ function AdminDashboard({ setCurrentPage }) {
                   ) : (
                     <div className="bg-white rounded-0 border border-[#e0e0e0] shadow-sm overflow-hidden">
                       {/* Table Header */}
-                      <div className="hidden md:grid md:grid-cols-[40px_repeat(6,1fr)] gap-3 px-4 py-3 bg-[#0f62fe] border-b border-[#0f62fe] text-xs font-semibold text-white uppercase tracking-wider items-center">
+                      <div className="hidden md:grid md:grid-cols-[40px_repeat(6,1fr)] gap-3 px-4 py-3 bg-[#10b981] border-b border-[#10b981] text-xs font-semibold text-white uppercase tracking-wider items-center">
                         <span>#</span>
                         <span>Patient</span>
                         <span>Service</span>
@@ -2001,7 +2050,7 @@ function AdminDashboard({ setCurrentPage }) {
                             )}
                             {apt.status === 'confirmed' && (
                               <>
-                                <button onClick={() => updateStatus(apt.id, 'completed')} disabled={updatingId === apt.id} className="px-2 py-1 bg-blue-50 text-[#0f62fe] rounded text-xs hover:bg-blue-100 transition-all border border-[#e0e0e0] disabled:opacity-50">
+                                <button onClick={() => updateStatus(apt.id, 'completed')} disabled={updatingId === apt.id} className="px-2 py-1 bg-blue-50 text-[#10b981] rounded text-xs hover:bg-blue-100 transition-all border border-[#e0e0e0] disabled:opacity-50">
                                   Complete
                                 </button>
                                 <button onClick={() => updateStatus(apt.id, 'cancelled')} disabled={updatingId === apt.id} className="px-2 py-1 bg-red-50 text-red-600 rounded text-xs hover:bg-red-100 transition-all border border-red-200 disabled:opacity-50">
@@ -2010,7 +2059,7 @@ function AdminDashboard({ setCurrentPage }) {
                               </>
                             )}
                             {(apt.status === 'cancelled' || apt.status === 'completed') && (
-                              <button onClick={() => updateStatus(apt.id, 'pending')} disabled={updatingId === apt.id} className="px-2 py-1 bg-blue-50 text-[#0f62fe] rounded text-xs hover:bg-blue-100 transition-all border border-[#e0e0e0] disabled:opacity-50">
+                              <button onClick={() => updateStatus(apt.id, 'pending')} disabled={updatingId === apt.id} className="px-2 py-1 bg-blue-50 text-[#10b981] rounded text-xs hover:bg-blue-100 transition-all border border-[#e0e0e0] disabled:opacity-50">
                                 Reopen
                               </button>
                             )}
@@ -2107,11 +2156,11 @@ function AdminDashboard({ setCurrentPage }) {
                         <div
                           key={day}
                           className={`min-h-[80px] p-1 rounded-0 border ${isBlocked ? 'bg-red-50 border-red-200' :
-                            isToday ? 'bg-yellow-50 border-[#0f62fe]' :
+                            isToday ? 'bg-yellow-50 border-[#10b981]' :
                               'bg-white border-blue-100'
                             }`}
                         >
-                          <div className={`text-sm font-medium mb-1 ${isToday ? 'text-[#0f62fe]' : 'text-gray-600'}`}>
+                          <div className={`text-sm font-medium mb-1 ${isToday ? 'text-[#10b981]' : 'text-gray-600'}`}>
                             {day}
                           </div>
                           {isBlocked && (
@@ -2167,7 +2216,7 @@ function AdminDashboard({ setCurrentPage }) {
                     </div>
                     <button
                       onClick={fetchReports}
-                      className="px-4 py-2 bg-[#0f62fe] text-white rounded-0 font-medium text-sm"
+                      className="px-4 py-2 bg-[#10b981] text-white rounded-0 font-medium text-sm"
                     >
                       Generate Report
                     </button>
@@ -2210,7 +2259,7 @@ function AdminDashboard({ setCurrentPage }) {
                             <div className="flex items-center gap-3">
                               <div className="w-32 h-2 bg-blue-50 rounded-full overflow-hidden">
                                 <div
-                                  className="h-full bg-[#0f62fe]"
+                                  className="h-full bg-[#10b981]"
                                   style={{ width: `${(item.count / reportStats.totals.total) * 100}%` }}
                                 />
                               </div>
@@ -2227,7 +2276,7 @@ function AdminDashboard({ setCurrentPage }) {
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                         {reportStats.hourly?.map((item, idx) => (
                           <div key={idx} className="bg-blue-50 rounded-0 p-3 text-center">
-                            <p className="text-[#0f62fe] font-medium">{item.time}</p>
+                            <p className="text-[#10b981] font-medium">{item.time}</p>
                             <p className="text-gray-500 text-sm">{item.count} bookings</p>
                           </div>
                         ))}
@@ -2243,7 +2292,7 @@ function AdminDashboard({ setCurrentPage }) {
                 <h3 className="text-3xl font-light uppercase tracking-tight">Customer Satisfaction Measurement</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                   {[
-                    { label: 'Overall CSAT', val: (csmStats?.excellentPercent || '0') + '%', color: '#0f62fe' },
+                    { label: 'Overall CSAT', val: (csmStats?.excellentPercent || '0') + '%', color: '#10b981' },
                     { label: 'Total Responses', val: csmStats?.totalResponses || '0', color: '#161616' },
                     { label: 'Net Promoter Score', val: (csmStats?.nps || '0'), color: '#24a148' }
                   ].map(stat => (
@@ -2255,14 +2304,14 @@ function AdminDashboard({ setCurrentPage }) {
                 </div>
 
                 <div className="bg-[#f4f4f4] p-12 border border-[#e0e0e0]">
-                  <h4 className="text-sm font-bold uppercase mb-8 tracking-widest text-[#0f62fe]">Service Quality Dimensions (ARTA Standards)</h4>
+                  <h4 className="text-sm font-bold uppercase mb-8 tracking-widest text-[#10b981]">Service Quality Dimensions (ARTA Standards)</h4>
                   <div className="space-y-4">
                     {csmStats?.sqdAverages && Object.entries(csmStats.sqdAverages).map(([q, val]) => (
                       <div key={q} className="flex items-center justify-between p-4 bg-white border border-[#e0e0e0]">
                         <span className="text-xs uppercase font-bold text-[#525252]">{q}</span>
                         <div className="flex items-center space-x-4">
                           <div className="w-64 h-2 bg-[#e0e0e0]">
-                            <div className="h-full bg-[#0f62fe]" style={{ width: `${(parseFloat(val) || 0) * 20}%` }}></div>
+                            <div className="h-full bg-[#10b981]" style={{ width: `${(parseFloat(val) || 0) * 20}%` }}></div>
                           </div>
                           <span className="text-sm font-bold">{val} / 5.00</span>
                         </div>
@@ -2325,7 +2374,7 @@ function AdminDashboard({ setCurrentPage }) {
                     <button
                       onClick={handleReschedule}
                       disabled={!newDate || !newTime || isRescheduling}
-                      className="flex-1 py-3 bg-[#0f62fe] text-white font-semibold rounded-0 hover:bg-[#465a8f] transition-all disabled:opacity-50"
+                      className="flex-1 py-3 bg-[#10b981] text-white font-semibold rounded-0 hover:bg-[#465a8f] transition-all disabled:opacity-50"
                     >
                       {isRescheduling ? 'Saving...' : 'Save Changes'}
                     </button>
@@ -2542,7 +2591,7 @@ const MyAppointment = ({ token: initialToken }) => {
                 </div>
                 <div>
                   <p className="text-[10px] font-bold text-[#666] uppercase tracking-widest mb-1">Status</p>
-                   <p className="font-bold text-[#0f62fe] uppercase text-xs">{appointment.status}</p>
+                   <p className="font-bold text-[#10b981] uppercase text-xs">{appointment.status}</p>
                 </div>
               </div>
               <div>
@@ -2618,7 +2667,7 @@ const MyAppointment = ({ token: initialToken }) => {
                         </div>
                         <div className="flex items-center gap-3">
                           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none">Plate</p>
-                          <p className="text-xs font-black text-[#0f62fe] uppercase leading-none">{trackingData.plate_number || '---'}</p>
+                          <p className="text-xs font-black text-[#10b981] uppercase leading-none">{trackingData.plate_number || '---'}</p>
                         </div>
                       </div>
                     </div>
@@ -2652,7 +2701,7 @@ const MyAppointment = ({ token: initialToken }) => {
     <div className="max-w-md mx-auto py-20 px-4">
       <div className="bg-white border border-[#1c1917] p-8 shadow-xl">
         <h2 className="text-2xl font-black text-[#1c1917] mb-6 uppercase tracking-tighter italic">Track Order</h2>
-        <p className="text-[10px] text-[#0f62fe] font-black mb-4 uppercase tracking-[2px]">Customer Lookup</p>
+        <p className="text-[10px] text-[#10b981] font-black mb-4 uppercase tracking-[2px]">Customer Lookup</p>
         <p className="text-xs text-[#666] mb-8 leading-relaxed uppercase tracking-wide">Enter your <strong>Email</strong> and <strong>Reference ID</strong> (sent to your contact) to track your driver in real-time.</p>
 
         <form onSubmit={handleLookup} className="space-y-6">
@@ -2709,13 +2758,13 @@ function Header({ currentPage, setCurrentPage, searchQuery, setSearchQuery }) {
           <h1 className="text-xl font-bold uppercase tracking-tight cursor-pointer" onClick={() => setCurrentPage('home')}>Service<span className="font-light">Box</span></h1>
           <nav className="hidden lg:flex items-center space-x-1">
             {tabs.map(t => (
-              <button key={t.id} onClick={() => setCurrentPage(t.id)} className={`px-4 py-6 text-sm font-medium transition-all border-b-2 ${currentPage === t.id ? 'border-[#0f62fe] text-white' : 'border-transparent text-[#c6c6c6] hover:text-white'}`}>{t.label}</button>
+              <button key={t.id} onClick={() => setCurrentPage(t.id)} className={`px-4 py-6 text-sm font-medium transition-all border-b-2 ${currentPage === t.id ? 'border-[#10b981] text-white' : 'border-transparent text-[#c6c6c6] hover:text-white'}`}>{t.label}</button>
             ))}
           </nav>
         </div>
         <div className="flex items-center space-x-4">
           <button onClick={() => { localStorage.setItem('adminActiveTab', 'settings'); setCurrentPage('admin'); }} className="p-2 hover:bg-[#262626]"><Settings className="w-5 h-5 text-[#c6c6c6]" /></button>
-          <button onClick={() => setCurrentPage('queue-teller')} className="bg-[#0f62fe] px-4 py-2 text-sm font-medium hover:bg-[#0353e9]">LOG IN</button>
+          <button onClick={() => setCurrentPage('queue-teller')} className="bg-[#10b981] px-4 py-2 text-sm font-medium hover:bg-[#0353e9]">LOG IN</button>
         </div>
       </div>
       <div className="w-full h-[30px] bg-[#161616] flex items-center px-8 border-b border-[#393939]">
@@ -2729,44 +2778,12 @@ function Header({ currentPage, setCurrentPage, searchQuery, setSearchQuery }) {
 function HomePage({ setCurrentPage }) {
   return (
     <div>
-      {/* Hero Section */}
-      <section className="relative overflow-hidden bg-white border-b border-[#e0e0e0]">
-        <div className="relative min-h-[70vh] flex items-center">
-          {/* Subtle Background */}
-          <div className="absolute inset-0 bg-[#f4f4f4]"></div>
-
-          <div className="relative z-10 max-w-[1584px] mx-auto px-8 w-full py-24">
-            <div className="max-w-3xl">
-              <span className="inline-block px-4 py-1 bg-[#0f62fe] text-white text-[10px] font-bold uppercase tracking-[2px] mb-8">
-                Welcome to King's Tourist and Transport Services!
-              </span>
-              <h1 className="text-6xl lg:text-8xl font-light text-[#161616] mb-8 leading-[1.05] tracking-tighter">
-                Your Gateway to Land and Sea <br />
-                <span className="text-[#0f62fe]">Adventure.</span>
-              </h1>
-              <p className="text-xl text-[#525252] mb-12 max-w-xl leading-relaxed font-light">
-                Discover the beauty of every destination with KINGS affordable, convenient, and ready on demand transport service.
-              </p>
-              <div className="flex flex-wrap gap-4">
-                <a href="#booking-section" className="carbon-btn-primary px-10 py-4 font-bold uppercase tracking-widest text-[12px] flex items-center gap-3">
-                  Book Appointment
-                  <ArrowRight className="w-5 h-5" />
-                </a>
-                <button onClick={() => setCurrentPage('queue')} className="bg-white border border-[#161616] text-[#161616] px-10 py-4 font-bold uppercase tracking-widest text-[12px] hover:bg-[#161616] hover:text-white transition-all">
-                  Live Queue Status
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* Booking Form Section */}
-      <section id="booking-section" className="bg-[#f4f4f4] py-24 lg:py-32">
+      <section className="bg-[#f4f4f4] py-12 lg:py-20">
         <div className="max-w-[1584px] mx-auto px-8">
-          <div className="mb-16">
-            <h2 className="text-4xl font-light text-[#161616] uppercase tracking-tighter">Booking Engine</h2>
-            <p className="text-[#525252] mt-2">Complete the steps below to schedule your clinical visit.</p>
+          <div className="mb-12">
+            <h2 className="text-5xl font-light text-[#161616] uppercase tracking-tighter italic">Booking Engine</h2>
+            <p className="text-[#525252] mt-2 text-sm uppercase tracking-widest font-bold opacity-60">Complete the steps below to schedule your visit</p>
           </div>
           <AppointmentForm />
         </div>
@@ -2784,7 +2801,7 @@ function HomePage({ setCurrentPage }) {
             ].map((s, i) => (
               <div key={i} className="bg-[#f4f4f4] p-10 border-r border-b border-[#e0e0e0] hover:bg-white transition-colors group">
                 <div className="text-4xl font-mono text-[#161616] mb-2 tracking-tight">{s.val}</div>
-                <div className="text-[12px] text-[#525252] uppercase font-bold tracking-[0.32px] group-hover:text-[#0f62fe] transition-colors">{s.label}</div>
+                <div className="text-[12px] text-[#525252] uppercase font-bold tracking-[0.32px] group-hover:text-[#10b981] transition-colors">{s.label}</div>
               </div>
             ))}
           </div>
@@ -2807,13 +2824,13 @@ function HomePage({ setCurrentPage }) {
                   Enterprise-grade queuing and scheduling solution built for modern medical facilities. Corporate precision in every interaction.
                 </p>
                 <div className="flex space-x-2 mt-8">
-                  <a href="#" className="w-10 h-10 bg-[#262626] hover:bg-[#0f62fe] flex items-center justify-center text-white transition-all">
+                  <a href="#" className="w-10 h-10 bg-[#262626] hover:bg-[#10b981] flex items-center justify-center text-white transition-all">
                     <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" /></svg>
                   </a>
-                  <a href="#" className="w-10 h-10 bg-[#262626] hover:bg-[#0f62fe] flex items-center justify-center text-white transition-all">
+                  <a href="#" className="w-10 h-10 bg-[#262626] hover:bg-[#10b981] flex items-center justify-center text-white transition-all">
                     <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" /></svg>
                   </a>
-                  <a href="#" className="w-10 h-10 bg-[#262626] hover:bg-[#0f62fe] flex items-center justify-center text-white transition-all">
+                  <a href="#" className="w-10 h-10 bg-[#262626] hover:bg-[#10b981] flex items-center justify-center text-white transition-all">
                     <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
                   </a>
                 </div>
@@ -2832,13 +2849,13 @@ function HomePage({ setCurrentPage }) {
                 <h4 className="text-[#f4f4f4] font-semibold mb-6 uppercase text-[12px] tracking-[0.32px]">Contact</h4>
                 <div className="text-[#c6c6c6] text-sm space-y-3">
                   <p className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-[#0f62fe]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 text-[#10b981]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                     </svg>
                     +63 927 623 0491
                   </p>
                   <p className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-[#0f62fe]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 text-[#10b981]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                     </svg>
                     rodge.tonacao@gmail.com
@@ -2861,8 +2878,8 @@ function HomePage({ setCurrentPage }) {
             <div className="border-t border-[#393939] mt-16 pt-8 text-center">
               <p className="text-[#6f6f6f] text-xs uppercase tracking-widest leading-loose">
                 2026 Roger Tonacao. ServiceBox | All rights reserved. |
-                <button onClick={() => setCurrentPage('my-appointment')} className="hover:text-[#0f62fe] transition-all ml-1">My Appointment</button> |
-                <button onClick={() => setCurrentPage('admin')} className="hover:text-[#0f62fe] transition-all ml-1">Admin</button>
+                <button onClick={() => setCurrentPage('my-appointment')} className="hover:text-[#10b981] transition-all ml-1">My Appointment</button> |
+                <button onClick={() => setCurrentPage('admin')} className="hover:text-[#10b981] transition-all ml-1">Admin</button>
               </p>
             </div>
           </div>
@@ -2921,12 +2938,12 @@ function MenuPage({ selectedCategory, setSelectedCategory, searchQuery, menuData
       {/* Hero Section */}
       <div className="relative py-16 px-8 text-center bg-gradient-to-b from-blue-700 to-blue-800">
         <div className="max-w-3xl mx-auto">
-          <span className="inline-block px-4 py-1 bg-[#0f62fe]/20 text-[#0f62fe] rounded-full text-sm font-medium mb-4">
+          <span className="inline-block px-4 py-1 bg-[#10b981]/20 text-[#10b981] rounded-full text-sm font-medium mb-4">
             Our Healthcare Services
           </span>
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight">
             Quality Care for Your
-            <span className="text-[#0f62fe]"> Well-being</span>
+            <span className="text-[#10b981]"> Well-being</span>
           </h1>
           <p className="text-blue-100 text-lg max-w-2xl mx-auto">
             Comprehensive healthcare services tailored to meet your needs. Scroll down to explore our services.
@@ -2934,7 +2951,7 @@ function MenuPage({ selectedCategory, setSelectedCategory, searchQuery, menuData
         </div>
         {/* Scroll indicator */}
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 animate-bounce">
-          <svg className="w-6 h-6 text-[#0f62fe]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-6 h-6 text-[#10b981]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
           </svg>
         </div>
@@ -2944,107 +2961,77 @@ function MenuPage({ selectedCategory, setSelectedCategory, searchQuery, menuData
       <div className="relative px-4 md:px-8 pb-32">
         {loadingServices ? (
           <div className="text-center py-16">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#0f62fe] mb-4"></div>
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#10b981] mb-4"></div>
             <p className="text-xl text-blue-700 font-medium">Loading services...</p>
           </div>
         ) : (
-          <div className="max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
             {services.map((service, index) => (
               <div
                 key={service.id}
-                className="sticky mb-4"
-                style={{
-                  top: `${160 + index * 20}px`,
-                  zIndex: index + 1
-                }}
+                className="group relative bg-white border border-gray-100 hover:border-[#10b981] transition-all duration-500 hover:shadow-[0_20px_50px_rgba(0,0,0,0.1)] flex flex-col"
               >
-                <div
-                  className={`bg-gradient-to-br ${deckColors[index % deckColors.length]} rounded-0 shadow-2xl overflow-hidden transform transition-all duration-300 hover:scale-[1.02]`}
-                  style={{
-                    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
-                  }}
-                >
-                  <div className="p-4 md:p-8">
-                    {/* Always horizontal: Icon LEFT, Text RIGHT */}
-                    <div className="flex flex-row items-start md:items-center gap-3 md:gap-6">
-                      {/* Icon - Left side */}
-                      <div className="flex-shrink-0">
-                        <div className="w-14 h-14 sm:w-16 sm:h-16 md:w-24 md:h-24 bg-white/80 force-circle flex items-center justify-center shadow-lg border-2 border-white">
-                          <span className="text-2xl sm:text-3xl md:text-5xl">
-                            {serviceIcons[service.name] || serviceIcons['default']}
-                          </span>
-                        </div>
-                        {/* Mobile card number under icon */}
-                        <div className="md:hidden mt-1 text-center">
-                          <span className="text-xs font-bold text-stone-500">
-                            #{String(index + 1).padStart(2, '0')}
-                          </span>
-                        </div>
-                      </div>
+                {/* Image/Icon Section */}
+                <div className="h-56 bg-gray-50 flex items-center justify-center relative overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/5 to-transparent"></div>
+                  <div className="w-32 h-32 bg-white/80 force-circle flex items-center justify-center shadow-xl border-4 border-white transform group-hover:scale-110 group-hover:rotate-3 transition-transform duration-500 z-10">
+                    <span className="text-6xl">
+                      {serviceIcons[service.name] || serviceIcons['default'] || '🏥'}
+                    </span>
+                  </div>
+                  {/* Category Badge */}
+                  <div className="absolute top-4 right-4 bg-[#10b981] text-white text-[9px] font-black uppercase tracking-widest px-3 py-1.5 shadow-lg">
+                    {service.category || 'General'}
+                  </div>
+                </div>
 
-                      {/* Content - Right side */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex flex-wrap items-center gap-1 sm:gap-2 md:gap-3 mb-1 md:mb-2">
-                          <h3 className="text-sm sm:text-base md:text-2xl font-bold text-blue-900 leading-tight">
-                            {service.name}
-                          </h3>
-                          <div className="flex justify-between items-start mb-4">
-                            <span className="text-2xl font-bold text-[#161616]">
-                              {service.category?.toUpperCase() === 'TRANSPORT' && (service.base_fare > 0)
-                                ? `PHP ${parseFloat(service.base_fare).toLocaleString()}`
-                                : service.price}
-                            </span>
-                            <span className="text-[10px] text-[#525252] font-medium uppercase tracking-widest bg-gray-100 px-2 py-1">
-                              {service.category?.toUpperCase() === 'TRANSPORT' ? 'Starts At' : (service.duration || '30m')}
-                            </span>
-                          </div>
-                          <span className="px-1.5 py-0.5 sm:px-2 sm:py-0.5 md:px-3 md:py-1 bg-blue-100 text-stone-700 rounded-full text-[10px] sm:text-xs md:text-sm font-medium">
-                            {service.duration}min
-                          </span>
-                        </div>
-                        <p className="text-stone-600 mb-2 md:mb-4 text-[11px] sm:text-xs md:text-base line-clamp-2">
-                          {service.description || 'Professional healthcare service.'}
-                          {service.category?.toUpperCase() === 'TRANSPORT' && (
-                            <span className="block mt-1 text-[10px] italic text-blue-800">
-                              *Final price confirmed upon distance calculation.
-                            </span>
-                          )}
-                        </p>
-                        <div className="flex flex-wrap items-center gap-2 md:gap-4">
-                          <div className="text-base sm:text-lg md:text-3xl font-bold text-blue-900">
-                            PHP {parseFloat(service.price).toLocaleString()}
-                          </div>
-                          <button
-                            onClick={() => document.getElementById('appointment-section')?.scrollIntoView({ behavior: 'smooth' })}
-                            className="px-2 py-1.5 sm:px-3 sm:py-2 md:px-6 md:py-3 bg-blue-700 text-white rounded-0 md:rounded-0 font-semibold hover:bg-blue-800 transition-all flex items-center gap-1 md:gap-2 shadow-lg text-[10px] sm:text-xs md:text-base"
-                          >
-                            <svg className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                            <span className="hidden sm:inline">Book Now</span>
-                            <span className="sm:hidden">Book</span>
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Card Number - Desktop only */}
-                      <div className="hidden md:flex flex-shrink-0 w-16 h-16 bg-blue-100 rounded-full items-center justify-center">
-                        <span className="text-2xl font-bold text-stone-700">
-                          {String(index + 1).padStart(2, '0')}
-                        </span>
-                      </div>
+                {/* Details Section */}
+                <div className="p-8 flex-1 flex flex-col">
+                  <div className="mb-6">
+                    <h3 className="text-xl font-black text-[#161616] uppercase tracking-tighter mb-2 group-hover:text-[#10b981] transition-colors leading-tight">
+                      {service.name}
+                    </h3>
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl font-black text-[#10b981]">
+                        {service.category?.toUpperCase() === 'TRANSPORT' && (service.base_fare > 0)
+                          ? `₱${parseFloat(service.base_fare).toLocaleString()}`
+                          : `₱${parseFloat(service.price).toLocaleString()}`}
+                      </span>
+                      <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+                        {service.category?.toUpperCase() === 'TRANSPORT' ? '/ Start' : `/ ${service.duration || '30m'}`}
+                      </span>
                     </div>
                   </div>
 
-                  {/* Bottom accent line */}
-                  <div className="h-1 bg-blue-200"></div>
+                  <p className="text-gray-500 text-xs leading-relaxed mb-8 line-clamp-3 font-medium italic opacity-70">
+                    {service.description || 'Professional healthcare service tailored to provide the highest level of care and precision.'}
+                  </p>
+
+                  <div className="mt-auto flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                      <Clock className="w-4 h-4 text-[#10b981]" />
+                      {service.duration || '30'} MIN
+                    </div>
+                    <button
+                      onClick={() => document.getElementById('appointment-section')?.scrollIntoView({ behavior: 'smooth' })}
+                      className="px-6 py-3 bg-[#161616] text-white text-[10px] font-black uppercase tracking-widest hover:bg-[#10b981] transition-all flex items-center gap-2 group/btn shadow-lg"
+                    >
+                      Book Now
+                      <ArrowRight className="w-3.5 h-3.5 group-hover/btn:translate-x-1 transition-transform" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Index Number */}
+                <div className="absolute -bottom-4 -left-4 w-12 h-12 bg-white border border-gray-100 flex items-center justify-center text-gray-200 font-black text-xl group-hover:text-[#10b981] transition-colors z-20 shadow-sm">
+                  {String(index + 1).padStart(2, '0')}
                 </div>
               </div>
             ))}
 
             {services.length === 0 && (
-              <div className="text-center py-16">
-                <p className="text-2xl text-gray-400">No services available</p>
+              <div className="col-span-full text-center py-32 border-2 border-dashed border-gray-100 bg-gray-50">
+                <p className="text-2xl text-gray-300 font-black uppercase tracking-widest">No services available</p>
               </div>
             )}
           </div>
@@ -3062,7 +3049,7 @@ function MenuPage({ selectedCategory, setSelectedCategory, searchQuery, menuData
           </p>
           <button
             onClick={() => document.getElementById('appointment-section')?.scrollIntoView({ behavior: 'smooth' })}
-            className="px-8 py-4 bg-[#0f62fe] text-white rounded-0 font-bold text-lg hover:bg-[#465a8f] transition-all shadow-lg hover:shadow-xl"
+            className="px-8 py-4 bg-[#10b981] text-white rounded-0 font-bold text-lg hover:bg-[#465a8f] transition-all shadow-lg hover:shadow-xl"
           >
             Schedule Now
           </button>
@@ -3665,7 +3652,7 @@ function CheckoutPage({ setCurrentPage, clearCart }) {
                       </div>
                       <div className="bg-white rounded-0 p-3 border border-blue-100">
                         <p className="text-xs text-gray-500 mb-1">Amount to transfer:</p>
-                        <p className="text-lg font-medium text-[#0f62fe]">Php {(getTotalPrice() + 4.99 + getTotalPrice() * 0.08).toFixed(2)}</p>
+                        <p className="text-lg font-medium text-[#10b981]">Php {(getTotalPrice() + 4.99 + getTotalPrice() * 0.08).toFixed(2)}</p>
                       </div>
                       <div className="text-xs text-gray-600 space-y-1">
                         <p className="font-medium">After transfer:</p>
@@ -4167,7 +4154,7 @@ function QueueAdminTab({ setCurrentPage }) {
                 <h3 className="text-sm font-semibold text-gray-700 mb-3">Timeliness</h3>
                 <div className="grid grid-cols-3 gap-4 mb-4">
                   <div className="text-center">
-                    <p className="text-2xl font-bold text-[#0f62fe]">{fmt(avgWait)}</p>
+                    <p className="text-2xl font-bold text-[#10b981]">{fmt(avgWait)}</p>
                     <p className="text-[10px] text-gray-400 uppercase tracking-wider">Avg Wait</p>
                   </div>
                   <div className="text-center">
@@ -4233,7 +4220,7 @@ function QueueAdminTab({ setCurrentPage }) {
       {/* Manual Batch Generation */}
       <div className="bg-white border border-[#e0e0e0] rounded-0 shadow-sm p-4 mb-6">
         <h3 className="text-gray-800 font-bold mb-4 flex items-center gap-2">
-          <svg className="w-5 h-5 text-[#0f62fe]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+          <svg className="w-5 h-5 text-[#10b981]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
           Manual Batch Ticket Generation
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
@@ -4283,7 +4270,7 @@ function QueueAdminTab({ setCurrentPage }) {
           </div>
           <button
             onClick={handleBatchGenerate}
-            className="w-full bg-[#0f62fe] text-white py-2 rounded-0 text-sm font-bold hover:bg-blue-700 transition-all uppercase tracking-wider"
+            className="w-full bg-[#10b981] text-white py-2 rounded-0 text-sm font-bold hover:bg-blue-700 transition-all uppercase tracking-wider"
           >
             Generate Range
           </button>
@@ -4303,7 +4290,7 @@ function QueueAdminTab({ setCurrentPage }) {
             <button onClick={() => window.open('/api/export/queue-tickets', '_blank')} className="bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1.5 rounded-0 text-sm font-medium transition-all border border-[#e0e0e0]">
               Export CSV
             </button>
-            <button onClick={fetchAll} className="text-[#0f62fe] hover:text-blue-800 text-sm transition-all">Refresh</button>
+            <button onClick={fetchAll} className="text-[#10b981] hover:text-blue-800 text-sm transition-all">Refresh</button>
           </div>
         </div>
         {tickets.length === 0 ? (
@@ -4311,7 +4298,7 @@ function QueueAdminTab({ setCurrentPage }) {
         ) : (
           <>
             {/* Table Header */}
-            <div className="hidden md:grid md:grid-cols-8 gap-3 px-4 py-3 bg-[#0f62fe] text-xs font-semibold text-white uppercase tracking-wider items-center">
+            <div className="hidden md:grid md:grid-cols-8 gap-3 px-4 py-3 bg-[#10b981] text-xs font-semibold text-white uppercase tracking-wider items-center">
               <span>Ticket</span>
               <span>Name</span>
               <span>Phone</span>
@@ -4366,7 +4353,7 @@ function QueueAdminTab({ setCurrentPage }) {
               value={newTypeName}
               onChange={e => setNewTypeName(e.target.value)}
               placeholder="Name"
-              className="flex-1 px-3 py-2 rounded-0 border border-[#e0e0e0] bg-blue-50 text-gray-800 text-sm placeholder-gray-400 focus:border-[#0f62fe] focus:outline-none"
+              className="flex-1 px-3 py-2 rounded-0 border border-[#e0e0e0] bg-blue-50 text-gray-800 text-sm placeholder-gray-400 focus:border-[#10b981] focus:outline-none"
             />
             <input
               type="text"
@@ -4374,9 +4361,9 @@ function QueueAdminTab({ setCurrentPage }) {
               onChange={e => setNewTypePrefix(e.target.value.toUpperCase().slice(0, 3))}
               placeholder="Prefix"
               maxLength={3}
-              className="w-20 px-3 py-2 rounded-0 border border-[#e0e0e0] bg-blue-50 text-gray-800 text-sm placeholder-gray-400 focus:border-[#0f62fe] focus:outline-none"
+              className="w-20 px-3 py-2 rounded-0 border border-[#e0e0e0] bg-blue-50 text-gray-800 text-sm placeholder-gray-400 focus:border-[#10b981] focus:outline-none"
             />
-            <button onClick={addTransactionType} className="bg-[#0f62fe] text-white px-4 py-2 rounded-0 font-semibold text-sm hover:bg-[#465a8f] transition-all">
+            <button onClick={addTransactionType} className="bg-[#10b981] text-white px-4 py-2 rounded-0 font-semibold text-sm hover:bg-[#465a8f] transition-all">
               Add
             </button>
           </div>
@@ -4404,7 +4391,7 @@ function QueueAdminTab({ setCurrentPage }) {
                           type="checkbox"
                           checked={assignedIds.includes(type.id)}
                           onChange={(e) => updateWindowAssignments(teller.id, type.id, e.target.checked)}
-                          className="w-3.5 h-3.5 rounded border-blue-300 text-[#0f62fe] focus:ring-blue-500"
+                          className="w-3.5 h-3.5 rounded border-blue-300 text-[#10b981] focus:ring-blue-500"
                         />
                         <span className="text-xs text-gray-600">{type.name}</span>
                       </label>
@@ -4421,9 +4408,9 @@ function QueueAdminTab({ setCurrentPage }) {
               value={newWindowName}
               onChange={e => setNewWindowName(e.target.value)}
               placeholder="Window name"
-              className="flex-1 px-3 py-2 rounded-0 border border-[#e0e0e0] bg-blue-50 text-gray-800 text-sm placeholder-gray-400 focus:border-[#0f62fe] focus:outline-none"
+              className="flex-1 px-3 py-2 rounded-0 border border-[#e0e0e0] bg-blue-50 text-gray-800 text-sm placeholder-gray-400 focus:border-[#10b981] focus:outline-none"
             />
-            <button onClick={addTeller} className="bg-[#0f62fe] text-white px-4 py-2 rounded-0 font-semibold text-sm hover:bg-[#465a8f] transition-all">
+            <button onClick={addTeller} className="bg-[#10b981] text-white px-4 py-2 rounded-0 font-semibold text-sm hover:bg-[#465a8f] transition-all">
               Add
             </button>
           </div>
@@ -4439,7 +4426,7 @@ function QueueAdminTab({ setCurrentPage }) {
             value={marqueeText}
             onChange={e => setMarqueeText(e.target.value)}
             placeholder="Enter scrolling text for the queue display..."
-            className="flex-1 px-3 py-2 rounded-0 border border-[#e0e0e0] bg-blue-50 text-gray-800 text-sm placeholder-gray-400 focus:border-[#0f62fe] focus:outline-none"
+            className="flex-1 px-3 py-2 rounded-0 border border-[#e0e0e0] bg-blue-50 text-gray-800 text-sm placeholder-gray-400 focus:border-[#10b981] focus:outline-none"
           />
           <button
             onClick={async () => {
@@ -4454,7 +4441,7 @@ function QueueAdminTab({ setCurrentPage }) {
               setMarqueeSaving(false);
             }}
             disabled={marqueeSaving}
-            className="bg-[#0f62fe] text-white px-4 py-2 rounded-0 font-semibold text-sm hover:bg-[#465a8f] transition-all disabled:opacity-50"
+            className="bg-[#10b981] text-white px-4 py-2 rounded-0 font-semibold text-sm hover:bg-[#465a8f] transition-all disabled:opacity-50"
           >
             {marqueeSaving ? 'Saving...' : 'Save'}
           </button>
@@ -4469,7 +4456,7 @@ function QueueAdminTab({ setCurrentPage }) {
           <select
             value={displayTemplate}
             onChange={(e) => setDisplayTemplate(e.target.value)}
-            className="flex-1 px-3 py-2 rounded-0 border border-[#e0e0e0] bg-blue-50 text-gray-800 text-sm focus:border-[#0f62fe] focus:outline-none"
+            className="flex-1 px-3 py-2 rounded-0 border border-[#e0e0e0] bg-blue-50 text-gray-800 text-sm focus:border-[#10b981] focus:outline-none"
           >
             <option value="template1">Template 1 - Classic</option>
             <option value="template2">Template 2 - Split Board</option>
@@ -4496,7 +4483,7 @@ function QueueAdminTab({ setCurrentPage }) {
               setTemplateSaving(false);
             }}
             disabled={templateSaving}
-            className="bg-[#0f62fe] text-white px-4 py-2 rounded-0 font-semibold text-sm hover:bg-[#465a8f] transition-all disabled:opacity-50"
+            className="bg-[#10b981] text-white px-4 py-2 rounded-0 font-semibold text-sm hover:bg-[#465a8f] transition-all disabled:opacity-50"
           >
             {templateSaving ? 'Saving...' : 'Set as Default'}
           </button>
@@ -4523,15 +4510,15 @@ function QueueAdminTab({ setCurrentPage }) {
               <div>
                 <label className="text-xs text-gray-500 block mb-1">Start Date</label>
                 <input type="date" value={reportStartDate} onChange={e => setReportStartDate(e.target.value)}
-                  className="px-3 py-2 rounded-0 border border-[#e0e0e0] bg-blue-50 text-gray-800 text-sm focus:border-[#0f62fe] focus:outline-none" />
+                  className="px-3 py-2 rounded-0 border border-[#e0e0e0] bg-blue-50 text-gray-800 text-sm focus:border-[#10b981] focus:outline-none" />
               </div>
               <div>
                 <label className="text-xs text-gray-500 block mb-1">End Date</label>
                 <input type="date" value={reportEndDate} onChange={e => setReportEndDate(e.target.value)}
-                  className="px-3 py-2 rounded-0 border border-[#e0e0e0] bg-blue-50 text-gray-800 text-sm focus:border-[#0f62fe] focus:outline-none" />
+                  className="px-3 py-2 rounded-0 border border-[#e0e0e0] bg-blue-50 text-gray-800 text-sm focus:border-[#10b981] focus:outline-none" />
               </div>
               <button onClick={fetchReport} disabled={reportLoading}
-                className="bg-[#0f62fe] text-white px-5 py-2 rounded-0 font-semibold text-sm hover:bg-[#465a8f] transition-all disabled:opacity-50">
+                className="bg-[#10b981] text-white px-5 py-2 rounded-0 font-semibold text-sm hover:bg-[#465a8f] transition-all disabled:opacity-50">
                 {reportLoading ? 'Loading...' : 'Generate Report'}
               </button>
               <button onClick={() => {
@@ -4586,7 +4573,7 @@ function QueueAdminTab({ setCurrentPage }) {
                   <div className="mb-6">
                     <h4 className="text-gray-800 font-bold text-sm mb-3 uppercase tracking-wider">By Transaction Type</h4>
                     <div className="bg-blue-50/50 rounded-0 overflow-hidden border border-[#e0e0e0]">
-                      <div className="grid grid-cols-3 gap-3 px-4 py-2 bg-[#0f62fe] text-xs font-semibold text-white uppercase tracking-wider">
+                      <div className="grid grid-cols-3 gap-3 px-4 py-2 bg-[#10b981] text-xs font-semibold text-white uppercase tracking-wider">
                         <span>Type</span>
                         <span className="text-center">Count</span>
                         <span className="text-right">Avg Wait</span>
@@ -4616,7 +4603,7 @@ function QueueAdminTab({ setCurrentPage }) {
                                 <span className="text-xs text-gray-500 w-12 text-right font-mono">{item.hour}:00</span>
                                 <div className="flex-1 bg-blue-100 rounded-full h-6 overflow-hidden">
                                   <div
-                                    className="bg-[#0f62fe] h-full rounded-full flex items-center justify-end pr-2 transition-all"
+                                    className="bg-[#10b981] h-full rounded-full flex items-center justify-end pr-2 transition-all"
                                     style={{ width: `${Math.max((item.count / maxCount) * 100, 8)}%` }}
                                   >
                                     <span className="text-white text-xs font-bold">{item.count}</span>
@@ -4636,7 +4623,7 @@ function QueueAdminTab({ setCurrentPage }) {
                   <div>
                     <h4 className="text-gray-800 font-bold text-sm mb-3 uppercase tracking-wider">Daily Breakdown</h4>
                     <div className="bg-blue-50/50 rounded-0 overflow-hidden border border-[#e0e0e0]">
-                      <div className="grid grid-cols-3 gap-3 px-4 py-2 bg-[#0f62fe] text-xs font-semibold text-white uppercase tracking-wider">
+                      <div className="grid grid-cols-3 gap-3 px-4 py-2 bg-[#10b981] text-xs font-semibold text-white uppercase tracking-wider">
                         <span>Date</span>
                         <span className="text-center">Total</span>
                         <span className="text-right">Completed</span>
@@ -4898,13 +4885,13 @@ function TripMonitoring({ trips, stats, riders, incidents, onRefresh }) {
       {/* OVERLAY LAYER 2: Sidebar Trip List (Draggable) */}
       <DraggableGlassPanel initialX={16} initialY={160} width="320px" height="calc(100% - 176px)">
         <div className="h-full bg-white/10 backdrop-blur-3xl border border-white/30 shadow-[0_8px_32px_0_rgba(31,38,135,0.2)] flex flex-col overflow-hidden">
-          <div className="p-4 border-b border-[#002d9c] flex justify-between items-center bg-[#0f62fe] text-white drag-handle shadow-md">
+          <div className="p-4 border-b border-[#002d9c] flex justify-between items-center bg-[#10b981] text-white drag-handle shadow-md">
             <div className="flex gap-1 pointer-events-auto">
               {['all', 'ongoing', 'sos'].map(m => (
                 <button 
                   key={m} 
                   onClick={() => setViewMode(m)}
-                  className={`px-3 py-1 text-[9px] font-bold uppercase tracking-widest border transition-all ${viewMode === m ? 'bg-white text-[#0f62fe] border-white' : 'bg-transparent text-white/80 border-white/30 hover:bg-white/20 hover:text-white'}`}
+                  className={`px-3 py-1 text-[9px] font-bold uppercase tracking-widest border transition-all ${viewMode === m ? 'bg-white text-[#10b981] border-white' : 'bg-transparent text-white/80 border-white/30 hover:bg-white/20 hover:text-white'}`}
                 >
                   {m}
                 </button>
@@ -4920,7 +4907,7 @@ function TripMonitoring({ trips, stats, riders, incidents, onRefresh }) {
               <div 
                 key={trip.id} 
                 onClick={() => setSelectedTripId(trip.id)}
-                className={`p-4 cursor-pointer transition-all border-l-4 ${selectedTripId === trip.id ? 'bg-[#0f62fe]/10 border-[#0f62fe]' : 'hover:bg-white/40 border-transparent'}`}
+                className={`p-4 cursor-pointer transition-all border-l-4 ${selectedTripId === trip.id ? 'bg-[#10b981]/10 border-[#10b981]' : 'hover:bg-white/40 border-transparent'}`}
               >
                 <div className="flex justify-between items-start mb-2">
                   <div>
@@ -4934,7 +4921,7 @@ function TripMonitoring({ trips, stats, riders, incidents, onRefresh }) {
                       <p className="truncate w-32">Rider: <span className="font-bold">{trip.rider_name || 'Unassigned'}</span></p>
                       <p className="opacity-60">{new Date(trip.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
                    </div>
-                   <button className="text-[#0f62fe] text-[9px] font-bold uppercase tracking-widest hover:underline">View</button>
+                   <button className="text-[#10b981] text-[9px] font-bold uppercase tracking-widest hover:underline">View</button>
                 </div>
               </div>
             ))}
@@ -5061,7 +5048,7 @@ function MonitoringMap({ trips, selectedTrip }) {
           const vType = (trip.vehicle_type || 'car').toLowerCase();
           const isSOS = trip.transport_status === 'sos';
           const isEnRoute = ['en_route', 'picked_up'].includes(trip.transport_status);
-          const iconColor = isSOS ? '#da1e28' : (trip.transport_status === 'picked_up' ? '#0891b2' : '#0f62fe');
+          const iconColor = isSOS ? '#da1e28' : (trip.transport_status === 'picked_up' ? '#0891b2' : '#10b981');
 
           if (isSOS || isEnRoute) {
              // Dynamic SVG based on vehicle type
@@ -5177,7 +5164,7 @@ function TripDetailOverlay({ trip, onClose }) {
   return (
     <div className="h-full bg-[#161616]/40 backdrop-blur-[40px] border border-white/20 shadow-2xl flex flex-col overflow-hidden pointer-events-auto">
       <div className="p-4 border-b border-white/10 flex justify-between items-center bg-[#161616]/60 text-white">
-        <h3 className="text-[10px] font-bold uppercase tracking-widest text-[#0f62fe]">Trip Intelligence</h3>
+        <h3 className="text-[10px] font-bold uppercase tracking-widest text-[#10b981]">Trip Intelligence</h3>
         <button onClick={onClose} className="p-1 hover:bg-white/10 rounded-full transition-colors"><X className="w-5 h-5" /></button>
       </div>
       
@@ -5185,7 +5172,7 @@ function TripDetailOverlay({ trip, onClose }) {
         {/* Passenger Info */}
         <section className="space-y-4">
           <div className="flex items-center gap-4">
-             <div className="w-12 h-12 bg-[#0f62fe] text-white flex items-center justify-center font-bold text-xl">
+             <div className="w-12 h-12 bg-[#10b981] text-white flex items-center justify-center font-bold text-xl">
                {trip.full_name?.charAt(0)}
              </div>
              <div>
@@ -5210,7 +5197,7 @@ function TripDetailOverlay({ trip, onClose }) {
           <h4 className="text-[10px] font-bold text-[#525252] uppercase tracking-widest border-b border-white/20 pb-2">Active Route</h4>
           <div className="space-y-4 border-l-2 border-gray-100 ml-2 pl-4">
             <div className="relative">
-              <div className="absolute -left-[21px] top-0 w-2 h-2 rounded-full border-2 border-[#0f62fe] bg-white"></div>
+              <div className="absolute -left-[21px] top-0 w-2 h-2 rounded-full border-2 border-[#10b981] bg-white"></div>
               <p className="text-[9px] font-bold text-gray-400 uppercase">Pickup Location</p>
               <p className="text-xs text-gray-700">{trip.pickup_location}</p>
             </div>
@@ -5248,7 +5235,7 @@ function TripDetailOverlay({ trip, onClose }) {
 
       <div className="p-6 border-t border-white/20 bg-white/40">
         <div className="grid grid-cols-2 gap-3">
-          <button className="py-3 px-4 border border-[#0f62fe] text-[#0f62fe] text-[9px] font-bold uppercase tracking-widest hover:bg-[#0f62fe] hover:text-white transition-all">Force Complete</button>
+          <button className="py-3 px-4 border border-[#10b981] text-[#10b981] text-[9px] font-bold uppercase tracking-widest hover:bg-[#10b981] hover:text-white transition-all">Force Complete</button>
           <button className={`py-3 px-4 text-white text-[9px] font-bold uppercase tracking-widest transition-all ${trip.transport_status === 'sos' ? 'bg-[#da1e28] hover:bg-red-700' : 'bg-gray-800 hover:bg-black'}`}>
             {trip.transport_status === 'sos' ? 'SOS RESPONSE' : 'SECURITY ALERT'}
           </button>
@@ -5347,7 +5334,7 @@ function DispatchMap({ trips, riders, selectedBooking }) {
        if (!lat || !lng) return;
 
        const isPending = !trip.rider_id;
-       const iconColor = isPending ? '#f1c21b' : '#0f62fe';
+       const iconColor = isPending ? '#f1c21b' : '#10b981';
        
        const iconHtml = `
          <div style="position: relative; width: 30px; height: 38px;">
@@ -5560,7 +5547,7 @@ function RideDispatch({ trips, stats, riders, onRefresh }) {
   if (!isReady) {
     return (
       <div className="h-full flex flex-col items-center justify-center bg-[#161616] gap-4">
-        <RefreshCw size={28} className="text-[#0f62fe] animate-spin" />
+        <RefreshCw size={28} className="text-[#10b981] animate-spin" />
         <p className="text-gray-500 text-xs uppercase tracking-widest font-bold">Loading Dispatch Module...</p>
       </div>
     );
@@ -5578,7 +5565,7 @@ function RideDispatch({ trips, stats, riders, onRefresh }) {
            <div className="w-[1px] h-8 bg-white/10" />
            <div className="flex flex-col">
               <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Ongoing</span>
-              <span className="text-xl font-bold text-[#0f62fe]">{trips.filter(t => t.rider_id && t.transport_status !== 'completed' && t.transport_status !== 'cancelled').length}</span>
+              <span className="text-xl font-bold text-[#10b981]">{trips.filter(t => t.rider_id && t.transport_status !== 'completed' && t.transport_status !== 'cancelled').length}</span>
            </div>
            <div className="w-[1px] h-8 bg-white/10" />
            <div className="flex flex-col">
@@ -5593,14 +5580,14 @@ function RideDispatch({ trips, stats, riders, onRefresh }) {
               <input 
                 type="text" 
                 placeholder="Search Booking ID / Passenger..." 
-                className="bg-white/5 border border-white/10 rounded-sm pl-9 pr-4 py-2 text-xs text-white focus:outline-none focus:border-[#0f62fe] w-64"
+                className="bg-white/5 border border-white/10 rounded-sm pl-9 pr-4 py-2 text-xs text-white focus:outline-none focus:border-[#10b981] w-64"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
            </div>
            <button 
              onClick={() => setIsCreatingBooking(true)}
-             className="bg-[#0f62fe] text-white px-4 py-2 text-[10px] font-bold uppercase tracking-widest hover:bg-[#0353e9] flex items-center gap-2"
+             className="bg-[#10b981] text-white px-4 py-2 text-[10px] font-bold uppercase tracking-widest hover:bg-[#0353e9] flex items-center gap-2"
            >
              <Plus size={14} /> Create Booking
            </button>
@@ -5630,7 +5617,7 @@ function RideDispatch({ trips, stats, riders, onRefresh }) {
                  <div className="w-3 h-3 rounded-full bg-[#f1c21b]" /> Pending Requests
               </div>
               <div className="flex items-center gap-2 text-[9px] font-bold text-gray-600 uppercase">
-                 <div className="w-3 h-3 rounded-full bg-[#0f62fe]" /> Active Trips
+                 <div className="w-3 h-3 rounded-full bg-[#10b981]" /> Active Trips
               </div>
            </div>
         </div>
@@ -5642,7 +5629,7 @@ function RideDispatch({ trips, stats, riders, onRefresh }) {
                  <button 
                    key={tab}
                    onClick={() => setActiveQueueTab(tab)}
-                   className={`flex-1 py-4 text-[10px] font-bold uppercase tracking-widest transition-all ${activeQueueTab === tab ? 'text-[#0f62fe] bg-white/5 border-b-2 border-[#0f62fe]' : 'text-gray-500 hover:text-white'}`}
+                   className={`flex-1 py-4 text-[10px] font-bold uppercase tracking-widest transition-all ${activeQueueTab === tab ? 'text-[#10b981] bg-white/5 border-b-2 border-[#10b981]' : 'text-gray-500 hover:text-white'}`}
                  >
                    {tab}
                  </button>
@@ -5660,11 +5647,11 @@ function RideDispatch({ trips, stats, riders, onRefresh }) {
                     {queueTrips.map(entry => (
                        <div 
                          key={entry.id} 
-                         className={`p-4 hover:bg-white/5 transition-colors cursor-pointer group ${selectedBooking?.id === entry.id ? 'bg-[#0f62fe]/10 border-l-4 border-[#0f62fe]' : ''}`}
+                         className={`p-4 hover:bg-white/5 transition-colors cursor-pointer group ${selectedBooking?.id === entry.id ? 'bg-[#10b981]/10 border-l-4 border-[#10b981]' : ''}`}
                          onClick={() => setSelectedBooking(entry)}
                        >
                           <div className="flex justify-between items-start mb-2">
-                             <span className="text-[10px] font-bold text-[#0f62fe] bg-[#0f62fe]/10 px-2 py-0.5">#{entry.id}</span>
+                             <span className="text-[10px] font-bold text-[#10b981] bg-[#10b981]/10 px-2 py-0.5">#{entry.id}</span>
                              <span className="text-[9px] text-gray-500">{entry.preferred_time}</span>
                           </div>
                           <h4 className="text-sm font-bold text-white mb-1">{entry.full_name}</h4>
@@ -5687,7 +5674,7 @@ function RideDispatch({ trips, stats, riders, onRefresh }) {
                                 </span>
                              </div>
                              <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button className="p-2 bg-white/5 hover:bg-[#0f62fe] text-white transition-colors"><ChevronRight size={14} /></button>
+                                <button className="p-2 bg-white/5 hover:bg-[#10b981] text-white transition-colors"><ChevronRight size={14} /></button>
                              </div>
                           </div>
                        </div>
@@ -5734,7 +5721,7 @@ function RideDispatch({ trips, stats, riders, onRefresh }) {
                <section className="space-y-4">
                   <div className="flex justify-between items-center border-b border-white/10 pb-2">
                      <h4 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Nearby Available Riders</h4>
-                     <button className="text-[10px] text-[#0f62fe] font-bold uppercase hover:underline">Auto Dispatch</button>
+                     <button className="text-[10px] text-[#10b981] font-bold uppercase hover:underline">Auto Dispatch</button>
                   </div>
                   <div className="space-y-3">
                      {(() => {
@@ -5995,16 +5982,16 @@ function GeofenceDashboard({ geofences, onEdit }) {
         <div className="flex gap-4 items-center">
            <div className="relative">
              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
-             <input type="text" placeholder="Search Zone Name..." className="pl-9 pr-4 py-2 bg-white border border-gray-300 text-sm focus:outline-none focus:border-[#0f62fe] w-64" />
+             <input type="text" placeholder="Search Zone Name..." className="pl-9 pr-4 py-2 bg-white border border-gray-300 text-sm focus:outline-none focus:border-[#10b981] w-64" />
            </div>
-           <select className="px-4 py-2 bg-white border border-gray-300 text-sm outline-none focus:border-[#0f62fe]">
+           <select className="px-4 py-2 bg-white border border-gray-300 text-sm outline-none focus:border-[#10b981]">
              <option>All Types</option>
              <option>Service Area</option>
              <option>Restricted Zone</option>
              <option>High Demand Zone</option>
              <option>Dispatch Zone</option>
            </select>
-           <select className="px-4 py-2 bg-white border border-gray-300 text-sm outline-none focus:border-[#0f62fe]">
+           <select className="px-4 py-2 bg-white border border-gray-300 text-sm outline-none focus:border-[#10b981]">
              <option>Status: All</option>
              <option>Active</option>
              <option>Inactive</option>
@@ -6042,7 +6029,7 @@ function GeofenceDashboard({ geofences, onEdit }) {
                   </div>
                 </td>
                 <td className="p-4 text-right space-x-2">
-                  <button onClick={() => onEdit(g)} className="text-[#0f62fe] hover:underline text-[10px] font-bold uppercase tracking-widest">Edit</button>
+                  <button onClick={() => onEdit(g)} className="text-[#10b981] hover:underline text-[10px] font-bold uppercase tracking-widest">Edit</button>
                   <button className="text-gray-400 hover:text-red-600 text-[10px] font-bold uppercase tracking-widest">Delete</button>
                 </td>
               </tr>
@@ -6084,9 +6071,9 @@ function GeofenceForm({ geofence, onCancel, onSave }) {
       const { type, data } = geofence.shapeData;
       let layer;
       if (type === 'polygon') {
-        layer = window.L.polygon(data, { color: '#0f62fe', fillOpacity: 0.2 });
+        layer = window.L.polygon(data, { color: '#10b981', fillOpacity: 0.2 });
       } else if (type === 'circle') {
-        layer = window.L.circle(data.center, { radius: data.radius, color: '#0f62fe', fillOpacity: 0.2 });
+        layer = window.L.circle(data.center, { radius: data.radius, color: '#10b981', fillOpacity: 0.2 });
       }
       if (layer) {
         drawnItems.current.addLayer(layer);
@@ -6147,14 +6134,14 @@ function GeofenceForm({ geofence, onCancel, onSave }) {
   const handleDrawPolygon = () => {
     if (!leafletMap.current || !window.L.Draw) return;
     new window.L.Draw.Polygon(leafletMap.current, {
-      shapeOptions: { color: '#0f62fe', fillOpacity: 0.2 }
+      shapeOptions: { color: '#10b981', fillOpacity: 0.2 }
     }).enable();
   };
 
   const handleDrawCircle = () => {
     if (!leafletMap.current || !window.L.Draw) return;
     new window.L.Draw.Circle(leafletMap.current, {
-      shapeOptions: { color: '#0f62fe', fillOpacity: 0.2 }
+      shapeOptions: { color: '#10b981', fillOpacity: 0.2 }
     }).enable();
   };
 
@@ -6185,7 +6172,7 @@ function GeofenceForm({ geofence, onCancel, onSave }) {
       <div className="lg:col-span-1 space-y-6">
         <div className="bg-white border border-[#e0e0e0] p-6 shadow-sm">
           <div className="flex items-center gap-2 mb-6">
-            <div className="w-8 h-8 bg-blue-100 text-[#0f62fe] flex items-center justify-center font-bold text-sm">1</div>
+            <div className="w-8 h-8 bg-blue-100 text-[#10b981] flex items-center justify-center font-bold text-sm">1</div>
             <h3 className="text-sm font-bold uppercase tracking-widest">Basic Information</h3>
           </div>
           <div className="space-y-4">
@@ -6195,7 +6182,7 @@ function GeofenceForm({ geofence, onCancel, onSave }) {
                 value={zoneName}
                 onChange={(e) => setZoneName(e.target.value)}
                 type="text" placeholder="e.g. Downtown Core" 
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:border-[#0f62fe]" 
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:border-[#10b981]" 
               />
             </div>
             <div>
@@ -6203,7 +6190,7 @@ function GeofenceForm({ geofence, onCancel, onSave }) {
               <select 
                 value={zoneType}
                 onChange={(e) => setZoneType(e.target.value)}
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:border-[#0f62fe]"
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:border-[#10b981]"
               >
                 <option>Service Area</option>
                 <option>Restricted Zone</option>
@@ -6216,7 +6203,7 @@ function GeofenceForm({ geofence, onCancel, onSave }) {
 
         <div className="bg-white border border-[#e0e0e0] p-6 shadow-sm">
           <div className="flex items-center gap-2 mb-6">
-            <div className="w-8 h-8 bg-blue-100 text-[#0f62fe] flex items-center justify-center font-bold text-sm">2</div>
+            <div className="w-8 h-8 bg-blue-100 text-[#10b981] flex items-center justify-center font-bold text-sm">2</div>
             <h3 className="text-sm font-bold uppercase tracking-widest">Rule Configuration</h3>
           </div>
           <div className="space-y-4">
@@ -6227,7 +6214,7 @@ function GeofenceForm({ geofence, onCancel, onSave }) {
                 <span className="font-bold">Inside Zone First</span>
               </div>
             </div>
-            <button className="w-full py-3 border border-dashed border-gray-300 text-gray-500 text-[10px] font-bold uppercase tracking-widest hover:border-[#0f62fe] hover:text-[#0f62fe] transition-all">
+            <button className="w-full py-3 border border-dashed border-gray-300 text-gray-500 text-[10px] font-bold uppercase tracking-widest hover:border-[#10b981] hover:text-[#10b981] transition-all">
               + Add New Rule
             </button>
           </div>
@@ -6235,7 +6222,7 @@ function GeofenceForm({ geofence, onCancel, onSave }) {
 
         <div className="flex gap-4">
           <button onClick={onCancel} className="flex-1 py-4 bg-gray-100 text-gray-600 text-xs font-bold uppercase tracking-widest hover:bg-gray-200 transition-all">Cancel</button>
-          <button onClick={handleSave} className="flex-1 py-4 bg-[#0f62fe] text-white text-xs font-bold uppercase tracking-widest hover:bg-[#0353e9] transition-all shadow-lg">Save Geofence</button>
+          <button onClick={handleSave} className="flex-1 py-4 bg-[#10b981] text-white text-xs font-bold uppercase tracking-widest hover:bg-[#0353e9] transition-all shadow-lg">Save Geofence</button>
         </div>
       </div>
 
@@ -6244,10 +6231,10 @@ function GeofenceForm({ geofence, onCancel, onSave }) {
         <div className="bg-white border border-[#e0e0e0] p-4 flex justify-between items-center shadow-sm">
           <div className="flex gap-2">
             <button onClick={handleDrawPolygon} className="px-4 py-2 bg-white border border-gray-300 text-[10px] font-bold uppercase tracking-widest hover:bg-gray-50 transition-colors flex items-center gap-2">
-              <div className="w-2 h-2 border border-[#0f62fe]"></div> Draw Polygon
+              <div className="w-2 h-2 border border-[#10b981]"></div> Draw Polygon
             </button>
             <button onClick={handleDrawCircle} className="px-4 py-2 bg-white border border-gray-300 text-[10px] font-bold uppercase tracking-widest hover:bg-gray-50 transition-colors flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full border border-[#0f62fe]"></div> Draw Circle
+              <div className="w-2 h-2 rounded-full border border-[#10b981]"></div> Draw Circle
             </button>
             <button onClick={handleClear} className="px-4 py-2 text-red-500 text-[10px] font-bold uppercase tracking-widest hover:bg-red-50 transition-colors">
               Clear Drawing
@@ -6304,7 +6291,7 @@ function GeofenceMonitoring({ geofences }) {
     geofences.forEach(g => {
       if (g.shapeData) {
         const { type, data } = g.shapeData;
-        let color = '#0f62fe'; // Default Blue
+        let color = '#10b981'; // Default Blue
         if (g.type === 'Restricted Zone') color = '#da1e28'; // Red
         if (g.type === 'High Demand Zone') color = '#f1c21b'; // Yellow
         if (g.type === 'Dispatch Zone') color = '#8a3ffc'; // Purple
@@ -6396,7 +6383,7 @@ function GeofenceSettings() {
         <div className="space-y-6">
           <div>
             <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Global Multiplier Cap</label>
-            <input type="number" defaultValue="3.0" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:border-[#0f62fe]" />
+            <input type="number" defaultValue="3.0" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:border-[#10b981]" />
           </div>
           <button className="w-full py-4 bg-[#161616] text-white text-xs font-bold uppercase tracking-widest hover:bg-black transition-all">Save System Settings</button>
         </div>
@@ -6441,7 +6428,7 @@ function GeofencingManagement() {
       <div className="p-6 bg-white border-b border-[#e0e0e0] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold text-[#161616] tracking-tight uppercase italic flex items-center gap-2">
-            <MapIcon size={24} className="text-[#0f62fe]" /> Geofencing Management
+            <MapIcon size={24} className="text-[#10b981]" /> Geofencing Management
           </h2>
           <p className="text-xs text-gray-500 font-medium uppercase tracking-widest mt-1">Operational Zone Strategy & Control</p>
         </div>
@@ -6454,7 +6441,7 @@ function GeofencingManagement() {
             <button
               key={tab.id}
               onClick={() => setActiveSubTab(tab.id)}
-              className={`px-4 py-2 text-[10px] font-bold uppercase tracking-widest border transition-all flex items-center gap-2 ${activeSubTab === tab.id ? 'bg-[#0f62fe] text-white border-[#0f62fe] shadow-md' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-100'}`}
+              className={`px-4 py-2 text-[10px] font-bold uppercase tracking-widest border transition-all flex items-center gap-2 ${activeSubTab === tab.id ? 'bg-[#10b981] text-white border-[#10b981] shadow-md' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-100'}`}
             >
               <tab.icon size={14} /> {tab.label}
             </button>
@@ -6527,7 +6514,7 @@ function SystemSettingsModule() {
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className={`w-full px-6 py-4 flex items-center gap-3 text-[11px] font-bold uppercase tracking-widest transition-all ${activeTab === item.id ? 'bg-white text-[#0f62fe] border-r-4 border-[#0f62fe]' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-800'}`}
+              className={`w-full px-6 py-4 flex items-center gap-3 text-[11px] font-bold uppercase tracking-widest transition-all ${activeTab === item.id ? 'bg-white text-[#10b981] border-r-4 border-[#10b981]' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-800'}`}
             >
               <item.icon size={16} />
               {item.label}
@@ -6560,7 +6547,7 @@ function SettingsSection({ title, subtitle, children, onSave }) {
       </div>
       {onSave && (
         <div className="pt-8 border-t border-[#e0e0e0] flex justify-end">
-          <button onClick={onSave} className="px-8 py-4 bg-[#0f62fe] text-white text-xs font-bold uppercase tracking-widest hover:bg-[#0353e9] transition-all shadow-lg">
+          <button onClick={onSave} className="px-8 py-4 bg-[#10b981] text-white text-xs font-bold uppercase tracking-widest hover:bg-[#0353e9] transition-all shadow-lg">
             Save Changes
           </button>
         </div>
@@ -6575,22 +6562,22 @@ function GeneralSettings() {
       <div className="grid grid-cols-2 gap-6">
         <div className="col-span-2">
           <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">System Name</label>
-          <input type="text" defaultValue="ServiceBox Enterprise" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:border-[#0f62fe]" />
+          <input type="text" defaultValue="ServiceBox Enterprise" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:border-[#10b981]" />
         </div>
         <div className="col-span-2">
           <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Company Name</label>
-          <input type="text" defaultValue="King's Tourist and Transport Services" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:border-[#0f62fe]" />
+          <input type="text" defaultValue="King's Tourist and Transport Services" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:border-[#10b981]" />
         </div>
         <div>
           <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Timezone</label>
-          <select className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:border-[#0f62fe]">
+          <select className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:border-[#10b981]">
             <option>(GMT+08:00) Manila, Philippines</option>
             <option>(GMT+00:00) UTC</option>
           </select>
         </div>
         <div>
           <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Default Language</label>
-          <select className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:border-[#0f62fe]">
+          <select className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:border-[#10b981]">
             <option>English (US)</option>
             <option>Filipino</option>
           </select>
@@ -6633,14 +6620,14 @@ function UserRolesSettings() {
                 <td className="px-6 py-4 text-center">{role.dispatch ? <Check size={16} className="mx-auto text-green-600" /> : <X size={16} className="mx-auto text-red-600" />}</td>
                 <td className="px-6 py-4 text-center">{role.reports ? <Check size={16} className="mx-auto text-green-600" /> : <X size={16} className="mx-auto text-red-600" />}</td>
                 <td className="px-6 py-4 text-right">
-                  <button className="text-[10px] font-bold text-[#0f62fe] uppercase hover:underline">Edit</button>
+                  <button className="text-[10px] font-bold text-[#10b981] uppercase hover:underline">Edit</button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <button className="w-full py-4 border border-dashed border-gray-300 text-gray-500 text-[10px] font-bold uppercase tracking-widest hover:border-[#0f62fe] hover:text-[#0f62fe] transition-all">
+      <button className="w-full py-4 border border-dashed border-gray-300 text-gray-500 text-[10px] font-bold uppercase tracking-widest hover:border-[#10b981] hover:text-[#10b981] transition-all">
         + Create New Custom Role
       </button>
     </SettingsSection>
@@ -6661,11 +6648,11 @@ function DispatchSettings() {
         <div className="grid grid-cols-2 gap-6">
           <div>
             <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Dispatch Timeout (seconds)</label>
-            <input type="number" defaultValue="30" className="w-full px-4 py-3 bg-white border border-gray-200 text-sm focus:outline-none focus:border-[#0f62fe]" />
+            <input type="number" defaultValue="30" className="w-full px-4 py-3 bg-white border border-gray-200 text-sm focus:outline-none focus:border-[#10b981]" />
           </div>
           <div>
             <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Max Search Radius (km)</label>
-            <input type="number" defaultValue="10" className="w-full px-4 py-3 bg-white border border-gray-200 text-sm focus:outline-none focus:border-[#0f62fe]" />
+            <input type="number" defaultValue="10" className="w-full px-4 py-3 bg-white border border-gray-200 text-sm focus:outline-none focus:border-[#10b981]" />
           </div>
         </div>
         <div className="space-y-4">
@@ -6696,12 +6683,12 @@ function GeofenceGlobalSettings() {
           { label: 'Restrict Pickups Outside Service Zone', desc: 'Prevent booking if pickup is in a restricted area', active: true },
           { label: 'Demand-Based Zones', desc: 'Enable dynamic zone resizing based on trip volume', active: false }
         ].map((item, i) => (
-          <div key={i} className="p-6 bg-white border border-[#e0e0e0] flex items-center justify-between group hover:border-[#0f62fe] transition-all">
+          <div key={i} className="p-6 bg-white border border-[#e0e0e0] flex items-center justify-between group hover:border-[#10b981] transition-all">
             <div>
-              <p className="text-sm font-bold text-[#161616] group-hover:text-[#0f62fe]">{item.label}</p>
+              <p className="text-sm font-bold text-[#161616] group-hover:text-[#10b981]">{item.label}</p>
               <p className="text-xs text-gray-500">{item.desc}</p>
             </div>
-            <div className={`w-12 h-6 ${item.active ? 'bg-[#0f62fe]' : 'bg-gray-200'} rounded-full relative transition-colors`}>
+            <div className={`w-12 h-6 ${item.active ? 'bg-[#10b981]' : 'bg-gray-200'} rounded-full relative transition-colors`}>
               <div className={`absolute ${item.active ? 'right-1' : 'left-1'} top-1 w-4 h-4 bg-white rounded-full shadow-sm`}></div>
             </div>
           </div>
@@ -6715,7 +6702,7 @@ function PricingFareSettings() {
   return (
     <SettingsSection title="Pricing & Fare Rules" subtitle="Configure Revenue Model and Surcharges" onSave={() => {}}>
       <div className="grid grid-cols-3 gap-6">
-        <div className="bg-[#f4f4f4] p-6 border-l-4 border-[#0f62fe]">
+        <div className="bg-[#f4f4f4] p-6 border-l-4 border-[#10b981]">
           <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Base Fare (â‚±)</label>
           <input type="number" defaultValue="45" className="w-full bg-transparent border-0 text-3xl font-light focus:outline-none" />
         </div>
@@ -6778,7 +6765,7 @@ function NotificationChannelSettings() {
         {channels.map((ch, i) => (
           <div key={i} className="bg-white border border-[#e0e0e0] p-6 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div className="flex items-center gap-4">
-              <div className={`w-10 h-10 ${ch.enabled ? 'bg-blue-100 text-[#0f62fe]' : 'bg-gray-100 text-gray-400'} flex items-center justify-center`}>
+              <div className={`w-10 h-10 ${ch.enabled ? 'bg-blue-100 text-[#10b981]' : 'bg-gray-100 text-gray-400'} flex items-center justify-center`}>
                 <Bell size={20} />
               </div>
               <div>
@@ -6789,7 +6776,7 @@ function NotificationChannelSettings() {
               </div>
             </div>
             <div className="flex items-center gap-4">
-              <button className="text-[10px] font-bold uppercase text-[#0f62fe] hover:underline">Configure</button>
+              <button className="text-[10px] font-bold uppercase text-[#10b981] hover:underline">Configure</button>
               <div className={`w-10 h-5 ${ch.enabled ? 'bg-green-500' : 'bg-gray-300'} rounded-full relative transition-colors`}>
                 <div className={`absolute ${ch.enabled ? 'right-1' : 'left-1'} top-0.5 w-4 h-4 bg-white rounded-full`}></div>
               </div>
@@ -6822,11 +6809,11 @@ function PaymentWalletSettings() {
             <div className="space-y-4">
               <div>
                 <label className="block text-[10px] text-gray-400 uppercase mb-1">Minimum Balance (â‚±)</label>
-                <input type="number" defaultValue="50" className="w-full border-b border-gray-200 py-2 focus:outline-none focus:border-[#0f62fe] font-bold" />
+                <input type="number" defaultValue="50" className="w-full border-b border-gray-200 py-2 focus:outline-none focus:border-[#10b981] font-bold" />
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-xs">Auto-deduct Fare</span>
-                <div className="w-10 h-5 bg-[#0f62fe] rounded-full relative"><div className="absolute right-1 top-0.5 w-4 h-4 bg-white rounded-full"></div></div>
+                <div className="w-10 h-5 bg-[#10b981] rounded-full relative"><div className="absolute right-1 top-0.5 w-4 h-4 bg-white rounded-full"></div></div>
               </div>
             </div>
           </div>
@@ -6835,14 +6822,14 @@ function PaymentWalletSettings() {
             <div className="space-y-4">
               <div>
                 <label className="block text-[10px] text-gray-400 uppercase mb-1">Frequency</label>
-                <select className="w-full border-b border-gray-200 py-2 focus:outline-none focus:border-[#0f62fe] font-bold bg-transparent">
+                <select className="w-full border-b border-gray-200 py-2 focus:outline-none focus:border-[#10b981] font-bold bg-transparent">
                   <option>Daily at 12:00 AM</option>
                   <option>Weekly (Mondays)</option>
                 </select>
               </div>
               <div>
                 <label className="block text-[10px] text-gray-400 uppercase mb-1">Min Payout (â‚±)</label>
-                <input type="number" defaultValue="1000" className="w-full border-b border-gray-200 py-2 focus:outline-none focus:border-[#0f62fe] font-bold" />
+                <input type="number" defaultValue="1000" className="w-full border-b border-gray-200 py-2 focus:outline-none focus:border-[#10b981] font-bold" />
               </div>
             </div>
           </div>
@@ -6877,7 +6864,7 @@ function IntegrationAPISettings() {
           <div className="border border-[#e0e0e0] bg-white divide-y divide-[#f4f4f4]">
             {['booking.created', 'trip.completed', 'payment.received'].map(event => (
               <div key={event} className="p-4 flex justify-between items-center">
-                <span className="text-xs font-mono text-[#0f62fe] font-bold">{event}</span>
+                <span className="text-xs font-mono text-[#10b981] font-bold">{event}</span>
                 <span className="text-[10px] text-gray-400 font-medium italic">https://api.kingstours.com/v1/webhook</span>
               </div>
             ))}
@@ -6902,11 +6889,11 @@ function SecuritySettings() {
         <div className="grid grid-cols-2 gap-6 mt-8">
           <div className="p-6 bg-gray-50 border border-gray-100">
             <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Session Timeout (minutes)</label>
-            <input type="number" defaultValue="60" className="w-full px-4 py-3 bg-white border border-gray-200 text-sm focus:outline-none focus:border-[#0f62fe]" />
+            <input type="number" defaultValue="60" className="w-full px-4 py-3 bg-white border border-gray-200 text-sm focus:outline-none focus:border-[#10b981]" />
           </div>
           <div className="p-6 bg-gray-50 border border-gray-100">
             <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">IP Whitelisting</label>
-            <input type="text" placeholder="e.g. 192.168.1.1, 10.0.0.1" className="w-full px-4 py-3 bg-white border border-gray-200 text-sm focus:outline-none focus:border-[#0f62fe]" />
+            <input type="text" placeholder="e.g. 192.168.1.1, 10.0.0.1" className="w-full px-4 py-3 bg-white border border-gray-200 text-sm focus:outline-none focus:border-[#10b981]" />
           </div>
         </div>
         <div className="p-6 border border-[#e0e0e0] flex items-center justify-between">
@@ -6914,7 +6901,7 @@ function SecuritySettings() {
              <p className="text-sm font-bold text-[#161616]">End-to-End Encryption</p>
              <p className="text-xs text-gray-500">Encrypt all customer and trip data at rest</p>
            </div>
-           <div className="w-12 h-6 bg-[#0f62fe] rounded-full relative"><div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div></div>
+           <div className="w-12 h-6 bg-[#10b981] rounded-full relative"><div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div></div>
         </div>
       </div>
     </SettingsSection>
@@ -6932,7 +6919,7 @@ function LogsAuditTrail() {
   return (
     <SettingsSection title="Logs & Audit Trail" subtitle="Traceable History of All Administrative Actions">
       <div className="flex gap-4 mb-6">
-        <input type="text" placeholder="Search logs..." className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 text-xs focus:outline-none focus:border-[#0f62fe]" />
+        <input type="text" placeholder="Search logs..." className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 text-xs focus:outline-none focus:border-[#10b981]" />
         <button className="px-6 py-3 bg-[#161616] text-white text-[10px] font-bold uppercase tracking-widest hover:bg-black transition-all flex items-center gap-2">
           <Download size={14} /> Export CSV
         </button>
@@ -6953,7 +6940,7 @@ function LogsAuditTrail() {
                 <td className="px-6 py-4 text-xs font-mono text-gray-500">{log.time}</td>
                 <td className="px-6 py-4 text-xs font-bold text-gray-800">{log.user}</td>
                 <td className="px-6 py-4 text-xs font-medium text-gray-600">{log.action}</td>
-                <td className="px-6 py-4 text-xs font-black uppercase text-[#0f62fe]">{log.module}</td>
+                <td className="px-6 py-4 text-xs font-black uppercase text-[#10b981]">{log.module}</td>
               </tr>
             ))}
           </tbody>
@@ -7003,12 +6990,12 @@ function BackupRestoreSettings() {
       <div className="bg-gray-900 text-white p-10 shadow-2xl relative overflow-hidden">
         <div className="relative z-10">
           <div className="flex items-center gap-4 mb-6">
-            <Database size={32} className="text-[#0f62fe]" />
+            <Database size={32} className="text-[#10b981]" />
             <h4 className="text-2xl font-bold tracking-tight uppercase italic">Secure Cloud Backup</h4>
           </div>
           <p className="text-gray-400 text-sm max-w-lg mb-8 leading-relaxed">Your entire system state (config, bookings, riders, and logs) is automatically backed up every 24 hours to our encrypted secure vault.</p>
           <div className="flex flex-wrap gap-4">
-            <button className="px-8 py-4 bg-[#0f62fe] text-white text-[10px] font-black uppercase tracking-[2px] hover:bg-[#0353e9] transition-all flex items-center gap-2 shadow-lg">
+            <button className="px-8 py-4 bg-[#10b981] text-white text-[10px] font-black uppercase tracking-[2px] hover:bg-[#0353e9] transition-all flex items-center gap-2 shadow-lg">
               <Download size={16} /> Run Manual Backup
             </button>
             <button className="px-8 py-4 border border-white/20 text-white text-[10px] font-black uppercase tracking-[2px] hover:bg-white/10 transition-all flex items-center gap-2">
@@ -7016,7 +7003,7 @@ function BackupRestoreSettings() {
             </button>
           </div>
         </div>
-        <div className="absolute top-0 right-0 w-64 h-64 bg-[#0f62fe] opacity-10 rounded-full -mr-32 -mt-32"></div>
+        <div className="absolute top-0 right-0 w-64 h-64 bg-[#10b981] opacity-10 rounded-full -mr-32 -mt-32"></div>
       </div>
       <div className="mt-10">
         <h4 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-4">Historical Backup Points</h4>
@@ -7031,7 +7018,7 @@ function BackupRestoreSettings() {
                 <span className="text-xs font-mono font-bold text-gray-800">{b.date}</span>
                 <span className="text-[9px] bg-gray-100 px-2 py-0.5 text-gray-500 font-bold uppercase">{b.type}</span>
               </div>
-              <span className="text-xs font-bold text-[#0f62fe]">{b.size}</span>
+              <span className="text-xs font-bold text-[#10b981]">{b.size}</span>
             </div>
           ))}
         </div>

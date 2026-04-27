@@ -477,7 +477,7 @@ app.post('/api/appointments', async (req, res) => {
       [preferredDate, preferredTime]
     );
 
-    if (overlapCheck.rows.length > 0) {
+    if (overlapCheck.rows.length > 0 && agentCode !== 'DISPATCHER') {
       return res.status(409).json({
         success: false,
         message: `Sorry, the time slot ${preferredTime} on ${preferredDate} is already booked. Please choose a different time.`
@@ -2571,11 +2571,6 @@ app.get('/api/corporate-accounts', async (req, res) => {
     res.status(500).json({ success: false });
   }
 });
-  } catch (error) {
-    console.error('Error fetching corporate accounts:', error);
-    res.status(500).json({ success: false });
-  }
-});
 
 app.post('/api/corporate-accounts', async (req, res) => {
   try {
@@ -2626,11 +2621,11 @@ app.delete('/api/corporate-accounts/:id', async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 });
-  } catch (error) {
-    console.error('Error creating corporate account:', error);
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
+
+
+
+
+
 
 // Queue CSV Export
 app.get('/api/export/queue-tickets', async (req, res) => {
@@ -3204,13 +3199,15 @@ const initClinicSettings = async () => {
       category VARCHAR(100),
       base_fare DECIMAL(10, 2) DEFAULT 0,
       per_km_rate DECIMAL(10, 2) DEFAULT 0,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
 
   // Migration for existing table
   await pool.query(`ALTER TABLE booking_services ADD COLUMN IF NOT EXISTS base_fare DECIMAL(10, 2) DEFAULT 0`);
   await pool.query(`ALTER TABLE booking_services ADD COLUMN IF NOT EXISTS per_km_rate DECIMAL(10, 2) DEFAULT 0`);
+  await pool.query(`ALTER TABLE booking_services ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`);
 
   // Rider Tracking Table
   await pool.query(`
@@ -3279,6 +3276,17 @@ const initClinicSettings = async () => {
     await pool.query(`
       INSERT INTO riders (name, username, password, phone, status, vehicle_type, plate_number) 
       VALUES ('Demo Rider', 'rider1', 'rider123', '09123456789', 'online', 'Luxury White Van', 'KNG-1234')
+    `);
+  }
+
+  // Seed Transport Services if they don't exist
+  const sCheck = await pool.query("SELECT COUNT(*) FROM booking_services WHERE category ILIKE 'TRANSPORT'");
+  if (parseInt(sCheck.rows[0].count) === 0) {
+    await pool.query(`
+      INSERT INTO booking_services (name, category, duration, price, base_fare, per_km_rate) VALUES
+      ('Standard', 'TRANSPORT', 'Flexible', 'Varies', 50.00, 15.00),
+      ('Car', 'TRANSPORT', 'Flexible', 'Varies', 100.00, 25.00),
+      ('Luxury Van', 'TRANSPORT', 'Flexible', 'Varies', 250.00, 45.00)
     `);
   }
 
