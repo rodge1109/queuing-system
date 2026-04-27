@@ -169,7 +169,7 @@ const TransportMapBase = ({ onLocationSelect, mapAction }) => {
     };
   }, []);
 
-  return <div ref={mapRef} className="h-64 md:h-80 w-full border border-[#e0e0e0] z-0" />;
+  return <div ref={mapRef} className="h-96 md:h-[450px] w-full border border-[#e0e0e0] z-0" />;
 };
 
 const TransportMap = React.memo(TransportMapBase);

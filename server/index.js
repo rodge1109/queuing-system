@@ -198,6 +198,11 @@ const initMessagingTables = async () => {
     )
   `);
   await pool.query(`ALTER TABLE staff_pm ADD COLUMN IF NOT EXISTS attachment_url TEXT`);
+  await pool.query(`ALTER TABLE staff_pm ADD COLUMN IF NOT EXISTS attachment_name TEXT`);
+  await pool.query(`ALTER TABLE staff_pm ADD COLUMN IF NOT EXISTS attachment_mime TEXT`);
+  await pool.query(`ALTER TABLE staff_pm ALTER COLUMN message DROP NOT NULL`);
+
+  // Corporate Accounts table
   await pool.query(`
     CREATE TABLE IF NOT EXISTS corporate_accounts (
       id SERIAL PRIMARY KEY,
@@ -212,9 +217,10 @@ const initMessagingTables = async () => {
       created_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
-  await pool.query(`ALTER TABLE staff_pm ADD COLUMN IF NOT EXISTS attachment_name TEXT`);
-  await pool.query(`ALTER TABLE staff_pm ADD COLUMN IF NOT EXISTS attachment_mime TEXT`);
-  await pool.query(`ALTER TABLE staff_pm ALTER COLUMN message DROP NOT NULL`);
+
+  // Add corporate_account_id to appointments if not exists
+  await pool.query(`ALTER TABLE appointments ADD COLUMN IF NOT EXISTS corporate_account_id INTEGER REFERENCES corporate_accounts(id)`);
+  await pool.query(`ALTER TABLE appointments ADD COLUMN IF NOT EXISTS payment_method TEXT DEFAULT 'cash'`);
 };
 
 initMessagingTables().catch(err => console.error('Messaging table init error:', err));
@@ -244,6 +250,9 @@ const applyTemplate = (template, vars) => {
     .replace(/{clinic_name}/g, vars.clinic_name || '')
     .replace(/{address}/g,     vars.address     || '')
     .replace(/{phone}/g,       vars.phone       || '')
+    .replace(/{primary_color}/g, vars.primary_color || '#10b981')
+    .replace(/{accent_color}/g, vars.accent_color  || '#E4FE7B')
+    .replace(/{font_family}/g,  vars.font_family   || 'Arial, sans-serif')
     .replace(/{old_date}/g,    vars.old_date    || '')
     .replace(/{old_time}/g,    vars.old_time    || '');
 };
@@ -306,96 +315,112 @@ const sendSMS = async (phoneNumber, message) => {
 // ==================== DEFAULT EMAIL TEMPLATES ====================
 
 const DEFAULT_CONFIRMATION_HTML = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: #1c1917; padding: 20px; text-align: center;">
-          <h1 style="color: #E4FE7B; margin: 0;">{clinic_name}</h1>
+      <div style="font-family: {font_family}; max-width: 600px; margin: 0 auto; padding: 20px; color: #161616;">
+        <div style="background: {primary_color}; padding: 30px; text-align: center;">
+          <h1 style="color: {accent_color}; margin: 0; font-size: 28px; text-transform: uppercase; letter-spacing: 2px;">{clinic_name}</h1>
         </div>
-        <div style="padding: 30px; background: #f5f5f5;">
-          <h2 style="color: #1c1917;">Appointment Confirmed!</h2>
+        <div style="padding: 40px; background: #ffffff; border: 1px solid #e0e0e0; border-top: none;">
+          <h2 style="color: {primary_color}; margin-top: 0; font-size: 22px;">Appointment Confirmed!</h2>
           <p>Dear <strong>{name}</strong>,</p>
           <p>Your appointment has been successfully booked. Here are your details:</p>
-          <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <p><strong>Service:</strong> {service}</p>
-            <p><strong>Date:</strong> {date}</p>
-            <p><strong>Time:</strong> {time}</p>
-            <p><strong>Reference ID:</strong> #{ref}</p>
+          <div style="background: #f4f4f4; padding: 25px; border-left: 4px solid {primary_color}; margin: 30px 0;">
+            <p style="margin: 5px 0;"><strong>Service:</strong> {service}</p>
+            <p style="margin: 5px 0;"><strong>Date:</strong> {date}</p>
+            <p style="margin: 5px 0;"><strong>Time:</strong> {time}</p>
+            <p style="margin: 5px 0;"><strong>Reference ID:</strong> #{ref}</p>
           </div>
-          <p style="color: #666;">Please arrive 10 minutes before your scheduled time.</p>
-          <div style="margin: 25px 0; text-align: center;">
-            <a href="{cancel_url}" style="display: inline-block; padding: 12px 24px; background: #dc2626; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">
-              Cancel Appointment
+          <p style="color: #666; font-size: 14px;">Please arrive 10 minutes before your scheduled time.</p>
+          <div style="margin: 40px 0; text-align: center;">
+            <a href="{cancel_url}" style="display: inline-block; padding: 15px 30px; background: {primary_color}; color: {accent_color}; text-decoration: none; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; font-size: 13px;">
+              Manage Appointment
             </a>
           </div>
-          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;">
-            <p style="color: #888; font-size: 12px;">{clinic_name}<br>{address}<br>Phone: {phone}</p>
+          <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #eeeeee;">
+            <p style="color: #999; font-size: 11px; line-height: 1.6;">
+              {clinic_name}<br>
+              {address}<br>
+              Phone: {phone}
+            </p>
           </div>
         </div>
       </div>`;
 
 const DEFAULT_CANCELLATION_HTML = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: #1c1917; padding: 20px; text-align: center;">
-          <h1 style="color: #E4FE7B; margin: 0;">{clinic_name}</h1>
+      <div style="font-family: {font_family}; max-width: 600px; margin: 0 auto; padding: 20px; color: #161616;">
+        <div style="background: #dc2626; padding: 30px; text-align: center;">
+          <h1 style="color: #ffffff; margin: 0; font-size: 28px; text-transform: uppercase; letter-spacing: 2px;">{clinic_name}</h1>
         </div>
-        <div style="padding: 30px; background: #f5f5f5;">
-          <h2 style="color: #dc2626;">Appointment Cancelled</h2>
+        <div style="padding: 40px; background: #ffffff; border: 1px solid #e0e0e0; border-top: none;">
+          <h2 style="color: #dc2626; margin-top: 0; font-size: 22px;">Appointment Cancelled</h2>
           <p>Dear <strong>{name}</strong>,</p>
           <p>Your appointment has been successfully cancelled. Here were the details:</p>
-          <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; opacity: 0.7;">
-            <p style="text-decoration: line-through;"><strong>Service:</strong> {service}</p>
-            <p style="text-decoration: line-through;"><strong>Date:</strong> {date}</p>
-            <p style="text-decoration: line-through;"><strong>Time:</strong> {time}</p>
-            <p><strong>Reference ID:</strong> #{ref}</p>
+          <div style="background: #f4f4f4; padding: 25px; border-left: 4px solid #dc2626; margin: 30px 0; opacity: 0.7;">
+            <p style="text-decoration: line-through; margin: 5px 0;"><strong>Service:</strong> {service}</p>
+            <p style="text-decoration: line-through; margin: 5px 0;"><strong>Date:</strong> {date}</p>
+            <p style="text-decoration: line-through; margin: 5px 0;"><strong>Time:</strong> {time}</p>
+            <p style="margin: 5px 0;"><strong>Reference ID:</strong> #{ref}</p>
           </div>
-          <p style="color: #666;">If you need to book a new appointment, please visit our website or contact us.</p>
-          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;">
-            <p style="color: #888; font-size: 12px;">{clinic_name}<br>{address}<br>Phone: {phone}</p>
+          <p style="color: #666; font-size: 14px;">If you need to book a new appointment, please visit our website or contact us.</p>
+          <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #eeeeee;">
+            <p style="color: #999; font-size: 11px; line-height: 1.6;">
+              {clinic_name}<br>
+              {address}<br>
+              Phone: {phone}
+            </p>
           </div>
         </div>
       </div>`;
 
 const DEFAULT_RESCHEDULE_HTML = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: #1c1917; padding: 20px; text-align: center;">
-          <h1 style="color: #E4FE7B; margin: 0;">{clinic_name}</h1>
+      <div style="font-family: {font_family}; max-width: 600px; margin: 0 auto; padding: 20px; color: #161616;">
+        <div style="background: {primary_color}; padding: 30px; text-align: center;">
+          <h1 style="color: {accent_color}; margin: 0; font-size: 28px; text-transform: uppercase; letter-spacing: 2px;">{clinic_name}</h1>
         </div>
-        <div style="padding: 30px; background: #f5f5f5;">
-          <h2 style="color: #1c1917;">Appointment Rescheduled</h2>
+        <div style="padding: 40px; background: #ffffff; border: 1px solid #e0e0e0; border-top: none;">
+          <h2 style="color: {primary_color}; margin-top: 0; font-size: 22px;">Appointment Rescheduled</h2>
           <p>Dear <strong>{name}</strong>,</p>
           <p>Your appointment has been rescheduled. Here are your new details:</p>
-          <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <p><strong>Service:</strong> {service}</p>
-            <p><strong>New Date:</strong> {date}</p>
-            <p><strong>New Time:</strong> {time}</p>
-            <p style="color: #888; text-decoration: line-through;">Previous: {old_date} at {old_time}</p>
-            <p><strong>Reference ID:</strong> #{ref}</p>
+          <div style="background: #f4f4f4; padding: 25px; border-left: 4px solid {primary_color}; margin: 30px 0;">
+            <p style="margin: 5px 0;"><strong>Service:</strong> {service}</p>
+            <p style="margin: 5px 0;"><strong>New Date:</strong> {date}</p>
+            <p style="margin: 5px 0;"><strong>New Time:</strong> {time}</p>
+            <p style="color: #888; text-decoration: line-through; font-size: 12px; margin: 10px 0 0 0;">Previous: {old_date} at {old_time}</p>
+            <p style="margin: 5px 0;"><strong>Reference ID:</strong> #{ref}</p>
           </div>
-          <p style="color: #666;">Please arrive 10 minutes before your scheduled time.</p>
-          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;">
-            <p style="color: #888; font-size: 12px;">{clinic_name}<br>{address}<br>Phone: {phone}</p>
+          <p style="color: #666; font-size: 14px;">Please arrive 10 minutes before your scheduled time.</p>
+          <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #eeeeee;">
+            <p style="color: #999; font-size: 11px; line-height: 1.6;">
+              {clinic_name}<br>
+              {address}<br>
+              Phone: {phone}
+            </p>
           </div>
         </div>
       </div>`;
 
 const DEFAULT_REMINDER_HTML = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: #1c1917; padding: 20px; text-align: center;">
-          <h1 style="color: #E4FE7B; margin: 0;">{clinic_name}</h1>
+      <div style="font-family: {font_family}; max-width: 600px; margin: 0 auto; padding: 20px; color: #161616;">
+        <div style="background: {primary_color}; padding: 30px; text-align: center;">
+          <h1 style="color: {accent_color}; margin: 0; font-size: 28px; text-transform: uppercase; letter-spacing: 2px;">{clinic_name}</h1>
         </div>
-        <div style="padding: 30px; background: #f5f5f5;">
-          <h2 style="color: #1c1917;">Appointment Reminder</h2>
+        <div style="padding: 40px; background: #ffffff; border: 1px solid #e0e0e0; border-top: none;">
+          <h2 style="color: {primary_color}; margin-top: 0; font-size: 22px;">Appointment Reminder</h2>
           <p>Dear <strong>{name}</strong>,</p>
           <p>This is a friendly reminder that you have an appointment <strong>tomorrow</strong>.</p>
-          <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <p><strong>Service:</strong> {service}</p>
-            <p><strong>Date:</strong> {date}</p>
-            <p><strong>Time:</strong> {time}</p>
-            <p><strong>Reference ID:</strong> #{ref}</p>
+          <div style="background: #f4f4f4; padding: 25px; border-left: 4px solid {primary_color}; margin: 30px 0;">
+            <p style="margin: 5px 0;"><strong>Service:</strong> {service}</p>
+            <p style="margin: 5px 0;"><strong>Date:</strong> {date}</p>
+            <p style="margin: 5px 0;"><strong>Time:</strong> {time}</p>
+            <p style="margin: 5px 0;"><strong>Reference ID:</strong> #{ref}</p>
           </div>
-          <p style="color: #666;">Please arrive 10 minutes before your scheduled time.</p>
-          <p style="color: #666;">If you need to cancel or reschedule, please contact us as soon as possible.</p>
-          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;">
-            <p style="color: #888; font-size: 12px;">{clinic_name}<br>{address}<br>Phone: {phone}</p>
+          <p style="color: #666; font-size: 14px;">Please arrive 10 minutes before your scheduled time.</p>
+          <p style="color: #666; font-size: 14px;">If you need to cancel or reschedule, please contact us as soon as possible.</p>
+          <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #eeeeee;">
+            <p style="color: #999; font-size: 11px; line-height: 1.6;">
+              {clinic_name}<br>
+              {address}<br>
+              Phone: {phone}
+            </p>
           </div>
         </div>
       </div>`;
@@ -412,15 +437,33 @@ const makeVars = (appointment, cancelUrl = '') => ({
   clinic_name: getSetting('clinic_name', 'HealthCare Clinic'),
   address:     getSetting('clinic_address', 'Cantecson, Gairan, Bogo City, Cebu'),
   phone:       getSetting('clinic_phone', '+63 912 345 6789'),
+  primary_color: getSetting('email_primary_color', '#10b981'),
+  accent_color:  getSetting('email_accent_color', '#E4FE7B'),
+  font_family:   getSetting('email_font_family', 'Arial, sans-serif'),
 });
 
 // Function to send confirmation email
 const sendConfirmationEmail = async (appointment) => {
   const cancelUrl = `${FRONTEND_URL}?page=my-appointment&token=${appointment.cancel_token}`;
   const vars = makeVars(appointment, cancelUrl);
+
+  // Dynamic transporter based on settings
+  let activeTransporter = transporter;
+  const customHost = getSetting('email_smtp_host');
+  if (customHost) {
+    activeTransporter = nodemailer.createTransport({
+      host: customHost,
+      port: parseInt(getSetting('email_smtp_port', '587')),
+      auth: {
+        user: getSetting('email_smtp_user'),
+        pass: getSetting('email_smtp_pass')
+      }
+    });
+  }
+
   try {
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
+    await activeTransporter.sendMail({
+      from: `"${getSetting('clinic_name', 'HealthCare Clinic')}" <${getSetting('email_smtp_user', process.env.EMAIL_USER)}>`,
       to: appointment.email,
       subject: applyTemplate(getSetting('email_confirmation_subject', 'Appointment Confirmation - {clinic_name}'), vars),
       html:    applyTemplate(getSetting('email_confirmation_body',    DEFAULT_CONFIRMATION_HTML), vars),
@@ -432,11 +475,6 @@ const sendConfirmationEmail = async (appointment) => {
     return false;
   }
 };
-
-// Health check endpoint
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Server is running' });
-});
 
 // Create a new appointment
 app.post('/api/appointments', async (req, res) => {
@@ -457,7 +495,9 @@ app.post('/api/appointments', async (req, res) => {
       pickupLng,
       destLat,
       destLng,
-      totalAmount
+      totalAmount,
+      paymentMethod,
+      corporateAccountNumber
     } = req.body;
 
     // Validate required fields
@@ -466,6 +506,26 @@ app.post('/api/appointments', async (req, res) => {
         success: false,
         message: 'Please fill in all required fields'
       });
+    }
+
+    // Corporate Account Logic
+    let corporateAccountId = null;
+    if (paymentMethod === 'corporate' && corporateAccountNumber) {
+      const corpResult = await pool.query(
+        "SELECT id, balance, credit_limit FROM corporate_accounts WHERE account_number = $1 AND status = 'active'",
+        [corporateAccountNumber]
+      );
+      if (corpResult.rows.length === 0) {
+        return res.status(400).json({ success: false, message: 'Invalid or inactive corporate account' });
+      }
+      const account = corpResult.rows[0];
+      const amount = parseFloat(totalAmount || 0);
+      if (parseFloat(account.balance) + amount > parseFloat(account.credit_limit)) {
+        return res.status(400).json({ success: false, message: 'Corporate account credit limit exceeded' });
+      }
+      corporateAccountId = account.id;
+      // Update balance
+      await pool.query('UPDATE corporate_accounts SET balance = balance + $1 WHERE id = $2', [amount, corporateAccountId]);
     }
 
     // Check for overlapping appointments (same date and time)
@@ -494,9 +554,9 @@ app.post('/api/appointments', async (req, res) => {
         preferred_time, notes, cancel_token, specialist_id, agent_code, 
         pickup_location, destination_location,
         pickup_lat, pickup_lng, dest_lat, dest_lng,
-        total_amount
+        total_amount, corporate_account_id, payment_method
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
       RETURNING *
     `;
 
@@ -517,7 +577,9 @@ app.post('/api/appointments', async (req, res) => {
       pickupLng || null,
       destLat || null,
       destLng || null,
-      totalAmount || 0
+      totalAmount || 0,
+      corporateAccountId,
+      paymentMethod || 'cash'
     ];
     const result = await pool.query(query, values);
 
@@ -544,11 +606,10 @@ app.post('/api/appointments', async (req, res) => {
   }
 });
 
-// Get available time slots for a specific date
+// Get available time slots for a date
 app.get('/api/available-slots', async (req, res) => {
   try {
     const { date } = req.query;
-
     if (!date) {
       return res.status(400).json({
         success: false,
@@ -740,6 +801,81 @@ app.patch('/api/appointments/:id', async (req, res) => {
       success: false,
       message: 'Failed to update appointment'
     });
+  }
+});
+
+
+// Get all corporate accounts
+app.get('/api/corporate-accounts', async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT * FROM corporate_accounts ORDER BY company_name ASC');
+    res.json({ success: true, accounts: rows });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to fetch corporate accounts' });
+  }
+});
+
+// Create corporate account
+app.post('/api/corporate-accounts', async (req, res) => {
+  try {
+    const { account_number, company_name, contact_person, contact_email, contact_phone, credit_limit } = req.body;
+    const { rows } = await pool.query(
+      `INSERT INTO corporate_accounts (account_number, company_name, contact_person, contact_email, contact_phone, credit_limit)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [account_number, company_name, contact_person, contact_email, contact_phone, credit_limit || 0]
+    );
+    res.json({ success: true, account: rows[0] });
+  } catch (error) {
+    if (error.code === '23505') return res.status(400).json({ success: false, message: 'Account number already exists' });
+    res.status(500).json({ success: false, message: 'Failed to create corporate account' });
+  }
+});
+
+// Update corporate account
+app.put('/api/corporate-accounts/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { company_name, contact_person, contact_email, contact_phone, credit_limit, balance, status } = req.body;
+    
+    const { rows } = await pool.query(
+      `UPDATE corporate_accounts 
+       SET company_name = COALESCE($1, company_name),
+           contact_person = COALESCE($2, contact_person),
+           contact_email = COALESCE($3, contact_email),
+           contact_phone = COALESCE($4, contact_phone),
+           credit_limit = COALESCE($5, credit_limit),
+           balance = COALESCE($6, balance),
+           status = COALESCE($7, status)
+       WHERE id = $8 RETURNING *`,
+      [company_name, contact_person, contact_email, contact_phone, credit_limit, balance, status, id]
+    );
+    res.json({ success: true, account: rows[0] });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to update corporate account' });
+  }
+});
+
+// Delete corporate account
+app.delete('/api/corporate-accounts/:id', async (req, res) => {
+  try {
+    await pool.query('DELETE FROM corporate_accounts WHERE id = $1', [req.params.id]);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to delete corporate account' });
+  }
+});
+
+// Get appointments for a specific corporate account (for billing)
+app.get('/api/corporate-accounts/:id/appointments', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rows } = await pool.query(
+      'SELECT * FROM appointments WHERE corporate_account_id = $1 ORDER BY preferred_date DESC',
+      [id]
+    );
+    res.json({ success: true, appointments: rows });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to fetch appointments' });
   }
 });
 

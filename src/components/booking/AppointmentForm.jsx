@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   ShoppingCart, Search, Settings, Check, ChevronRight, ChevronLeft, 
-  MapPin, Clock, Phone, Mail, Star, Store, CreditCard, Lock, ArrowRight, User 
+  MapPin, Clock, Phone, Mail, Star, Store, CreditCard, Lock, ArrowRight, User, Calendar, Users
 } from 'lucide-react';
 import TransportMap from '../maps/TransportMap';
 
@@ -195,7 +195,8 @@ function AppointmentForm() {
         serviceType: selectedService?.name,
         specialistId: selectedStaff?.id,
         totalAmount: fees.total,
-        paymentMethod
+        paymentMethod,
+        corporateAccountNumber: formData.corporateAccountNumber
       };
 
       const response = await fetch('/api/appointments', {
@@ -229,23 +230,93 @@ function AppointmentForm() {
 
   if (confirmedAppointment) {
     return (
-      <div className="bg-white p-8 border border-gray-200 shadow-sm text-center animate-fadeIn">
-        <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
-          <Check size={40} />
-        </div>
-        <h3 className="text-3xl font-bold text-gray-900 mb-2 uppercase tracking-tighter">Booking Confirmed!</h3>
-        <p className="text-gray-500 mb-8">Your appointment has been successfully scheduled. A confirmation email has been sent to {formData.email}.</p>
-        
-        <div className="bg-gray-50 p-6 mb-8 text-left space-y-3">
-          <div className="flex justify-between text-sm"><span className="text-gray-500">Service:</span><span className="font-bold">{selectedService?.name}</span></div>
-          <div className="flex justify-between text-sm"><span className="text-gray-500">Date:</span><span className="font-bold">{formData.preferredDate}</span></div>
-          <div className="flex justify-between text-sm"><span className="text-gray-500">Time:</span><span className="font-bold text-[#0f62fe]">{formData.preferredTime}</span></div>
-          <div className="flex justify-between text-sm border-t border-gray-200 pt-3"><span className="text-gray-500">Order ID:</span><span className="font-mono font-bold">#{confirmedAppointment.id}</span></div>
+      <div className="bg-white border border-gray-100 shadow-2xl animate-fadeIn max-w-2xl mx-auto overflow-hidden">
+        {/* Success Header */}
+        <div className="bg-gradient-to-br from-[#24a148] to-[#1e8a3d] p-12 text-center text-white relative overflow-hidden">
+           <div className="relative z-10">
+              <div className="text-white flex items-center justify-center mx-auto mb-6 animate-bounceIn">
+                <Check size={64} strokeWidth={4} />
+              </div>
+              <h3 className="text-4xl font-black uppercase tracking-tighter mb-3">Booking Secured!</h3>
+              <p className="text-green-50 text-sm font-medium uppercase tracking-[3px] opacity-80">Reference ID: #{confirmedAppointment.id}</p>
+           </div>
+           {/* Abstract shapes */}
+           <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/5 rounded-full blur-2xl"></div>
+           <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-black/5 rounded-full blur-2xl"></div>
         </div>
 
-        <button onClick={() => window.location.reload()} className="carbon-btn-primary px-10 py-4 font-bold uppercase tracking-widest text-[12px]">
-          Book Another Appointment
-        </button>
+        {/* Confirmation Content */}
+        <div className="p-10 space-y-10">
+          <div className="text-center">
+            <p className="text-gray-500 text-lg font-medium leading-relaxed max-w-md mx-auto">
+              Your appointment is locked in. A detailed confirmation has been dispatched to <span className="text-[#24a148] font-bold">{formData.email}</span>.
+            </p>
+          </div>
+
+          {/* Receipt-style Details */}
+          <div className="bg-gray-50 border-2 border-dashed border-gray-200 p-8 relative">
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-white px-4 py-1 text-[9px] font-black text-gray-400 uppercase tracking-widest border border-gray-100">Official Booking Receipt</div>
+            
+            <div className="space-y-6">
+               <div className="flex justify-between items-center pb-4 border-b border-gray-200/50">
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Service Item</p>
+                    <p className="text-xl font-bold text-gray-900 uppercase tracking-tighter">{selectedService?.name}</p>
+                  </div>
+                  <div className="text-right space-y-1">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Assigned Specialist</p>
+                    <p className="text-sm font-bold text-gray-800">{selectedStaff?.name}</p>
+                  </div>
+               </div>
+
+               <div className="grid grid-cols-2 gap-8">
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Appointment Date</p>
+                    <p className="text-base font-bold text-gray-900">
+                      {formData.preferredDate ? new Date(formData.preferredDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '---'}
+                    </p>
+                  </div>
+                  <div className="space-y-1 text-right">
+                    <p className="text-[10px] font-black text-[#24a148] uppercase tracking-widest">Scheduled Time</p>
+                    <p className="text-2xl font-black text-[#24a148]">{formData.preferredTime}</p>
+                  </div>
+               </div>
+
+               <div className="pt-6 border-t border-gray-200 flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-[#24a148] rounded-full animate-pulse"></div>
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Payment Status: {paymentMethod === 'local' ? 'Pending (Pay at Clinic)' : 'Paid / Authorized'}</span>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Total Amount</p>
+                    <p className="text-2xl font-black text-gray-900 font-mono">₱{calculateFees().total.toFixed(2)}</p>
+                  </div>
+               </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-4 pt-4">
+             <button 
+              onClick={() => window.location.reload()} 
+              className="flex-1 py-5 bg-[#161616] text-white text-[12px] font-black uppercase tracking-[3px] hover:bg-black transition-all shadow-xl active:scale-95"
+             >
+               Book Another
+             </button>
+             <button 
+              onClick={() => window.print()} 
+              className="flex-1 py-5 border-2 border-gray-200 text-gray-900 text-[12px] font-black uppercase tracking-[3px] hover:bg-gray-50 transition-all active:scale-95 flex items-center justify-center gap-3"
+             >
+               Print Receipt
+             </button>
+          </div>
+
+          <div className="text-center">
+             <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest opacity-60">
+               Please arrive 15 minutes before your scheduled time. 
+               <br />Thank you for choosing our services!
+             </p>
+          </div>
+        </div>
       </div>
     );
   }
@@ -620,102 +691,193 @@ function AppointmentForm() {
         )}
 
         {step === 'summary' && (
-          <div className="animate-fadeIn">
-            <h3 className="text-3xl font-light text-[#161616] mb-8 uppercase tracking-tighter">Your Booking Summary</h3>
-
-            <div className="flex flex-col md:flex-row border border-[#e0e0e0] mb-8">
-              <div className="flex-1 p-6 border-b md:border-b-0 md:border-r border-[#e0e0e0]">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-[9px] font-bold text-[#525252] uppercase tracking-[2px]">Service</span>
-                  <span className="p-2 bg-green-50 text-[#24a148] rounded-full">{selectedService?.icon}</span>
-                </div>
-                <div className="text-xl font-bold text-[#161616] leading-tight mb-1 uppercase italic tracking-tighter">{selectedService?.name}</div>
-                <div className="text-[11px] text-[#525252] font-medium uppercase tracking-widest">By {selectedStaff?.name}</div>
-              </div>
-              <div className="flex-1 p-6">
-                <div className="text-[9px] font-bold text-[#525252] uppercase tracking-[2px] mb-4 text-center md:text-left">Date & Time</div>
-                <div className="text-lg font-medium text-[#161616] text-center md:text-left uppercase tracking-tight">
-                  {formData.preferredDate ? new Date(formData.preferredDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '---'}
-                </div>
-                <div className="text-xl font-bold text-[#24a148] text-center md:text-left mt-1 italic">{formData.preferredTime || '---'}</div>
-              </div>
+          <div className="animate-fadeIn space-y-10">
+            <div className="py-12 border-b border-gray-100 text-center">
+               <h3 className="text-4xl font-black uppercase tracking-tighter mb-2 text-[#161616]">Review & Confirm</h3>
+               <p className="text-gray-400 text-sm font-bold uppercase tracking-[4px]">Finalize your clinical or transport booking</p>
             </div>
 
-            <div className="space-y-4 mb-8 border-b border-[#e0e0e0] pb-8">
-              {calculateFees().isTransport ? (
-                <>
-                  <div className="flex justify-between text-sm text-[#525252]">
-                    <span>Base Fare</span>
-                    <span className="font-mono">PHP {calculateFees().base.toFixed(2)}</span>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Service & Staff Card */}
+              <div className="bg-white border border-gray-100 p-8 shadow-sm relative group hover:shadow-xl transition-all duration-500">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-14 h-14 bg-green-50 text-[#24a148] rounded-full flex items-center justify-center shadow-inner text-2xl overflow-hidden">
+                    {selectedService?.icon && (selectedService.icon.startsWith('http') || selectedService.icon.startsWith('/uploads')) ? (
+                      <img src={selectedService.icon} alt="Service" className="w-full h-full object-cover" />
+                    ) : (
+                      selectedService?.icon || 'ÃƒÂ°Ã…Â¸Ã‚ÂÃ‚Â¥'
+                    )}
                   </div>
-                  <div className="flex justify-between text-sm text-[#525252]">
-                    <span>Distance Rate (PHP {calculateFees().rate}/km)</span>
-                    <span className="font-mono">PHP {(calculateFees().rate * distance).toFixed(2)}</span>
+                  <div>
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-[2px]">Selected Service</p>
+                    <h4 className="text-xl font-bold text-gray-900 uppercase tracking-tight">{selectedService?.name}</h4>
                   </div>
-                  <div className="flex justify-between text-[9px] text-[#24a148] italic font-bold px-4 py-2 bg-green-50 uppercase tracking-widest">
-                    <span>Calculated distance: {distance.toFixed(2)} KM</span>
-                  </div>
-                </>
-              ) : (
-                <div className="flex justify-between text-sm text-[#525252]">
-                  <span>Service Price</span>
-                  <span className="font-mono">PHP {calculateFees().subtotal.toFixed(2)}</span>
                 </div>
-              )}
-
-              <div className="pt-2 flex justify-between text-sm font-bold text-[#161616]">
-                <span>Subtotal</span>
-                <span className="font-mono">PHP {calculateFees().subtotal.toFixed(2)}</span>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center py-3 border-b border-gray-50">
+                    <span className="text-xs text-gray-400 uppercase font-bold tracking-widest">Provider</span>
+                    <span className="text-sm font-bold text-gray-800">{selectedStaff?.name}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-3 border-b border-gray-50">
+                    <span className="text-xs text-gray-400 uppercase font-bold tracking-widest">Duration</span>
+                    <span className="text-sm font-bold text-gray-800">{selectedService?.duration || '30 Minutes'}</span>
+                  </div>
+                </div>
+                <div className="absolute top-0 right-0 w-1 h-0 bg-[#24a148] group-hover:h-full transition-all duration-500"></div>
               </div>
 
-              <div className="flex justify-between text-sm text-[#525252]">
-                <span>Tax (12%)</span>
-                <span className="font-mono text-[#24a148]">PHP {calculateFees().tax.toFixed(2)}</span>
-              </div>
-            </div>
-
-            <div className="flex justify-between items-center mb-12">
-              <span className="text-lg font-bold text-[#161616] uppercase tracking-tighter">Total Amount Payable</span>
-              <span className="text-3xl font-bold text-[#fa4d56] font-mono">PHP {calculateFees().total.toFixed(2)}</span>
-            </div>
-
-            <div className="mb-12">
-              <h4 className="text-[9px] font-bold text-[#525252] uppercase tracking-[1px] mb-6">Select Payment Method</h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {[
-                  { id: 'local', label: 'Pay Locally', icon: <Store className="w-4 h-4 text-[#24a148]" /> },
-                  { id: 'paypal', label: 'PayPal', icon: <CreditCard className="w-4 h-4 text-[#24a148]" /> },
-                  { id: 'stripe', label: 'Stripe', icon: <Lock className="w-4 h-4 text-[#24a148]" /> },
-                ].map(method => (
-                  <button
-                    key={method.id}
-                    onClick={() => setPaymentMethod(method.id)}
-                    className={`p-4 border flex items-center justify-center gap-3 transition-all ${paymentMethod === method.id ? 'border-[#24a148] bg-green-50/50 ring-1 ring-[#24a148]' : 'border-[#e0e0e0] hover:border-[#8d8d8d]'}`}
-                  >
-                    <span className="text-xl">{method.icon}</span>
-                    <span className={`text-[10px] font-bold uppercase tracking-widest ${paymentMethod === method.id ? 'text-[#24a148]' : 'text-[#525252]'}`}>
-                      {method.label}
-                    </span>
-                  </button>
-                ))}
+              {/* Schedule Card */}
+              <div className="bg-white border border-gray-100 p-8 shadow-sm relative overflow-hidden group hover:shadow-xl transition-all duration-500">
+                <div className="relative z-10">
+                  <p className="text-[10px] font-black text-[#24a148] uppercase tracking-[3px] mb-6 flex items-center gap-2">
+                    <Calendar size={14} /> Appointment Schedule
+                  </p>
+                  <div className="space-y-1 mb-8">
+                    <h4 className="text-2xl font-bold text-gray-900 uppercase tracking-tighter">
+                      {formData.preferredDate ? new Date(formData.preferredDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '---'}
+                    </h4>
+                    <p className="text-4xl font-black text-[#24a148] italic">{formData.preferredTime || '---'}</p>
+                  </div>
+                  <div className="inline-flex items-center gap-2 bg-gray-50 border border-gray-100 px-4 py-2 rounded-full">
+                    <Clock size={12} className="text-[#24a148]" />
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Time slot reserved for 10 mins</span>
+                  </div>
+                </div>
+                <div className="absolute top-0 right-0 w-1 h-0 bg-[#24a148] group-hover:h-full transition-all duration-500"></div>
               </div>
             </div>
 
-            <div className="flex justify-between items-center">
-              <button onClick={() => setStep('details')} className="text-[#24a148] font-bold uppercase text-[11px] flex items-center gap-2 hover:underline tracking-widest">
-                <ChevronLeft className="w-3 h-3" /> Back to Details
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Billing Details */}
+              <div className="bg-gray-50 border border-gray-100 p-8 shadow-inner flex flex-col">
+                <h4 className="text-xs font-black text-gray-900 uppercase tracking-[2px] mb-8 border-b border-gray-200 pb-4">Payment Summary</h4>
+                <div className="space-y-4 flex-1">
+                  {calculateFees().isTransport ? (
+                    <div className="space-y-4 animate-slideDown">
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-gray-500">Base Fare (Operational)</span>
+                        <span className="font-mono font-bold text-gray-700">₱{calculateFees().base.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-gray-500">Distance Premium ({distance.toFixed(2)} KM)</span>
+                        <span className="font-mono font-bold text-gray-700">₱{(calculateFees().rate * distance).toFixed(2)}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-gray-500">Professional Service Fee</span>
+                      <span className="font-mono font-bold text-gray-700">₱{calculateFees().subtotal.toFixed(2)}</span>
+                    </div>
+                  )}
+                  
+                  <div className="flex justify-between items-center py-4 border-t border-gray-200 mt-6">
+                    <span className="text-xs font-black text-gray-400 uppercase tracking-widest">Government Tax (12%)</span>
+                    <span className="font-mono font-bold text-[#24a148]">₱{calculateFees().tax.toFixed(2)}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center p-6 bg-white border border-gray-200 shadow-xl mt-8">
+                    <div>
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-[3px]">Total Amount Payable</p>
+                      <p className="text-xs text-gray-500 font-medium italic">Includes all fees and insurance</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-4xl font-black text-[#24a148] font-mono tracking-tighter animate-pulse">₱{calculateFees().total.toFixed(2)}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Method Selection */}
+              <div className="space-y-8 flex flex-col">
+                <div className="bg-white border border-gray-100 p-8 shadow-sm flex-1">
+                  <h4 className="text-xs font-black text-gray-900 uppercase tracking-[2px] mb-8 border-b border-gray-200 pb-4">Secure Payment Method</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {[
+                        { id: 'local', label: 'Pay Locally', icon: <Store className="w-5 h-5" />, desc: 'At the counter' },
+                        { id: 'paypal', label: 'PayPal', icon: <CreditCard className="w-5 h-5" />, desc: 'Instant check' },
+                        { id: 'stripe', label: 'Stripe', icon: <Lock className="w-5 h-5" />, desc: 'Card payment' },
+                        { id: 'corporate', label: 'Corporate', icon: <Users size={20} />, desc: 'Direct billing' },
+                      ].map(method => (
+                        <button
+                          key={method.id}
+                          onClick={() => setPaymentMethod(method.id)}
+                          className={`group p-6 border-2 text-left transition-all relative overflow-hidden h-full ${
+                            paymentMethod === method.id 
+                            ? 'border-[#24a148] bg-green-50/30' 
+                            : 'border-gray-100 hover:border-gray-300 bg-white'
+                          }`}
+                        >
+                          <div className={`mb-4 w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                            paymentMethod === method.id ? 'bg-[#24a148] text-white' : 'bg-gray-100 text-gray-400 group-hover:bg-gray-800 group-hover:text-white'
+                          }`}>
+                            {method.icon}
+                          </div>
+                          <p className={`text-[10px] font-black uppercase tracking-widest ${paymentMethod === method.id ? 'text-[#24a148]' : 'text-gray-900'}`}>
+                            {method.label}
+                          </p>
+                          <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest opacity-60">{method.desc}</p>
+                          {paymentMethod === method.id && (
+                            <div className="absolute bottom-0 right-0 w-8 h-8 bg-[#24a148] flex items-center justify-center translate-x-4 translate-y-4 rotate-45">
+                               <Check size={10} className="text-white -rotate-45 -translate-x-1 -translate-y-1" />
+                            </div>
+                          )}
+                        </button>
+                      ))}
+                  </div>
+                </div>
+
+                {paymentMethod === 'corporate' && (
+                  <div className="bg-white border border-gray-100 p-8 shadow-sm animate-slideDown relative overflow-hidden group">
+                    <div className="relative z-10">
+                      <p className="text-[10px] font-black text-blue-600 uppercase tracking-[4px] mb-6 flex items-center gap-2">
+                        <Users size={16} /> Corporate Authorization
+                      </p>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2 opacity-70">Client Account Number</label>
+                          <input 
+                            type="text"
+                            placeholder="ENTER CORP-ID-XXXX"
+                            value={formData.corporateAccountNumber || ''}
+                            onChange={(e) => setFormData({...formData, corporateAccountNumber: e.target.value})}
+                            className="w-full bg-gray-50 border border-gray-200 p-4 text-base font-mono text-gray-900 placeholder:text-gray-300 focus:outline-none focus:border-blue-500 transition-all uppercase tracking-widest"
+                          />
+                        </div>
+                        <p className="text-[10px] text-gray-500 italic font-medium leading-tight">
+                          Authorize charge to master service agreement.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="absolute top-0 right-0 w-1 h-0 bg-blue-500 group-hover:h-full transition-all duration-500"></div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="pt-10 flex flex-col md:flex-row justify-between items-center gap-6 border-t border-gray-100">
+              <button 
+                onClick={() => setStep('details')} 
+                className="group text-gray-400 font-black uppercase text-[11px] flex items-center gap-3 hover:text-black transition-colors tracking-widest"
+              >
+                <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" /> 
+                Refine Details
               </button>
+              
               <button
                 disabled={isSubmitting}
                 onClick={handleSubmit}
-                className="w-auto py-4 px-16 bg-[#24a148] text-white text-[12px] font-bold uppercase tracking-[2px] shadow-lg hover:shadow-xl hover:bg-[#1e8a3d] active:scale-[0.98] transition-all flex items-center gap-4 group"
+                className="w-full md:w-auto py-5 px-20 bg-[#24a148] text-white text-[14px] font-black uppercase tracking-[3px] shadow-2xl hover:bg-[#1e8a3d] hover:shadow-green-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-6 group relative overflow-hidden"
               >
-                {isSubmitting ? 'Processing...' : 'Confirm & Book Appointment'}
-                {!isSubmitting && <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />}
+                <span className="relative z-10">{isSubmitting ? 'Authenticating...' : 'Confirm & Schedule Appointment'}</span>
+                {!isSubmitting && <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform relative z-10" />}
+                <div className="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
               </button>
             </div>
+            
             {submitStatus.message && (
-              <div className={`mt-6 p-4 text-center text-sm font-bold uppercase tracking-widest ${submitStatus.type === 'error' ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
+              <div className={`p-6 text-center text-xs font-black uppercase tracking-[2px] shadow-lg border-l-8 ${
+                submitStatus.type === 'error' ? 'bg-red-50 text-red-600 border-red-600' : 'bg-green-50 text-[#24a148] border-[#24a148]'
+              }`}>
                 {submitStatus.message}
               </div>
             )}
@@ -727,3 +889,6 @@ function AppointmentForm() {
 }
 
 export default AppointmentForm;
+
+
+

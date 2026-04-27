@@ -1,4 +1,4 @@
-import React, { useState, createContext, useContext, useEffect, useCallback, useMemo } from 'react';
+﻿import React, { useState, createContext, useContext, useEffect, useCallback, useMemo } from 'react';
 import { ShoppingCart, Plus, Minus, Trash2, ChevronRight, ChevronLeft, ArrowRight, Check, X, Search, Settings, Smartphone, Printer, Download, Store, CreditCard, Lock, User, Users, Wallet, Calendar, MapPin, Clock, Phone, Mail, Star, Car, Truck, Shield, Activity, Clipboard, ClipboardList, Stethoscope, Hospital, Pill, Syringe, HeartPulse, Map as MapIcon, Navigation, AlertTriangle, AlertCircle, RefreshCw, Edit, History, DollarSign, Link, Bell, Database } from 'lucide-react';
 
 // Help component to render either Lucide icon or Emoji
@@ -2976,7 +2976,7 @@ function MenuPage({ selectedCategory, setSelectedCategory, searchQuery, menuData
                   <div className="absolute inset-0 bg-gradient-to-t from-black/5 to-transparent"></div>
                   <div className="w-32 h-32 bg-white/80 force-circle flex items-center justify-center shadow-xl border-4 border-white transform group-hover:scale-110 group-hover:rotate-3 transition-transform duration-500 z-10">
                     <span className="text-6xl">
-                      {serviceIcons[service.name] || serviceIcons['default'] || '🏥'}
+                      {serviceIcons[service.name] || serviceIcons['default'] || 'ðŸ¥'}
                     </span>
                   </div>
                   {/* Category Badge */}
@@ -5292,7 +5292,7 @@ function DispatchMap({ trips, riders, selectedBooking }) {
     };
   }, [leafletReady]);
 
-  // Render markers â€” MUST be declared before any early return (Rules of Hooks)
+  // Render markers Ã¢â‚¬â€ MUST be declared before any early return (Rules of Hooks)
   React.useEffect(() => {
     if (!leafletMap.current || !leafletReady) return;
 
@@ -5752,7 +5752,7 @@ function RideDispatch({ trips, stats, riders, onRefresh }) {
                                           <p className="text-xs font-bold text-white">{rider.name}</p>
                                           {!isMatch && <span className="text-[8px] font-bold bg-orange-500/20 text-orange-500 px-1 py-0.5 uppercase">Mismatch</span>}
                                        </div>
-                                       <p className="text-[9px] text-gray-500">{rider.vehicle_type} â€¢ 0.8 KM away</p>
+                                       <p className="text-[9px] text-gray-500">{rider.vehicle_type} Ã¢â‚¬Â¢ 0.8 KM away</p>
                                     </div>
                                  </div>
                                  <button 
@@ -6021,7 +6021,7 @@ function GeofenceDashboard({ geofences, onEdit }) {
                     'bg-purple-50 text-purple-600 border-purple-100'
                   }`}>{g.type}</span>
                 </td>
-                <td className="p-4 text-sm text-gray-500">{g.coverage} kmÂ²</td>
+                <td className="p-4 text-sm text-gray-500">{g.coverage} kmÃ‚Â²</td>
                 <td className="p-4">
                   <div className="flex items-center gap-2">
                     <div className={`w-2 h-2 force-circle ${g.status === 'Active' ? 'bg-green-500' : 'bg-gray-300'}`}></div>
@@ -6092,10 +6092,10 @@ function GeofenceForm({ geofence, onCancel, onSave }) {
 
       if (type === 'polygon') {
         const latlngs = layer.getLatLngs()[0];
-        setCoordinates(latlngs.map(ll => `${ll.lat.toFixed(4)}Â°N, ${ll.lng.toFixed(4)}Â°E`));
+        setCoordinates(latlngs.map(ll => `${ll.lat.toFixed(4)}Ã‚Â°N, ${ll.lng.toFixed(4)}Ã‚Â°E`));
         setShapeData({ type: 'polygon', data: latlngs });
         
-        // --- Accurate Spherical Area Calculation (mÂ²) ---
+        // --- Accurate Spherical Area Calculation (mÃ‚Â²) ---
         let areaSqM = 0;
         const R = 6378137; // Standard Earth Radius
         
@@ -6121,7 +6121,7 @@ function GeofenceForm({ geofence, onCancel, onSave }) {
         setCoordinates([`Center: ${center.lat.toFixed(4)}, ${center.lng.toFixed(4)}`, `Radius: ${radius.toFixed(0)}m`]);
         setShapeData({ type: 'circle', data: { center, radius } });
         
-        // A = Ï€rÂ²
+        // A = Ãâ‚¬rÃ‚Â²
         const areaSqM = Math.PI * Math.pow(radius, 2);
         const km2 = areaSqM / 1000000;
         setAreaSize(km2.toFixed(3));
@@ -6243,7 +6243,7 @@ function GeofenceForm({ geofence, onCancel, onSave }) {
           <div className="text-right">
             <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">Calculated Area</p>
             <div className="flex flex-col items-end">
-              <p className="text-lg font-bold text-[#161616]">{areaSize} <span className="text-xs text-gray-400">kmÂ²</span></p>
+              <p className="text-lg font-bold text-[#161616]">{areaSize} <span className="text-xs text-gray-400">kmÃ‚Â²</span></p>
               <p className="text-[10px] font-medium text-blue-600 bg-blue-50 px-2 py-0.5 border border-blue-100 mt-0.5">
                 {(parseFloat(areaSize) * 100).toFixed(2)} <span className="text-[9px] uppercase">Hectares (ha)</span>
               </p>
@@ -6304,7 +6304,7 @@ function GeofenceMonitoring({ geofences }) {
         }
         
         if (layer) {
-          layer.bindPopup(`<b>${g.name}</b><br/>Type: ${g.type}<br/>Area: ${g.coverage} kmÂ²`);
+          layer.bindPopup(`<b>${g.name}</b><br/>Type: ${g.type}<br/>Area: ${g.coverage} kmÃ‚Â²`);
         }
       }
     });
@@ -6475,6 +6475,7 @@ function SystemSettingsModule() {
     { id: 'dispatch', label: 'Dispatch Settings', icon: Truck },
     { id: 'geofence', label: 'Geofence Settings', icon: MapIcon },
     { id: 'pricing', label: 'Pricing & Fare Rules', icon: DollarSign },
+    { id: 'email', label: 'Email Configuration', icon: Mail },
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'payment', label: 'Payment & Wallet', icon: Wallet },
     { id: 'api', label: 'Integration & API', icon: Link },
@@ -6491,6 +6492,7 @@ function SystemSettingsModule() {
       case 'dispatch': return <DispatchSettings />;
       case 'geofence': return <GeofenceGlobalSettings />;
       case 'pricing': return <PricingFareSettings />;
+      case 'email': return <EmailTemplateSettings />;
       case 'notifications': return <NotificationChannelSettings />;
       case 'payment': return <PaymentWalletSettings />;
       case 'api': return <IntegrationAPISettings />;
@@ -6557,34 +6559,102 @@ function SettingsSection({ title, subtitle, children, onSave }) {
 }
 
 function GeneralSettings() {
+  const [settings, setSettings] = useState({
+    clinic_name: 'King\'s Tourist and Transport Services',
+    clinic_address: 'Cantecson, Gairan, Bogo City, Cebu',
+    clinic_phone: '+63 912 345 6789'
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    fetchSettings();
+  }, []);
+
+  const fetchSettings = async () => {
+    try {
+      const res = await fetch('/api/admin/settings', {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('adminToken')}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        const newSettings = { ...settings };
+        data.settings.forEach(s => {
+          if (newSettings.hasOwnProperty(s.key)) {
+            newSettings[s.key] = s.value;
+          }
+        });
+        setSettings(newSettings);
+      }
+    } catch (err) {
+      console.error('Fetch settings error:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const res = await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
+        },
+        body: JSON.stringify({ settings: Object.entries(settings).map(([key, value]) => ({ key, value })) })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('General settings updated successfully!');
+      } else {
+        alert('Failed to save settings');
+      }
+    } catch (err) {
+      alert('Save failed');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (isLoading) return <div className="py-20 text-center font-mono text-gray-400 animate-pulse uppercase tracking-widest">Loading Identity...</div>;
+
   return (
-    <SettingsSection title="General Settings" subtitle="Core System Identity and Localization" onSave={() => alert('Settings Saved!')}>
-      <div className="grid grid-cols-2 gap-6">
-        <div className="col-span-2">
-          <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">System Name</label>
-          <input type="text" defaultValue="ServiceBox Enterprise" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:border-[#10b981]" />
+    <SettingsSection title="General Settings" subtitle="Core System Identity and Localization" onSave={handleSave}>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="col-span-1 md:col-span-2">
+          <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Clinic / Business Name</label>
+          <input 
+            type="text" 
+            value={settings.clinic_name} 
+            onChange={e => setSettings({...settings, clinic_name: e.target.value})}
+            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm font-bold focus:border-[#10b981] outline-none" 
+          />
         </div>
-        <div className="col-span-2">
-          <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Company Name</label>
-          <input type="text" defaultValue="King's Tourist and Transport Services" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:border-[#10b981]" />
+        <div className="col-span-1 md:col-span-2">
+          <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Business Address</label>
+          <input 
+            type="text" 
+            value={settings.clinic_address} 
+            onChange={e => setSettings({...settings, clinic_address: e.target.value})}
+            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:border-[#10b981] outline-none" 
+          />
         </div>
         <div>
-          <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Timezone</label>
-          <select className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:border-[#10b981]">
+          <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Contact Phone</label>
+          <input 
+            type="text" 
+            value={settings.clinic_phone} 
+            onChange={e => setSettings({...settings, clinic_phone: e.target.value})}
+            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:border-[#10b981] outline-none" 
+          />
+        </div>
+        <div>
+          <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Default Timezone</label>
+          <select className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:border-[#10b981] outline-none">
             <option>(GMT+08:00) Manila, Philippines</option>
             <option>(GMT+00:00) UTC</option>
           </select>
-        </div>
-        <div>
-          <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Default Language</label>
-          <select className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:border-[#10b981]">
-            <option>English (US)</option>
-            <option>Filipino</option>
-          </select>
-        </div>
-        <div>
-          <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Currency</label>
-          <input type="text" defaultValue="PHP (â‚±)" readOnly className="w-full px-4 py-3 bg-gray-100 border border-gray-200 text-sm cursor-not-allowed" />
         </div>
       </div>
     </SettingsSection>
@@ -6703,7 +6773,7 @@ function PricingFareSettings() {
     <SettingsSection title="Pricing & Fare Rules" subtitle="Configure Revenue Model and Surcharges" onSave={() => {}}>
       <div className="grid grid-cols-3 gap-6">
         <div className="bg-[#f4f4f4] p-6 border-l-4 border-[#10b981]">
-          <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Base Fare (â‚±)</label>
+          <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Base Fare (Ã¢â€šÂ±)</label>
           <input type="number" defaultValue="45" className="w-full bg-transparent border-0 text-3xl font-light focus:outline-none" />
         </div>
         <div className="bg-[#f4f4f4] p-6 border-l-4 border-[#24a148]">
@@ -6725,11 +6795,11 @@ function PricingFareSettings() {
             </div>
             <div className="flex justify-between items-center text-sm">
               <span>Night Differential (22:00 - 05:00)</span>
-              <span className="font-bold">+â‚±20.00</span>
+              <span className="font-bold">+Ã¢â€šÂ±20.00</span>
             </div>
             <div className="flex justify-between items-center text-sm">
               <span>Cancellation Fee</span>
-              <span className="font-bold">â‚±30.00</span>
+              <span className="font-bold">Ã¢â€šÂ±30.00</span>
             </div>
           </div>
         </div>
@@ -6738,11 +6808,11 @@ function PricingFareSettings() {
           <div className="space-y-3">
             <div className="flex justify-between items-center text-sm">
               <span>Minimum Fare</span>
-              <span className="font-bold">â‚±50.00</span>
+              <span className="font-bold">Ã¢â€šÂ±50.00</span>
             </div>
             <div className="flex justify-between items-center text-sm">
               <span>Maximum Fare Cap</span>
-              <span className="font-bold">â‚±1,500.00</span>
+              <span className="font-bold">Ã¢â€šÂ±1,500.00</span>
             </div>
           </div>
         </div>
@@ -6808,7 +6878,7 @@ function PaymentWalletSettings() {
             <h4 className="text-xs font-bold uppercase tracking-widest mb-4">Wallet Config</h4>
             <div className="space-y-4">
               <div>
-                <label className="block text-[10px] text-gray-400 uppercase mb-1">Minimum Balance (â‚±)</label>
+                <label className="block text-[10px] text-gray-400 uppercase mb-1">Minimum Balance (Ã¢â€šÂ±)</label>
                 <input type="number" defaultValue="50" className="w-full border-b border-gray-200 py-2 focus:outline-none focus:border-[#10b981] font-bold" />
               </div>
               <div className="flex items-center justify-between">
@@ -6828,7 +6898,7 @@ function PaymentWalletSettings() {
                 </select>
               </div>
               <div>
-                <label className="block text-[10px] text-gray-400 uppercase mb-1">Min Payout (â‚±)</label>
+                <label className="block text-[10px] text-gray-400 uppercase mb-1">Min Payout (Ã¢â€šÂ±)</label>
                 <input type="number" defaultValue="1000" className="w-full border-b border-gray-200 py-2 focus:outline-none focus:border-[#10b981] font-bold" />
               </div>
             </div>
@@ -6984,6 +7054,274 @@ function SystemAlertsMonitoring() {
   );
 }
 
+function EmailTemplateSettings() {
+  const [settings, setSettings] = useState({
+    email_smtp_host: 'smtp.gmail.com',
+    email_smtp_port: '587',
+    email_smtp_user: 'notifications@healthcare-clinic.com',
+    email_smtp_pass: '',
+    email_primary_color: '#10b981',
+    email_accent_color: '#E4FE7B',
+    email_font_family: "'Inter', sans-serif",
+    email_confirmation_subject: 'Appointment Confirmed - {clinic_name}',
+    email_confirmation_body: `<div style="font-family: {font_family}; max-width: 600px; margin: 0 auto; padding: 20px; color: #161616;">
+  <div style="background: {primary_color}; padding: 30px; text-align: center;">
+    <h1 style="color: {accent_color}; margin: 0; font-size: 28px; text-transform: uppercase; letter-spacing: 2px;">{clinic_name}</h1>
+  </div>
+  <div style="padding: 40px; background: #ffffff; border: 1px solid #e0e0e0; border-top: none;">
+    <h2 style="color: {primary_color}; margin-top: 0; font-size: 22px;">Appointment Confirmed!</h2>
+    <p>Dear <strong>{name}</strong>,</p>
+    <p>Your appointment has been successfully booked. Here are your details:</p>
+    <div style="background: #f4f4f4; padding: 25px; border-left: 4px solid {primary_color}; margin: 30px 0;">
+      <p style="margin: 5px 0;"><strong>Service:</strong> {service}</p>
+      <p style="margin: 5px 0;"><strong>Date:</strong> {date}</p>
+      <p style="margin: 5px 0;"><strong>Time:</strong> {time}</p>
+      <p style="margin: 5px 0;"><strong>Reference ID:</strong> #{ref}</p>
+    </div>
+    <p style="color: #666; font-size: 14px;">Please arrive 10 minutes before your scheduled time.</p>
+    <div style="margin: 40px 0; text-align: center;">
+      <a href="{cancel_url}" style="display: inline-block; padding: 15px 30px; background: {primary_color}; color: {accent_color}; text-decoration: none; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; font-size: 13px;">
+        Manage Appointment
+      </a>
+    </div>
+    <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #eeeeee;">
+      <p style="color: #999; font-size: 11px; line-height: 1.6;">
+        {clinic_name}<br>
+        {address}<br>
+        Phone: {phone}
+      </p>
+    </div>
+  </div>
+</div>`
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    fetchSettings();
+  }, []);
+
+  const fetchSettings = async () => {
+    try {
+      const res = await fetch('/api/admin/settings', {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('adminToken')}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        const newSettings = { ...settings };
+        data.settings.forEach(s => {
+          if (newSettings.hasOwnProperty(s.key)) {
+            newSettings[s.key] = s.value;
+          }
+        });
+        setSettings(newSettings);
+      }
+    } catch (err) {
+      console.error('Fetch settings error:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const res = await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
+        },
+        body: JSON.stringify({ settings: Object.entries(settings).map(([key, value]) => ({ key, value })) })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('Email settings updated successfully!');
+      } else {
+        alert('Failed to save settings');
+      }
+    } catch (err) {
+      alert('Save failed');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (isLoading) return <div className="py-20 text-center font-mono text-gray-400 animate-pulse uppercase tracking-widest">Loading Configuration...</div>;
+
+  return (
+    <SettingsSection title="Email Configuration" subtitle="SMTP Server and Template Branding" onSave={handleSave}>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {/* SMTP Config */}
+        <div className="space-y-6">
+          <h4 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest border-b border-gray-100 pb-2">SMTP Server Details</h4>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-[10px] text-gray-400 uppercase mb-1">Host</label>
+              <input 
+                type="text" 
+                value={settings.email_smtp_host} 
+                onChange={e => setSettings({...settings, email_smtp_host: e.target.value})}
+                placeholder="smtp.gmail.com"
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:border-[#10b981] outline-none" 
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[10px] text-gray-400 uppercase mb-1">Port</label>
+                <input 
+                  type="text" 
+                  value={settings.email_smtp_port} 
+                  onChange={e => setSettings({...settings, email_smtp_port: e.target.value})}
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:border-[#10b981] outline-none" 
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] text-gray-400 uppercase mb-1">Encryption</label>
+                <select className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:border-[#10b981] outline-none">
+                  <option>TLS / STARTTLS</option>
+                  <option>SSL</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-400 uppercase mb-1">Sender Email Address (SMTP Username)</label>
+              <input 
+                type="text" 
+                value={settings.email_smtp_user} 
+                onChange={e => setSettings({...settings, email_smtp_user: e.target.value})}
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:border-[#10b981] outline-none" 
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-400 uppercase mb-1">Password / App Key</label>
+              <input 
+                type="password" 
+                value={settings.email_smtp_pass} 
+                onChange={e => setSettings({...settings, email_smtp_pass: e.target.value})}
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:border-[#10b981] outline-none" 
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Branding Config */}
+        <div className="space-y-6">
+          <h4 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest border-b border-gray-100 pb-2">Template Branding</h4>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[10px] text-gray-400 uppercase mb-1">Primary Color</label>
+                <div className="flex gap-2">
+                  <input 
+                    type="color" 
+                    value={settings.email_primary_color} 
+                    onChange={e => setSettings({...settings, email_primary_color: e.target.value})}
+                    className="w-10 h-10 border-0 p-0 bg-transparent cursor-pointer" 
+                  />
+                  <input 
+                    type="text" 
+                    value={settings.email_primary_color} 
+                    onChange={e => setSettings({...settings, email_primary_color: e.target.value})}
+                    className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 text-xs font-mono uppercase" 
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-[10px] text-gray-400 uppercase mb-1">Accent Color</label>
+                <div className="flex gap-2">
+                  <input 
+                    type="color" 
+                    value={settings.email_accent_color} 
+                    onChange={e => setSettings({...settings, email_accent_color: e.target.value})}
+                    className="w-10 h-10 border-0 p-0 bg-transparent cursor-pointer" 
+                  />
+                  <input 
+                    type="text" 
+                    value={settings.email_accent_color} 
+                    onChange={e => setSettings({...settings, email_accent_color: e.target.value})}
+                    className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 text-xs font-mono uppercase" 
+                  />
+                </div>
+              </div>
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-400 uppercase mb-1">Font Family</label>
+              <select 
+                value={settings.email_font_family}
+                onChange={e => setSettings({...settings, email_font_family: e.target.value})}
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:border-[#10b981] outline-none"
+              >
+                <option value="Arial, sans-serif">Arial / Helvetica</option>
+                <option value="'IBM Plex Sans', sans-serif">IBM Plex Sans</option>
+                <option value="'Inter', sans-serif">Inter</option>
+                <option value="'Roboto', sans-serif">Roboto</option>
+                <option value="Georgia, serif">Georgia</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="mt-8 p-6 bg-gray-900 text-white rounded-0 shadow-2xl relative overflow-hidden">
+            <div className="relative z-10">
+              <p className="text-[9px] font-black uppercase tracking-widest text-[#10b981] mb-2">Live Preview (Concept)</p>
+              <div className="border border-white/10 p-4 bg-white/5 space-y-3">
+                 <div style={{ background: settings.email_primary_color }} className="h-8 flex items-center justify-center">
+                    <span style={{ color: settings.email_accent_color }} className="text-[10px] font-bold uppercase tracking-tighter italic">CLINIC LOGO</span>
+                 </div>
+                 <div className="space-y-1">
+                    <div className="h-2 w-1/2 bg-white/20"></div>
+                    <div className="h-2 w-full bg-white/10"></div>
+                    <div className="h-2 w-3/4 bg-white/10"></div>
+                 </div>
+                 <div style={{ background: settings.email_primary_color }} className="h-6 w-24 mx-auto rounded-full"></div>
+              </div>
+            </div>
+            <div className="absolute top-0 right-0 w-32 h-32 bg-[#10b981] opacity-10 rounded-full -mr-16 -mt-16"></div>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-10 space-y-6">
+        <h4 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest border-b border-gray-100 pb-2">Confirmation Template</h4>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-[10px] text-gray-400 uppercase mb-1">Subject Line</label>
+            <input 
+              type="text" 
+              value={settings.email_confirmation_subject} 
+              onChange={e => setSettings({...settings, email_confirmation_subject: e.target.value})}
+              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm font-bold focus:border-[#10b981] outline-none" 
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] text-gray-400 uppercase mb-1">HTML Body (Leave blank for default system theme)</label>
+            <textarea 
+              rows={8}
+              value={settings.email_confirmation_body} 
+              onChange={e => setSettings({...settings, email_confirmation_body: e.target.value})}
+              placeholder="Enter custom HTML here... Use placeholders like {name}, {service}, {date}, {time}, {ref}"
+              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-xs font-mono focus:border-[#10b981] outline-none"
+            ></textarea>
+          </div>
+          <div className="flex gap-4">
+            <div className="flex-1 p-3 bg-blue-50 border border-blue-100 rounded-0">
+               <p className="text-[9px] font-bold text-blue-800 uppercase tracking-widest mb-1">Available Tags</p>
+               <p className="text-[9px] text-blue-600 font-mono">{"{name}, {service}, {date}, {time}, {ref}, {cancel_url}, {clinic_name}, {address}, {phone}"}</p>
+            </div>
+            <button 
+              type="button"
+              onClick={() => alert('Sending test email to administrator...')}
+              className="px-6 py-3 border border-gray-300 text-[10px] font-bold uppercase tracking-widest hover:bg-gray-50 transition-all"
+            >
+              Send Test Email
+            </button>
+          </div>
+        </div>
+      </div>
+    </SettingsSection>
+  );
+}
+
 function BackupRestoreSettings() {
   return (
     <SettingsSection title="Backup & Restore" subtitle="Data Integrity and Disaster Recovery Tools">
@@ -7030,3 +7368,4 @@ function BackupRestoreSettings() {
 /* ==========================================================================
    END SYSTEM SETTINGS MODULE
    ========================================================================== */
+
