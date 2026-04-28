@@ -1,4 +1,4 @@
-﻿import React, { useState, createContext, useContext, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, createContext, useContext, useEffect, useCallback, useMemo } from 'react';
 import { ShoppingCart, Plus, Minus, Trash2, ChevronRight, ChevronLeft, ArrowRight, Check, X, Search, Settings, Smartphone, Printer, Download, Store, CreditCard, Lock, User, Users, Wallet, Calendar, MapPin, Clock, Phone, Mail, Star, Car, Truck, Shield, Activity, Clipboard, ClipboardList, Stethoscope, Hospital, Pill, Syringe, HeartPulse, Map as MapIcon, Navigation, AlertTriangle, AlertCircle, RefreshCw, Edit, History, DollarSign, Link, Bell, Database } from 'lucide-react';
 
 // Help component to render either Lucide icon or Emoji
@@ -22,6 +22,7 @@ import QueueDisplayPage from './components/queue/QueueDisplayPage';
 import QueueTellerPage from './components/queue/QueueTellerPage';
 import SurveyPage from './components/queue/SurveyPage';
 import RidersManagement from './components/admin/RidersManagement';
+import RideScheduling from './components/admin/RideScheduling';
 
 
 
@@ -989,6 +990,7 @@ function AdminDashboard({ setCurrentPage }) {
         setAppointments(prev => prev.map(apt =>
           apt.id === id ? { ...apt, status: newStatus } : apt
         ));
+        fetchTrips(); // Refresh the trips list so the Trip Monitoring module updates
       }
     } catch (error) {
       console.error('Error updating status:', error);
@@ -1455,6 +1457,11 @@ function AdminDashboard({ setCurrentPage }) {
               </div>
             )}
 
+            {/* ==================== SCHEDULING TAB ==================== */}
+            {activeTab === 'scheduling' && (
+              <RideScheduling trips={trips} riders={riders} fetchTrips={fetchTrips} />
+            )}
+
             {/* ==================== SERVICES TAB ==================== */}
             {activeTab === 'services' && (
               <div className="space-y-8">
@@ -1473,7 +1480,7 @@ function AdminDashboard({ setCurrentPage }) {
                         {editingService ? 'Edit Service' : 'Add New Service'}
                       </h3>
                       {editingService && (
-                        <button 
+                        <button
                           onClick={() => { setEditingService(null); setNewService({ name: '', duration: '30m', price: 'PHP 0.00', icon: '', category: '', base_fare: 50, per_km_rate: 15 }); }}
                           className="text-[10px] text-blue-600 font-bold uppercase hover:underline"
                         >
@@ -1588,10 +1595,10 @@ function AdminDashboard({ setCurrentPage }) {
                             onChange={(e) => setNewService({ ...newService, icon: e.target.value })}
                           />
                           <div className="relative">
-                            <input 
-                              type="file" 
+                            <input
+                              type="file"
                               id="service-icon-upload"
-                              className="hidden" 
+                              className="hidden"
                               accept="image/*"
                               onChange={async (e) => {
                                 if (e.target.files?.[0]) {
@@ -1613,7 +1620,7 @@ function AdminDashboard({ setCurrentPage }) {
                                 }
                               }}
                             />
-                            <label 
+                            <label
                               htmlFor="service-icon-upload"
                               className="px-3 py-2 bg-[#f4f4f4] border border-[#e0e0e0] text-[10px] font-bold uppercase cursor-pointer hover:bg-gray-100"
                             >
@@ -1656,9 +1663,9 @@ function AdminDashboard({ setCurrentPage }) {
                               ...newService,
                               category: newService.category === 'NEW_CATEGORY' ? newService.customCategory : newService.category
                             };
-                            
-                            const url = editingService 
-                              ? `/api/booking-services/${editingService.id}` 
+
+                            const url = editingService
+                              ? `/api/booking-services/${editingService.id}`
                               : '/api/booking-services';
                             const method = editingService ? 'PUT' : 'POST';
 
@@ -1668,7 +1675,7 @@ function AdminDashboard({ setCurrentPage }) {
                               body: JSON.stringify(payload)
                             });
                             const data = await res.json();
-                            
+
                             if (data.success) {
                               if (editingService) {
                                 setBookingServices(bookingServices.map(s => s.id === editingService.id ? data.service : s));
@@ -1729,9 +1736,9 @@ function AdminDashboard({ setCurrentPage }) {
                           <button
                             onClick={() => {
                               setEditingService(s);
-                              setNewService({ 
-                                ...s, 
-                                customCategory: '', 
+                              setNewService({
+                                ...s,
+                                customCategory: '',
                                 base_fare: s.base_fare || 50,
                                 per_km_rate: s.per_km_rate || 15
                               });
@@ -1755,7 +1762,7 @@ function AdminDashboard({ setCurrentPage }) {
                                   } else {
                                     alert('Failed to delete: ' + (data.message || 'Unknown error'));
                                   }
-                                } catch (err) { 
+                                } catch (err) {
                                   alert('Could not connect to server: ' + err.message);
                                 }
                               }
@@ -1908,20 +1915,20 @@ function AdminDashboard({ setCurrentPage }) {
 
             {/* ==================== TRIP MONITORING TAB ==================== */}
             {activeTab === 'trips' && (
-              <TripMonitoring 
-                trips={trips} 
-                stats={tripStats} 
+              <TripMonitoring
+                trips={trips}
+                stats={tripStats}
                 riders={riders}
-                incidents={incidents} 
+                incidents={incidents}
                 onRefresh={fetchTrips}
               />
             )}
 
             {/* ==================== RIDE SCHEDULING TAB ==================== */}
             {activeTab === 'scheduling' && (
-              <RideDispatch 
-                trips={trips} 
-                stats={tripStats} 
+              <RideDispatch
+                trips={trips}
+                stats={tripStats}
                 riders={riders}
                 onRefresh={() => { fetchTrips(); fetchAppointments(); }}
               />
@@ -2033,12 +2040,12 @@ function AdminDashboard({ setCurrentPage }) {
                             {apt.status}
                           </span>
                           <div className="flex flex-wrap gap-1 justify-end">
-                            {(apt.status === 'pending' || apt.status === 'confirmed') && (
+                            {(apt.status === 'pending' || apt.status === 'queued' || apt.status === 'confirmed') && (
                               <button onClick={() => openRescheduleModal(apt)} className="px-2 py-1 bg-purple-50 text-purple-600 rounded text-xs hover:bg-purple-100 transition-all border border-purple-200">
                                 Reschedule
                               </button>
                             )}
-                            {apt.status === 'pending' && (
+                            {(apt.status === 'pending' || apt.status === 'queued') && (
                               <>
                                 <button onClick={() => updateStatus(apt.id, 'confirmed')} disabled={updatingId === apt.id} className="px-2 py-1 bg-green-50 text-green-600 rounded text-xs hover:bg-green-100 transition-all border border-green-200 disabled:opacity-50">
                                   Confirm
@@ -2507,13 +2514,13 @@ const MyAppointment = ({ token: initialToken }) => {
     try {
       const res = await fetch('/api/patient/lookup', {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
-        body: JSON.stringify({ 
-          email: email.trim(), 
-          referenceId: referenceId.trim() 
+        body: JSON.stringify({
+          email: email.trim(),
+          referenceId: referenceId.trim()
         }),
         signal: controller.signal
       });
@@ -2537,12 +2544,12 @@ const MyAppointment = ({ token: initialToken }) => {
         setAppointment(data.appointment);
         if (data.appointment.cancel_token) {
           setToken(data.appointment.cancel_token);
-          const isTransport = data.appointment.service_type?.toUpperCase().includes('TRANSPORT') || 
-                             data.appointment.service_type?.toUpperCase().includes('VAN') ||
-                             data.appointment.rider_id;
+          const isTransport = data.appointment.service_type?.toUpperCase().includes('TRANSPORT') ||
+            data.appointment.service_type?.toUpperCase().includes('VAN') ||
+            data.appointment.rider_id;
           if (isTransport) {
-             console.log('Transport service detected, starting tracking...');
-             startTracking(data.appointment.cancel_token);
+            console.log('Transport service detected, starting tracking...');
+            startTracking(data.appointment.cancel_token);
           }
         }
       } else {
@@ -2569,8 +2576,8 @@ const MyAppointment = ({ token: initialToken }) => {
         <div className="bg-white border border-[#1c1917] p-8 shadow-2xl relative overflow-hidden">
           <div className="absolute top-0 right-0 p-4">
             <span className={`px-4 py-1 text-[10px] font-bold uppercase tracking-widest border ${appointment.status === 'confirmed' || appointment.status === 'completed' ? 'bg-green-50 border-green-600 text-green-700' :
-                appointment.status === 'pending' || appointment.status === 'queued' ? 'bg-blue-50 border-blue-600 text-blue-700' :
-                  'bg-red-50 border-red-600 text-red-700'
+              appointment.status === 'pending' || appointment.status === 'queued' ? 'bg-blue-50 border-blue-600 text-blue-700' :
+                'bg-red-50 border-red-600 text-red-700'
               }`}>
               {appointment.status}
             </span>
@@ -2591,7 +2598,7 @@ const MyAppointment = ({ token: initialToken }) => {
                 </div>
                 <div>
                   <p className="text-[10px] font-bold text-[#666] uppercase tracking-widest mb-1">Status</p>
-                   <p className="font-bold text-[#10b981] uppercase text-xs">{appointment.status}</p>
+                  <p className="font-bold text-[#10b981] uppercase text-xs">{appointment.status}</p>
                 </div>
               </div>
               <div>
@@ -2616,77 +2623,77 @@ const MyAppointment = ({ token: initialToken }) => {
             </div>
           </div>
 
-          {(appointment.service_type?.toUpperCase().includes('TRANSPORT') || 
-            appointment.service_type?.toUpperCase().includes('VAN') || 
-            appointment.service_type?.toUpperCase().includes('BICYCLE') || 
-            appointment.service_type?.toUpperCase().includes('MOTOR') || 
-            appointment.service_type?.toUpperCase().includes('CAR') || 
+          {(appointment.service_type?.toUpperCase().includes('TRANSPORT') ||
+            appointment.service_type?.toUpperCase().includes('VAN') ||
+            appointment.service_type?.toUpperCase().includes('BICYCLE') ||
+            appointment.service_type?.toUpperCase().includes('MOTOR') ||
+            appointment.service_type?.toUpperCase().includes('CAR') ||
             appointment.pickup_lat ||
             trackingData?.rider_id) && (
-            <div className="mt-10 pt-10 border-t border-[#1c1917] animate-in slide-in-from-bottom duration-500">
-              <div className="h-[450px] bg-gray-50 border border-[#e0e0e0] shadow-inner relative z-0 overflow-hidden group">
-                <LiveTrackingMap
-                  riderPos={trackingData?.current_lat ? { lat: parseFloat(trackingData.current_lat), lng: parseFloat(trackingData.current_lng) } : null}
-                  pickupPos={trackingData?.pickup_lat ? { lat: parseFloat(trackingData.pickup_lat), lng: parseFloat(trackingData.pickup_lng) } : 
-                             (appointment.pickup_lat ? { lat: parseFloat(appointment.pickup_lat), lng: parseFloat(appointment.pickup_lng) } : null)}
-                  destPos={trackingData?.dest_lat ? { lat: parseFloat(trackingData.dest_lat), lng: parseFloat(trackingData.dest_lng) } :
-                           (appointment.dest_lat ? { lat: parseFloat(appointment.dest_lat), lng: parseFloat(appointment.dest_lng) } : null)}
-                  status={trackingData?.transport_status || appointment.status}
-                />
+              <div className="mt-10 pt-10 border-t border-[#1c1917] animate-in slide-in-from-bottom duration-500">
+                <div className="h-[450px] bg-gray-50 border border-[#e0e0e0] shadow-inner relative z-0 overflow-hidden group">
+                  <LiveTrackingMap
+                    riderPos={trackingData?.current_lat ? { lat: parseFloat(trackingData.current_lat), lng: parseFloat(trackingData.current_lng) } : null}
+                    pickupPos={trackingData?.pickup_lat ? { lat: parseFloat(trackingData.pickup_lat), lng: parseFloat(trackingData.pickup_lng) } :
+                      (appointment.pickup_lat ? { lat: parseFloat(appointment.pickup_lat), lng: parseFloat(appointment.pickup_lng) } : null)}
+                    destPos={trackingData?.dest_lat ? { lat: parseFloat(trackingData.dest_lat), lng: parseFloat(trackingData.dest_lng) } :
+                      (appointment.dest_lat ? { lat: parseFloat(appointment.dest_lat), lng: parseFloat(appointment.dest_lng) } : null)}
+                    status={trackingData?.transport_status || appointment.status}
+                  />
 
-                {/* Status Floating Badge */}
-                <div className="absolute top-4 left-4 z-[1000] bg-[#1c1917] text-white px-4 py-2 text-[10px] font-black uppercase tracking-widest border border-white/20 shadow-xl">
-                  {trackingData?.transport_status?.replace(/_/g, ' ') || (trackingData?.rider_id ? 'Assigned' : 'Searching for Rider')}
+                  {/* Status Floating Badge */}
+                  <div className="absolute top-4 left-4 z-[1000] bg-[#1c1917] text-white px-4 py-2 text-[10px] font-black uppercase tracking-widest border border-white/20 shadow-xl">
+                    {trackingData?.transport_status?.replace(/_/g, ' ') || (trackingData?.rider_id ? 'Assigned' : 'Searching for Rider')}
+                  </div>
                 </div>
+
+                {/* Rider Info Card - Only show if rider assigned */}
+                {trackingData && trackingData.rider_id ? (
+                  <div className="mt-6 bg-white border-2 border-[#1c1917] p-8 shadow-2xl flex flex-col md:flex-row justify-between items-center gap-8 relative overflow-hidden group">
+                    <div className="flex items-center gap-6 flex-1 w-full">
+                      <div className="relative">
+                        <div className="w-20 h-20 bg-[#1c1917] rounded-full flex items-center justify-center text-white text-3xl font-black border-4 border-[#f4f4f4] transition-transform group-hover:scale-105 duration-300">
+                          {trackingData.rider_name?.charAt(0)}
+                        </div>
+                        <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 border-4 border-white rounded-full"></div>
+                      </div>
+
+                      <div className="flex-1">
+                        <div className="flex flex-wrap items-center gap-3 mb-3">
+                          <h4 className="text-2xl font-black text-[#1c1917] uppercase tracking-tighter italic leading-none">{trackingData.rider_name}</h4>
+                          <span className="bg-yellow-400 text-[#1c1917] px-2 py-1 rounded-sm text-[10px] font-black uppercase flex items-center gap-1 shadow-sm">
+                            <Star className="w-2.5 h-2.5" />
+                            4.9 Rating
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-12 border-t border-gray-100 pt-4">
+                          <div className="flex items-center gap-3">
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none">Vehicle</p>
+                            <p className="text-xs font-black text-[#1c1917] uppercase leading-none">{trackingData.vehicle_type || 'Luxury Transport'}</p>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none">Plate</p>
+                            <p className="text-xs font-black text-[#10b981] uppercase leading-none">{trackingData.plate_number || '---'}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3 w-full md:w-auto">
+                      <a href={`tel:${trackingData.rider_phone}`} className="flex-1 md:flex-none bg-[#1c1917] text-white px-10 py-5 font-black text-xs uppercase tracking-[2px] hover:bg-green-600 transition-all flex items-center justify-center gap-3 shadow-xl">
+                        <Phone className="w-4 h-4" />
+                        Contact Driver
+                      </a>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-6 bg-[#f4f4f4] border border-dashed border-[#1c1917] p-6 text-center">
+                    <p className="text-[10px] font-black text-[#1c1917] uppercase tracking-widest animate-pulse">Waiting for a rider to accept your request...</p>
+                  </div>
+                )}
               </div>
-
-              {/* Rider Info Card - Only show if rider assigned */}
-              {trackingData && trackingData.rider_id ? (
-                <div className="mt-6 bg-white border-2 border-[#1c1917] p-8 shadow-2xl flex flex-col md:flex-row justify-between items-center gap-8 relative overflow-hidden group">
-                  <div className="flex items-center gap-6 flex-1 w-full">
-                    <div className="relative">
-                      <div className="w-20 h-20 bg-[#1c1917] rounded-full flex items-center justify-center text-white text-3xl font-black border-4 border-[#f4f4f4] transition-transform group-hover:scale-105 duration-300">
-                        {trackingData.rider_name?.charAt(0)}
-                      </div>
-                      <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 border-4 border-white rounded-full"></div>
-                    </div>
-
-                    <div className="flex-1">
-                      <div className="flex flex-wrap items-center gap-3 mb-3">
-                        <h4 className="text-2xl font-black text-[#1c1917] uppercase tracking-tighter italic leading-none">{trackingData.rider_name}</h4>
-                        <span className="bg-yellow-400 text-[#1c1917] px-2 py-1 rounded-sm text-[10px] font-black uppercase flex items-center gap-1 shadow-sm">
-                          <Star className="w-2.5 h-2.5" />
-                          4.9 Rating
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-12 border-t border-gray-100 pt-4">
-                        <div className="flex items-center gap-3">
-                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none">Vehicle</p>
-                          <p className="text-xs font-black text-[#1c1917] uppercase leading-none">{trackingData.vehicle_type || 'Luxury Transport'}</p>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none">Plate</p>
-                          <p className="text-xs font-black text-[#10b981] uppercase leading-none">{trackingData.plate_number || '---'}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-3 w-full md:w-auto">
-                    <a href={`tel:${trackingData.rider_phone}`} className="flex-1 md:flex-none bg-[#1c1917] text-white px-10 py-5 font-black text-xs uppercase tracking-[2px] hover:bg-green-600 transition-all flex items-center justify-center gap-3 shadow-xl">
-                      <Phone className="w-4 h-4" />
-                      Contact Driver
-                    </a>
-                  </div>
-                </div>
-              ) : (
-                <div className="mt-6 bg-[#f4f4f4] border border-dashed border-[#1c1917] p-6 text-center">
-                  <p className="text-[10px] font-black text-[#1c1917] uppercase tracking-widest animate-pulse">Waiting for a rider to accept your request...</p>
-                </div>
-              )}
-            </div>
-          )}
+            )}
 
           <div className="mt-10 pt-6 border-t border-[#f4f4f4] flex flex-wrap gap-4">
             <button onClick={() => setAppointment(null)} className="px-6 py-3 bg-[#1c1917] text-white text-xs font-black uppercase tracking-widest hover:bg-[#333] transition-all">Track New Order</button>
@@ -4775,14 +4782,14 @@ const DraggableGlassPanel = ({ children, initialX, initialY, width, height, clas
   React.useEffect(() => {
     const handleMouseMove = (e) => {
       if (!isDragging) return;
-      
+
       const newX = e.clientX - dragStart.x;
       const newY = e.clientY - dragStart.y;
-      
+
       // Keep panel within viewport bounds
       const maxX = window.innerWidth - (width ? parseInt(width) : 400);
       const maxY = window.innerHeight - (height ? (height.includes('calc') ? 600 : parseInt(height)) : 600);
-      
+
       setPos({
         x: Math.max(0, Math.min(newX, maxX)),
         y: Math.max(0, Math.min(newY, maxY))
@@ -4801,17 +4808,17 @@ const DraggableGlassPanel = ({ children, initialX, initialY, width, height, clas
   }, [isDragging, dragStart]);
 
   return (
-    <div 
+    <div
       className={`absolute z-30 pointer-events-auto ${className}`}
-      style={{ 
+      style={{
         transform: `translate3d(${pos.x}px, ${pos.y}px, 0)`,
-        width: width || 'auto', 
+        width: width || 'auto',
         height: height || 'auto',
         transition: isDragging ? 'none' : 'transform 0.1s ease-out'
       }}
     >
       <div className="flex flex-col h-full">
-        <div 
+        <div
           onMouseDown={handleMouseDown}
           className="drag-handle cursor-grab active:cursor-grabbing p-2 bg-white/5 hover:bg-white/10 transition-colors flex items-center justify-center gap-1 border-b border-white/10"
         >
@@ -4854,30 +4861,30 @@ function TripMonitoring({ trips, stats, riders, incidents, onRefresh }) {
       {/* OVERLAY LAYER 1: Metric Cards (Top) */}
       <div className="relative z-20 p-4 pointer-events-none">
         <div className="flex gap-3 pointer-events-auto max-w-full overflow-x-auto scrollbar-hide py-2">
-          <MetricCard 
-            label="Total Trips" 
-            value={stats?.total || 0} 
-            icon={<Activity />} 
-            color="blue" 
+          <MetricCard
+            label="Total Trips"
+            value={stats?.total || 0}
+            icon={<Activity />}
+            color="blue"
           />
-          <MetricCard 
-            label="Ongoing" 
-            value={stats?.ongoing || 0} 
-            icon={<Navigation />} 
-            color="cyan" 
+          <MetricCard
+            label="Ongoing"
+            value={stats?.ongoing || 0}
+            icon={<Navigation />}
+            color="cyan"
           />
-          <MetricCard 
-            label="Available" 
-            value={availableRiders.length} 
-            icon={<User />} 
-            color="green" 
+          <MetricCard
+            label="Available"
+            value={availableRiders.length}
+            icon={<User />}
+            color="green"
           />
-          <MetricCard 
-            label="SOS Alerts" 
-            value={stats?.sos || 0} 
-            icon={<AlertTriangle />} 
-            color="red" 
-            active={stats?.sos > 0} 
+          <MetricCard
+            label="SOS Alerts"
+            value={stats?.sos || 0}
+            icon={<AlertTriangle />}
+            color="red"
+            active={stats?.sos > 0}
           />
         </div>
       </div>
@@ -4888,8 +4895,8 @@ function TripMonitoring({ trips, stats, riders, incidents, onRefresh }) {
           <div className="p-4 border-b border-[#002d9c] flex justify-between items-center bg-[#10b981] text-white drag-handle shadow-md">
             <div className="flex gap-1 pointer-events-auto">
               {['all', 'ongoing', 'sos'].map(m => (
-                <button 
-                  key={m} 
+                <button
+                  key={m}
                   onClick={() => setViewMode(m)}
                   className={`px-3 py-1 text-[9px] font-bold uppercase tracking-widest border transition-all ${viewMode === m ? 'bg-white text-[#10b981] border-white' : 'bg-transparent text-white/80 border-white/30 hover:bg-white/20 hover:text-white'}`}
                 >
@@ -4901,11 +4908,11 @@ function TripMonitoring({ trips, stats, riders, incidents, onRefresh }) {
               <RefreshCw className="w-4 h-4 text-white" />
             </button>
           </div>
-          
+
           <div className="flex-1 overflow-y-auto divide-y divide-white/20 custom-scrollbar">
             {filteredTrips.map(trip => (
-              <div 
-                key={trip.id} 
+              <div
+                key={trip.id}
                 onClick={() => setSelectedTripId(trip.id)}
                 className={`p-4 cursor-pointer transition-all border-l-4 ${selectedTripId === trip.id ? 'bg-[#10b981]/10 border-[#10b981]' : 'hover:bg-white/40 border-transparent'}`}
               >
@@ -4917,11 +4924,11 @@ function TripMonitoring({ trips, stats, riders, incidents, onRefresh }) {
                   <TripStatusBadge status={trip.transport_status} />
                 </div>
                 <div className="flex justify-between items-end">
-                   <div className="text-[9px] text-gray-600">
-                      <p className="truncate w-32">Rider: <span className="font-bold">{trip.rider_name || 'Unassigned'}</span></p>
-                      <p className="opacity-60">{new Date(trip.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
-                   </div>
-                   <button className="text-[#10b981] text-[9px] font-bold uppercase tracking-widest hover:underline">View</button>
+                  <div className="text-[9px] text-gray-600">
+                    <p className="truncate w-32">Rider: <span className="font-bold">{trip.rider_name || 'Unassigned'}</span></p>
+                    <p className="opacity-60">{new Date(trip.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                  </div>
+                  <button className="text-[#10b981] text-[9px] font-bold uppercase tracking-widest hover:underline">View</button>
                 </div>
               </div>
             ))}
@@ -4941,9 +4948,9 @@ function TripMonitoring({ trips, stats, riders, incidents, onRefresh }) {
 
       {/* Legenda (Bottom Left) */}
       <div className="absolute bottom-8 left-96 ml-4 z-10 bg-white/60 backdrop-blur-sm p-3 border border-white/20 shadow-lg flex items-center gap-4 text-[9px] font-bold uppercase tracking-wider text-gray-600">
-          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 force-circle bg-green-500 shadow-sm shadow-green-500/50"></span> Available</span>
-          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 force-circle bg-blue-500 shadow-sm shadow-blue-500/50"></span> Ongoing</span>
-          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 force-circle bg-red-500 shadow-sm shadow-red-500/50 animate-pulse"></span> SOS</span>
+        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 force-circle bg-green-500 shadow-sm shadow-green-500/50"></span> Available</span>
+        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 force-circle bg-blue-500 shadow-sm shadow-blue-500/50"></span> Ongoing</span>
+        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 force-circle bg-red-500 shadow-sm shadow-red-500/50 animate-pulse"></span> SOS</span>
       </div>
 
 
@@ -4962,7 +4969,7 @@ function MetricCard({ label, value, icon, color, active }) {
   return (
     <div className={`p-4 min-w-[160px] bg-white/20 backdrop-blur-2xl border-t border-l border-white/50 border-r border-b border-white/10 ${active ? 'border-red-500 animate-pulse ring-2 ring-red-100' : ''} shadow-[0_8px_32px_0_rgba(31,38,135,0.15)] transition-all hover:bg-white/30 group`}>
       <div className="flex justify-between items-start mb-4">
-        <div className={`p-2 force-circle transition-transform group-hover:scale-110 ${colors[color] || colors.gray}`}>{React.cloneElement(icon, {size: 16})}</div>
+        <div className={`p-2 force-circle transition-transform group-hover:scale-110 ${colors[color] || colors.gray}`}>{React.cloneElement(icon, { size: 16 })}</div>
         <p className="text-2xl font-bold text-[#161616] tracking-tighter">{value}</p>
       </div>
       <p className="text-[9px] font-bold text-gray-500 uppercase tracking-[2px]">{label}</p>
@@ -4997,15 +5004,15 @@ function MonitoringMap({ trips, selectedTrip }) {
   useEffect(() => {
     // Return early if Leaflet is not loaded or missing container
     if (!mapRef.current || !window.L) return;
-    
+
     try {
       // Initialize map if not already done
       if (!leafletMap.current) {
-        leafletMap.current = window.L.map(mapRef.current, { 
+        leafletMap.current = window.L.map(mapRef.current, {
           zoomControl: false,
           maxZoom: 18
         }).setView([11.0500, 124.0000], 10);
-        
+
         window.L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
           attribution: '&copy; CARTO'
         }).addTo(leafletMap.current);
@@ -5032,7 +5039,7 @@ function MonitoringMap({ trips, selectedTrip }) {
         const isLive = ['accepted', 'on_way_to_pickup', 'en_route', 'arrived_at_pickup', 'picked_up', 'sos'].includes(trip.transport_status);
         const lat = parseFloat(isLive ? (trip.rider_lat || trip.current_lat || trip.pickup_lat) : trip.pickup_lat);
         const lng = parseFloat(isLive ? (trip.rider_lng || trip.current_lng || trip.pickup_lng) : trip.pickup_lng);
-        
+
         if (isNaN(lat) || isNaN(lng)) return;
 
         const isSOS = trip.transport_status === 'sos';
@@ -5051,15 +5058,15 @@ function MonitoringMap({ trips, selectedTrip }) {
           const iconColor = isSOS ? '#da1e28' : (trip.transport_status === 'picked_up' ? '#0891b2' : '#10b981');
 
           if (isSOS || isEnRoute) {
-             // Dynamic SVG based on vehicle type
-             let svgPath = '';
-             if (vType.includes('van') || vType.includes('suv')) {
-               svgPath = '<path d="M21 17h-2.5a2.5 2.5 0 0 1-5 0h-3a2.5 2.5 0 0 1-5 0H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h13.2l2.3 2.3c.3.3.5.7.5 1.1v1.6a1 1 0 0 1-1 1ZM3 12V7a1 1 0 0 1 1-1h11a1 1 0 0 1 1 1v4h-5"/><circle cx="7.5" cy="17" r="2.5"/><circle cx="16" cy="17" r="2.5"/>';
-             } else {
-               svgPath = '<path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-1.1 0-2 .9-2 2v7c0 1.1.9 2 2 2h10c0-1.1.9-2 2-2z"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/>';
-             }
+            // Dynamic SVG based on vehicle type
+            let svgPath = '';
+            if (vType.includes('van') || vType.includes('suv')) {
+              svgPath = '<path d="M21 17h-2.5a2.5 2.5 0 0 1-5 0h-3a2.5 2.5 0 0 1-5 0H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h13.2l2.3 2.3c.3.3.5.7.5 1.1v1.6a1 1 0 0 1-1 1ZM3 12V7a1 1 0 0 1 1-1h11a1 1 0 0 1 1 1v4h-5"/><circle cx="7.5" cy="17" r="2.5"/><circle cx="16" cy="17" r="2.5"/>';
+            } else {
+              svgPath = '<path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-1.1 0-2 .9-2 2v7c0 1.1.9 2 2 2h10c0-1.1.9-2 2-2z"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/>';
+            }
 
-             iconHtml = `
+            iconHtml = `
                <div style="position: relative; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;">
                  ${isSOS ? '<div class="force-circle" style="position: absolute; inset: -4px; background: rgba(218, 30, 40, 0.4); border-radius: 50% !important; animation: pulse 2s infinite;"></div>' : ''}
                  <div class="force-circle" style="width: 36px; height: 36px; background: white; border: 3px solid ${iconColor}; border-radius: 50% !important; display: flex; align-items: center; justify-content: center; shadow: 0 4px 12px rgba(0,0,0,0.3); overflow: hidden;">
@@ -5071,7 +5078,7 @@ function MonitoringMap({ trips, selectedTrip }) {
                </div>
              `;
           } else {
-             iconHtml = `<div class="force-circle" style="width: 14px; height: 14px; background: #8d8d8d; border-radius: 50% !important; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"></div>`;
+            iconHtml = `<div class="force-circle" style="width: 14px; height: 14px; background: #8d8d8d; border-radius: 50% !important; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"></div>`;
           }
 
           const markerIcon = window.L.divIcon({
@@ -5125,10 +5132,10 @@ function MonitoringMap({ trips, selectedTrip }) {
         if (leafletMap.current) leafletMap.current.invalidateSize();
       });
       resizeObserver.observe(mapRef.current);
-      
+
       // Force immediate after small delay
       setTimeout(() => { if (leafletMap.current) leafletMap.current.invalidateSize(); }, 500);
-      
+
       return () => resizeObserver.disconnect();
     }
   }, []);
@@ -5167,28 +5174,28 @@ function TripDetailOverlay({ trip, onClose }) {
         <h3 className="text-[10px] font-bold uppercase tracking-widest text-[#10b981]">Trip Intelligence</h3>
         <button onClick={onClose} className="p-1 hover:bg-white/10 rounded-full transition-colors"><X className="w-5 h-5" /></button>
       </div>
-      
+
       <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
         {/* Passenger Info */}
         <section className="space-y-4">
           <div className="flex items-center gap-4">
-             <div className="w-12 h-12 bg-[#10b981] text-white flex items-center justify-center font-bold text-xl">
-               {trip.full_name?.charAt(0)}
-             </div>
-             <div>
-               <h4 className="text-lg font-bold text-[#161616]">{trip.full_name}</h4>
-               <p className="text-xs text-gray-500">{trip.email}</p>
-             </div>
+            <div className="w-12 h-12 bg-[#10b981] text-white flex items-center justify-center font-bold text-xl">
+              {trip.full_name?.charAt(0)}
+            </div>
+            <div>
+              <h4 className="text-lg font-bold text-[#161616]">{trip.full_name}</h4>
+              <p className="text-xs text-gray-500">{trip.email}</p>
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
-             <div className="p-3 bg-white/40 border border-white/20">
-               <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mb-1">Status</p>
-               <TripStatusBadge status={trip.transport_status} />
-             </div>
-             <div className="p-3 bg-white/40 border border-white/20">
-               <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mb-1">Contact</p>
-               <p className="text-xs font-bold text-gray-800">{trip.phone_number}</p>
-             </div>
+            <div className="p-3 bg-white/40 border border-white/20">
+              <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mb-1">Status</p>
+              <TripStatusBadge status={trip.transport_status} />
+            </div>
+            <div className="p-3 bg-white/40 border border-white/20">
+              <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mb-1">Contact</p>
+              <p className="text-xs font-bold text-gray-800">{trip.phone_number}</p>
+            </div>
           </div>
         </section>
 
@@ -5212,11 +5219,11 @@ function TripDetailOverlay({ trip, onClose }) {
         {/* Vehicle & Rider */}
         <section className="p-4 bg-[#161616] text-white space-y-4">
           <div className="flex justify-between items-start">
-             <div>
-               <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Assigned Driver</h4>
-               <p className="text-sm font-bold mt-1 text-blue-400">{trip.rider_name || 'PENDING ASSIGNMENT'}</p>
-             </div>
-             <Car className="text-gray-600" size={20} />
+            <div>
+              <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Assigned Driver</h4>
+              <p className="text-sm font-bold mt-1 text-blue-400">{trip.rider_name || 'PENDING ASSIGNMENT'}</p>
+            </div>
+            <Car className="text-gray-600" size={20} />
           </div>
           {trip.rider_name && (
             <div className="grid grid-cols-2 gap-4 border-t border-white/10 pt-4">
@@ -5269,7 +5276,7 @@ function DispatchMap({ trips, riders, selectedBooking }) {
 
   React.useEffect(() => {
     if (!leafletReady || !mapRef.current || leafletMap.current) return;
-    
+
     leafletMap.current = window.L.map(mapRef.current, {
       zoomControl: false,
       attributionControl: false
@@ -5281,7 +5288,7 @@ function DispatchMap({ trips, riders, selectedBooking }) {
 
     // Initial resize
     setTimeout(() => {
-       if (leafletMap.current) leafletMap.current.invalidateSize();
+      if (leafletMap.current) leafletMap.current.invalidateSize();
     }, 500);
 
     return () => {
@@ -5302,41 +5309,41 @@ function DispatchMap({ trips, riders, selectedBooking }) {
 
     // 1. RENDER RIDERS
     riders.forEach(rider => {
-       const isAvailable = (rider.status === 'available');
-       const lat = parseFloat(rider.current_lat);
-       const lng = parseFloat(rider.current_lng);
-       if (!lat || !lng) return;
+      const isAvailable = (rider.status === 'available');
+      const lat = parseFloat(rider.current_lat);
+      const lng = parseFloat(rider.current_lng);
+      if (!lat || !lng) return;
 
-       const iconColor = isAvailable ? '#24a148' : '#8d8d8d';
-       const iconHtml = `
+      const iconColor = isAvailable ? '#24a148' : '#8d8d8d';
+      const iconHtml = `
          <div class="force-circle" style="width: 24px; height: 24px; background: white; border: 2px solid ${iconColor}; border-radius: 50% !important; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
            <div class="force-circle" style="width: 12px; height: 12px; background: ${iconColor}; border-radius: 50% !important;"></div>
          </div>
        `;
 
-       const m = window.L.marker([lat, lng], {
-         icon: window.L.divIcon({
-           html: iconHtml,
-           className: '',
-           iconSize: [24, 24],
-           iconAnchor: [12, 12]
-         })
-       }).addTo(leafletMap.current)
-         .bindPopup(`<b>${rider.name}</b><br/>${rider.vehicle_type} - ${rider.plate_number}<br/>Status: ${rider.status}`);
-       
-       markersRef.current.set(`rider-${rider.id}`, m);
+      const m = window.L.marker([lat, lng], {
+        icon: window.L.divIcon({
+          html: iconHtml,
+          className: '',
+          iconSize: [24, 24],
+          iconAnchor: [12, 12]
+        })
+      }).addTo(leafletMap.current)
+        .bindPopup(`<b>${rider.name}</b><br/>${rider.vehicle_type} - ${rider.plate_number}<br/>Status: ${rider.status}`);
+
+      markersRef.current.set(`rider-${rider.id}`, m);
     });
 
     // 2. RENDER PENDING / ONGOING TRIPS
     trips.forEach(trip => {
-       const lat = parseFloat(trip.pickup_lat);
-       const lng = parseFloat(trip.pickup_lng);
-       if (!lat || !lng) return;
+      const lat = parseFloat(trip.pickup_lat);
+      const lng = parseFloat(trip.pickup_lng);
+      if (!lat || !lng) return;
 
-       const isPending = !trip.rider_id;
-       const iconColor = isPending ? '#f1c21b' : '#10b981';
-       
-       const iconHtml = `
+      const isPending = !trip.rider_id;
+      const iconColor = isPending ? '#f1c21b' : '#10b981';
+
+      const iconHtml = `
          <div style="position: relative; width: 30px; height: 38px;">
            <div style="width: 30px; height: 30px; background: ${iconColor}; border: 2px solid white; border-radius: 50%; box-shadow: 0 4px 10px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center;">
              <svg viewBox="0 0 24 24" width="16" height="16" stroke="white" stroke-width="3" fill="none"><path d="M12 21s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 7.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg>
@@ -5345,22 +5352,22 @@ function DispatchMap({ trips, riders, selectedBooking }) {
          </div>
        `;
 
-       const m = window.L.marker([lat, lng], {
-         icon: window.L.divIcon({
-           html: iconHtml,
-           className: '',
-           iconSize: [30, 38],
-           iconAnchor: [15, 38]
-         })
-       }).addTo(leafletMap.current)
-         .bindPopup(`<b>Booking #${trip.id}</b><br/>${trip.full_name}<br/>Status: ${trip.transport_status}<br/>${trip.pickup_location}`);
-       
-       markersRef.current.set(`trip-${trip.id}`, m);
+      const m = window.L.marker([lat, lng], {
+        icon: window.L.divIcon({
+          html: iconHtml,
+          className: '',
+          iconSize: [30, 38],
+          iconAnchor: [15, 38]
+        })
+      }).addTo(leafletMap.current)
+        .bindPopup(`<b>Booking #${trip.id}</b><br/>${trip.full_name}<br/>Status: ${trip.transport_status}<br/>${trip.pickup_location}`);
 
-       if (selectedBooking && selectedBooking.id === trip.id) {
-          leafletMap.current.setView([lat, lng], 15);
-          m.openPopup();
-       }
+      markersRef.current.set(`trip-${trip.id}`, m);
+
+      if (selectedBooking && selectedBooking.id === trip.id) {
+        leafletMap.current.setView([lat, lng], 15);
+        m.openPopup();
+      }
     });
 
   }, [trips, riders, selectedBooking, leafletReady]);
@@ -5424,7 +5431,7 @@ function RideDispatch({ trips, stats, riders, onRefresh }) {
 
   const handleCreateBooking = async (e) => {
     e.preventDefault();
-    
+
     try {
       const isScheduled = newBookingData.scheduleType === 'Scheduled';
       const pDate = isScheduled && newBookingData.preferredDate ? newBookingData.preferredDate : new Date().toISOString().split('T')[0];
@@ -5484,7 +5491,7 @@ function RideDispatch({ trips, stats, riders, onRefresh }) {
 
   const handleAssignRider = async (bookingId, riderId) => {
     if (!window.confirm('Assign this rider to the booking?')) return;
-    
+
     try {
       const response = await fetch('/api/rider/accept', {
         method: 'POST',
@@ -5526,22 +5533,22 @@ function RideDispatch({ trips, stats, riders, onRefresh }) {
   // 'scheduled' tab: bookings with a future preferred_date that haven't started yet (confirmed/pending, no rider assigned yet or not in-progress)
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const queueTrips = trips.filter(t => {
-     if (activeQueueTab === 'pending') return !t.rider_id && t.transport_status !== 'completed' && t.transport_status !== 'cancelled';
-     if (activeQueueTab === 'assigned') return !!t.rider_id && t.transport_status !== 'completed' && t.transport_status !== 'cancelled';
-     if (activeQueueTab === 'scheduled') {
-       // Show confirmed/pending bookings with a preferred_date in the future
-       const tripDate = t.preferred_date ? new Date(t.preferred_date) : null;
-       tripDate && tripDate.setHours(0, 0, 0, 0);
-       return (t.status === 'confirmed' || t.status === 'pending') &&
-              t.transport_status !== 'completed' &&
-              t.transport_status !== 'cancelled' &&
-              (!tripDate || tripDate >= today);
-     }
-     return true;
-  }).filter(t => 
-     t.id.toString().includes(searchTerm) || 
-     t.full_name?.toLowerCase()?.includes(searchTerm.toLowerCase()) ||
-     t.pickup_location?.toLowerCase()?.includes(searchTerm.toLowerCase())
+    if (activeQueueTab === 'pending') return !t.rider_id && t.transport_status !== 'completed' && t.transport_status !== 'cancelled';
+    if (activeQueueTab === 'assigned') return !!t.rider_id && t.transport_status !== 'completed' && t.transport_status !== 'cancelled';
+    if (activeQueueTab === 'scheduled') {
+      // Show confirmed/pending bookings with a preferred_date in the future
+      const tripDate = t.preferred_date ? new Date(t.preferred_date) : null;
+      tripDate && tripDate.setHours(0, 0, 0, 0);
+      return (t.status === 'confirmed' || t.status === 'pending') &&
+        t.transport_status !== 'completed' &&
+        t.transport_status !== 'cancelled' &&
+        (!tripDate || tripDate >= today);
+    }
+    return true;
+  }).filter(t =>
+    t.id.toString().includes(searchTerm) ||
+    t.full_name?.toLowerCase()?.includes(searchTerm.toLowerCase()) ||
+    t.pickup_location?.toLowerCase()?.includes(searchTerm.toLowerCase())
   );
 
   if (!isReady) {
@@ -5558,40 +5565,40 @@ function RideDispatch({ trips, stats, riders, onRefresh }) {
       {/* 1. TOP METRICS & CONTROLS */}
       <div className="p-4 bg-[#1c1c1c] border-b border-white/5 flex items-center justify-between">
         <div className="flex gap-4">
-           <div className="flex flex-col">
-              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Pending</span>
-              <span className="text-xl font-bold text-[#f1c21b]">{trips.filter(t => !t.rider_id && t.transport_status !== 'cancelled').length}</span>
-           </div>
-           <div className="w-[1px] h-8 bg-white/10" />
-           <div className="flex flex-col">
-              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Ongoing</span>
-              <span className="text-xl font-bold text-[#10b981]">{trips.filter(t => t.rider_id && t.transport_status !== 'completed' && t.transport_status !== 'cancelled').length}</span>
-           </div>
-           <div className="w-[1px] h-8 bg-white/10" />
-           <div className="flex flex-col">
-              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Available Riders</span>
-              <span className="text-xl font-bold text-[#24a148]">{riders.filter(r => r.status === 'available').length}</span>
-           </div>
+          <div className="flex flex-col">
+            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Pending</span>
+            <span className="text-xl font-bold text-[#f1c21b]">{trips.filter(t => !t.rider_id && t.transport_status !== 'cancelled').length}</span>
+          </div>
+          <div className="w-[1px] h-8 bg-white/10" />
+          <div className="flex flex-col">
+            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Ongoing</span>
+            <span className="text-xl font-bold text-[#10b981]">{trips.filter(t => t.rider_id && t.transport_status !== 'completed' && t.transport_status !== 'cancelled').length}</span>
+          </div>
+          <div className="w-[1px] h-8 bg-white/10" />
+          <div className="flex flex-col">
+            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Available Riders</span>
+            <span className="text-xl font-bold text-[#24a148]">{riders.filter(r => r.status === 'available').length}</span>
+          </div>
         </div>
 
         <div className="flex gap-2">
-           <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={14} />
-              <input 
-                type="text" 
-                placeholder="Search Booking ID / Passenger..." 
-                className="bg-white/5 border border-white/10 rounded-sm pl-9 pr-4 py-2 text-xs text-white focus:outline-none focus:border-[#10b981] w-64"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-           </div>
-           <button 
-             onClick={() => setIsCreatingBooking(true)}
-             className="bg-[#10b981] text-white px-4 py-2 text-[10px] font-bold uppercase tracking-widest hover:bg-[#0353e9] flex items-center gap-2"
-           >
-             <Plus size={14} /> Create Booking
-           </button>
-           <button onClick={onRefresh} className="bg-white/5 text-gray-400 p-2 hover:bg-white/10 border border-white/10"><RefreshCw size={16} /></button>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={14} />
+            <input
+              type="text"
+              placeholder="Search Booking ID / Passenger..."
+              className="bg-white/5 border border-white/10 rounded-sm pl-9 pr-4 py-2 text-xs text-white focus:outline-none focus:border-[#10b981] w-64"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <button
+            onClick={() => setIsCreatingBooking(true)}
+            className="bg-[#10b981] text-white px-4 py-2 text-[10px] font-bold uppercase tracking-widest hover:bg-[#0353e9] flex items-center gap-2"
+          >
+            <Plus size={14} /> Create Booking
+          </button>
+          <button onClick={onRefresh} className="bg-white/5 text-gray-400 p-2 hover:bg-white/10 border border-white/10"><RefreshCw size={16} /></button>
         </div>
       </div>
 
@@ -5599,373 +5606,373 @@ function RideDispatch({ trips, stats, riders, onRefresh }) {
       <div className="flex-1 flex overflow-hidden">
         {/* LEFT: MAP */}
         <div className="flex-1 relative">
-           <DispatchMap trips={trips} riders={riders} selectedBooking={selectedBooking} />
-           
-           {/* Map Controls Float */}
-           <div className="absolute right-4 top-4 z-[1000] flex flex-col gap-2">
-              <button className="p-2 bg-white shadow-xl hover:bg-gray-100"><Plus size={18} /></button>
-              <button className="p-2 bg-white shadow-xl hover:bg-gray-100"><Minus size={18} /></button>
-              <button className="p-2 bg-white shadow-xl hover:bg-gray-100"><Navigation size={18} /></button>
-           </div>
+          <DispatchMap trips={trips} riders={riders} selectedBooking={selectedBooking} />
 
-           {/* Legend Float */}
-           <div className="absolute left-4 bottom-4 z-[1000] bg-white/90 backdrop-blur-md p-3 border border-gray-200 shadow-2xl flex flex-col gap-2">
-              <div className="flex items-center gap-2 text-[9px] font-bold text-gray-600 uppercase">
-                 <div className="w-3 h-3 rounded-full bg-[#24a148]" /> Available Riders
-              </div>
-              <div className="flex items-center gap-2 text-[9px] font-bold text-gray-600 uppercase">
-                 <div className="w-3 h-3 rounded-full bg-[#f1c21b]" /> Pending Requests
-              </div>
-              <div className="flex items-center gap-2 text-[9px] font-bold text-gray-600 uppercase">
-                 <div className="w-3 h-3 rounded-full bg-[#10b981]" /> Active Trips
-              </div>
-           </div>
+          {/* Map Controls Float */}
+          <div className="absolute right-4 top-4 z-[1000] flex flex-col gap-2">
+            <button className="p-2 bg-white shadow-xl hover:bg-gray-100"><Plus size={18} /></button>
+            <button className="p-2 bg-white shadow-xl hover:bg-gray-100"><Minus size={18} /></button>
+            <button className="p-2 bg-white shadow-xl hover:bg-gray-100"><Navigation size={18} /></button>
+          </div>
+
+          {/* Legend Float */}
+          <div className="absolute left-4 bottom-4 z-[1000] bg-white/90 backdrop-blur-md p-3 border border-gray-200 shadow-2xl flex flex-col gap-2">
+            <div className="flex items-center gap-2 text-[9px] font-bold text-gray-600 uppercase">
+              <div className="w-3 h-3 rounded-full bg-[#24a148]" /> Available Riders
+            </div>
+            <div className="flex items-center gap-2 text-[9px] font-bold text-gray-600 uppercase">
+              <div className="w-3 h-3 rounded-full bg-[#f1c21b]" /> Pending Requests
+            </div>
+            <div className="flex items-center gap-2 text-[9px] font-bold text-gray-600 uppercase">
+              <div className="w-3 h-3 rounded-full bg-[#10b981]" /> Active Trips
+            </div>
+          </div>
         </div>
 
         {/* RIGHT: QUEUE PANEL */}
         <div className="w-[420px] bg-[#1c1c1c] border-l border-white/5 flex flex-col">
-           <div className="flex border-b border-white/5 bg-[#161616]">
-              {['pending', 'assigned', 'scheduled'].map(tab => (
-                 <button 
-                   key={tab}
-                   onClick={() => setActiveQueueTab(tab)}
-                   className={`flex-1 py-4 text-[10px] font-bold uppercase tracking-widest transition-all ${activeQueueTab === tab ? 'text-[#10b981] bg-white/5 border-b-2 border-[#10b981]' : 'text-gray-500 hover:text-white'}`}
-                 >
-                   {tab}
-                 </button>
-              ))}
-           </div>
+          <div className="flex border-b border-white/5 bg-[#161616]">
+            {['pending', 'assigned', 'scheduled'].map(tab => (
+              <button
+                key={tab}
+                onClick={() => setActiveQueueTab(tab)}
+                className={`flex-1 py-4 text-[10px] font-bold uppercase tracking-widest transition-all ${activeQueueTab === tab ? 'text-[#10b981] bg-white/5 border-b-2 border-[#10b981]' : 'text-gray-500 hover:text-white'}`}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
 
-           <div className="flex-1 overflow-y-auto custom-scrollbar">
-              {queueTrips.length === 0 ? (
-                 <div className="h-full flex flex-col items-center justify-center p-8 text-center text-gray-600">
-                    <History size={48} className="mb-4 opacity-20" />
-                    <p className="text-xs uppercase tracking-widest font-bold">No {activeQueueTab} bookings</p>
-                 </div>
-              ) : (
-                 <div className="divide-y divide-white/5">
-                    {queueTrips.map(entry => (
-                       <div 
-                         key={entry.id} 
-                         className={`p-4 hover:bg-white/5 transition-colors cursor-pointer group ${selectedBooking?.id === entry.id ? 'bg-[#10b981]/10 border-l-4 border-[#10b981]' : ''}`}
-                         onClick={() => setSelectedBooking(entry)}
-                       >
-                          <div className="flex justify-between items-start mb-2">
-                             <span className="text-[10px] font-bold text-[#10b981] bg-[#10b981]/10 px-2 py-0.5">#{entry.id}</span>
-                             <span className="text-[9px] text-gray-500">{entry.preferred_time}</span>
-                          </div>
-                          <h4 className="text-sm font-bold text-white mb-1">{entry.full_name}</h4>
-                          <div className="space-y-1 mb-4">
-                             <div className="flex items-start gap-2">
-                                <MapPin size={12} className="text-gray-600 mt-0.5" />
-                                <p className="text-[10px] text-gray-400 line-clamp-1">{entry.pickup_location}</p>
-                             </div>
-                             <div className="flex items-start gap-2">
-                                <ArrowRight size={12} className="text-gray-600 mt-0.5" />
-                                <p className="text-[10px] text-gray-400 line-clamp-1">{entry.destination_location}</p>
-                             </div>
-                          </div>
+          <div className="flex-1 overflow-y-auto custom-scrollbar">
+            {queueTrips.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center p-8 text-center text-gray-600">
+                <History size={48} className="mb-4 opacity-20" />
+                <p className="text-xs uppercase tracking-widest font-bold">No {activeQueueTab} bookings</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-white/5">
+                {queueTrips.map(entry => (
+                  <div
+                    key={entry.id}
+                    className={`p-4 hover:bg-white/5 transition-colors cursor-pointer group ${selectedBooking?.id === entry.id ? 'bg-[#10b981]/10 border-l-4 border-[#10b981]' : ''}`}
+                    onClick={() => setSelectedBooking(entry)}
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="text-[10px] font-bold text-[#10b981] bg-[#10b981]/10 px-2 py-0.5">#{entry.id}</span>
+                      <span className="text-[9px] text-gray-500">{entry.preferred_time}</span>
+                    </div>
+                    <h4 className="text-sm font-bold text-white mb-1">{entry.full_name}</h4>
+                    <div className="space-y-1 mb-4">
+                      <div className="flex items-start gap-2">
+                        <MapPin size={12} className="text-gray-600 mt-0.5" />
+                        <p className="text-[10px] text-gray-400 line-clamp-1">{entry.pickup_location}</p>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <ArrowRight size={12} className="text-gray-600 mt-0.5" />
+                        <p className="text-[10px] text-gray-400 line-clamp-1">{entry.destination_location}</p>
+                      </div>
+                    </div>
 
-                          <div className="flex justify-between items-center">
-                             <div className="flex gap-2">
-                                <span className="text-[8px] font-bold py-1 px-2 border border-white/10 text-gray-400 uppercase">{entry.service_type || 'STANDARD'}</span>
-                                <span className={`text-[8px] font-bold py-1 px-2 uppercase ${entry.rider_id ? 'bg-green-500/10 text-green-500' : 'bg-yellow-500/10 text-yellow-500'}`}>
-                                   {entry.rider_id ? 'Assigned' : 'Unassigned'}
-                                </span>
-                             </div>
-                             <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button className="p-2 bg-white/5 hover:bg-[#10b981] text-white transition-colors"><ChevronRight size={14} /></button>
-                             </div>
-                          </div>
-                       </div>
-                    ))}
-                 </div>
-              )}
-           </div>
+                    <div className="flex justify-between items-center">
+                      <div className="flex gap-2">
+                        <span className="text-[8px] font-bold py-1 px-2 border border-white/10 text-gray-400 uppercase">{entry.service_type || 'STANDARD'}</span>
+                        <span className={`text-[8px] font-bold py-1 px-2 uppercase ${entry.rider_id ? 'bg-green-500/10 text-green-500' : 'bg-yellow-500/10 text-yellow-500'}`}>
+                          {entry.rider_id ? 'Assigned' : 'Unassigned'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button className="p-2 bg-white/5 hover:bg-[#10b981] text-white transition-colors"><ChevronRight size={14} /></button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* 3. DETAIL OVERLAY / MANUAL DISPATCH COMPONENT (Floating over map/queue) */}
       {selectedBooking && (
-         <div className="absolute inset-y-0 right-[420px] w-96 bg-[#161616] border-l border-white/10 z-[2000] shadow-[-20px_0_40px_rgba(0,0,0,0.5)] flex flex-col animate-slideInRight">
-            <div className="p-4 bg-[#1c1c1c] border-b border-white/5 flex justify-between items-center">
-               <h3 className="text-xs font-bold text-white uppercase tracking-widest">Booking Context</h3>
-               <button onClick={() => setSelectedBooking(null)} className="text-gray-500 hover:text-white"><X size={18} /></button>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
-               {/* Passenger details */}
-               <section>
-                  <div className="flex items-center gap-4 mb-4">
-                     <div className="w-12 h-12 bg-white/5 flex items-center justify-center font-bold text-xl text-white">
-                        {selectedBooking.full_name?.charAt(0)}
-                     </div>
-                     <div>
-                        <h4 className="text-lg font-bold text-white">{selectedBooking.full_name}</h4>
-                        <p className="text-xs text-gray-500">{selectedBooking.phone_number}</p>
-                     </div>
-                  </div>
-                  <div className="p-4 bg-white/5 border border-white/10">
-                     <div className="flex justify-between mb-2">
-                        <span className="text-[9px] text-gray-500 uppercase tracking-widest">Distance</span>
-                        <span className="text-xs font-bold text-white">4.2 KM</span>
-                     </div>
-                     <div className="flex justify-between">
-                        <span className="text-[9px] text-gray-500 uppercase tracking-widest">Estimated Fare</span>
-                        <span className="text-xs font-bold text-[#E4FE7B]">PHP {selectedBooking.total_amount}</span>
-                     </div>
-                  </div>
-               </section>
+        <div className="absolute inset-y-0 right-[420px] w-96 bg-[#161616] border-l border-white/10 z-[2000] shadow-[-20px_0_40px_rgba(0,0,0,0.5)] flex flex-col animate-slideInRight">
+          <div className="p-4 bg-[#1c1c1c] border-b border-white/5 flex justify-between items-center">
+            <h3 className="text-xs font-bold text-white uppercase tracking-widest">Booking Context</h3>
+            <button onClick={() => setSelectedBooking(null)} className="text-gray-500 hover:text-white"><X size={18} /></button>
+          </div>
 
-               {/* Manual Dispatch Area */}
-               <section className="space-y-4">
-                  <div className="flex justify-between items-center border-b border-white/10 pb-2">
-                     <h4 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Nearby Available Riders</h4>
-                     <button className="text-[10px] text-[#10b981] font-bold uppercase hover:underline">Auto Dispatch</button>
-                  </div>
-                  <div className="space-y-3">
-                     {(() => {
-                        const availableRiders = riders.filter(r => r.status === 'available');
-                        if (availableRiders.length === 0) {
-                           return (
-                              <div className="p-4 bg-red-500/5 border border-red-500/20 text-red-500 text-[10px] uppercase font-bold text-center">
-                                 No riders available in radius
-                              </div>
-                           );
-                        }
-                        
-                        const reqType = selectedBooking.service_type?.toLowerCase() || '';
-                        const matchingRiders = availableRiders.filter(r => r.vehicle_type?.toLowerCase() === reqType);
-                        const nonMatchingRiders = availableRiders.filter(r => r.vehicle_type?.toLowerCase() !== reqType);
-                        const sortedRiders = [...matchingRiders, ...nonMatchingRiders].slice(0, 4);
+          <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
+            {/* Passenger details */}
+            <section>
+              <div className="flex items-center gap-4 mb-4">
+                <div className="w-12 h-12 bg-white/5 flex items-center justify-center font-bold text-xl text-white">
+                  {selectedBooking.full_name?.charAt(0)}
+                </div>
+                <div>
+                  <h4 className="text-lg font-bold text-white">{selectedBooking.full_name}</h4>
+                  <p className="text-xs text-gray-500">{selectedBooking.phone_number}</p>
+                </div>
+              </div>
+              <div className="p-4 bg-white/5 border border-white/10">
+                <div className="flex justify-between mb-2">
+                  <span className="text-[9px] text-gray-500 uppercase tracking-widest">Distance</span>
+                  <span className="text-xs font-bold text-white">4.2 KM</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[9px] text-gray-500 uppercase tracking-widest">Estimated Fare</span>
+                  <span className="text-xs font-bold text-[#E4FE7B]">PHP {selectedBooking.total_amount}</span>
+                </div>
+              </div>
+            </section>
 
-                        return sortedRiders.map(rider => {
-                           const isMatch = rider.vehicle_type?.toLowerCase() === reqType;
-                           return (
-                              <div key={rider.id} className={`p-3 bg-white/5 border transition-all flex justify-between items-center group ${isMatch ? 'border-l-4 border-l-[#24a148] border-white/10 hover:border-[#24a148]' : 'border-l-4 border-l-orange-500 border-white/10 hover:border-orange-500'}`}>
-                                 <div className="flex gap-3 items-center">
-                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isMatch ? 'bg-[#24a148]/20 text-[#24a148]' : 'bg-orange-500/20 text-orange-500'}`}>
-                                       <User size={14} />
-                                    </div>
-                                    <div>
-                                       <div className="flex items-center gap-2">
-                                          <p className="text-xs font-bold text-white">{rider.name}</p>
-                                          {!isMatch && <span className="text-[8px] font-bold bg-orange-500/20 text-orange-500 px-1 py-0.5 uppercase">Mismatch</span>}
-                                       </div>
-                                       <p className="text-[9px] text-gray-500">{rider.vehicle_type} Ã¢â‚¬Â¢ 0.8 KM away</p>
-                                    </div>
-                                 </div>
-                                 <button 
-                                   onClick={() => handleAssignRider(selectedBooking.id, rider.id)}
-                                   className={`px-3 py-1.5 text-white text-[9px] font-bold uppercase tracking-widest transition-colors ${isMatch ? 'bg-[#24a148] hover:bg-[#1e8a3d]' : 'bg-orange-600 hover:bg-orange-700'}`}
-                                 >
-                                    Assign
-                                 </button>
-                              </div>
-                           );
-                        });
-                     })()}
-                  </div>
-               </section>
+            {/* Manual Dispatch Area */}
+            <section className="space-y-4">
+              <div className="flex justify-between items-center border-b border-white/10 pb-2">
+                <h4 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Nearby Available Riders</h4>
+                <button className="text-[10px] text-[#10b981] font-bold uppercase hover:underline">Auto Dispatch</button>
+              </div>
+              <div className="space-y-3">
+                {(() => {
+                  const availableRiders = riders.filter(r => r.status === 'available');
+                  if (availableRiders.length === 0) {
+                    return (
+                      <div className="p-4 bg-red-500/5 border border-red-500/20 text-red-500 text-[10px] uppercase font-bold text-center">
+                        No riders available in radius
+                      </div>
+                    );
+                  }
 
-               {/* Booking Control Actions */}
-               <section className="space-y-2 pt-4">
-                  <button className="w-full py-3 border border-white/10 text-white text-[9px] font-bold uppercase tracking-widest hover:bg-white/5 transition-all text-center flex items-center justify-center gap-2">
-                     <Edit size={12} /> Edit Booking
-                  </button>
-                  <button 
-                    onClick={() => handleCancelBooking(selectedBooking.id)}
-                    className="w-full py-3 border border-red-500/50 text-red-500 text-[9px] font-bold uppercase tracking-widest hover:bg-red-500/10 transition-all text-center"
-                  >
-                     Cancel Booking
-                  </button>
-               </section>
-            </div>
-         </div>
+                  const reqType = selectedBooking.service_type?.toLowerCase() || '';
+                  const matchingRiders = availableRiders.filter(r => r.vehicle_type?.toLowerCase() === reqType);
+                  const nonMatchingRiders = availableRiders.filter(r => r.vehicle_type?.toLowerCase() !== reqType);
+                  const sortedRiders = [...matchingRiders, ...nonMatchingRiders].slice(0, 4);
+
+                  return sortedRiders.map(rider => {
+                    const isMatch = rider.vehicle_type?.toLowerCase() === reqType;
+                    return (
+                      <div key={rider.id} className={`p-3 bg-white/5 border transition-all flex justify-between items-center group ${isMatch ? 'border-l-4 border-l-[#24a148] border-white/10 hover:border-[#24a148]' : 'border-l-4 border-l-orange-500 border-white/10 hover:border-orange-500'}`}>
+                        <div className="flex gap-3 items-center">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isMatch ? 'bg-[#24a148]/20 text-[#24a148]' : 'bg-orange-500/20 text-orange-500'}`}>
+                            <User size={14} />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="text-xs font-bold text-white">{rider.name}</p>
+                              {!isMatch && <span className="text-[8px] font-bold bg-orange-500/20 text-orange-500 px-1 py-0.5 uppercase">Mismatch</span>}
+                            </div>
+                            <p className="text-[9px] text-gray-500">{rider.vehicle_type} Ã¢â‚¬Â¢ 0.8 KM away</p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleAssignRider(selectedBooking.id, rider.id)}
+                          className={`px-3 py-1.5 text-white text-[9px] font-bold uppercase tracking-widest transition-colors ${isMatch ? 'bg-[#24a148] hover:bg-[#1e8a3d]' : 'bg-orange-600 hover:bg-orange-700'}`}
+                        >
+                          Assign
+                        </button>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            </section>
+
+            {/* Booking Control Actions */}
+            <section className="space-y-2 pt-4">
+              <button className="w-full py-3 border border-white/10 text-white text-[9px] font-bold uppercase tracking-widest hover:bg-white/5 transition-all text-center flex items-center justify-center gap-2">
+                <Edit size={12} /> Edit Booking
+              </button>
+              <button
+                onClick={() => handleCancelBooking(selectedBooking.id)}
+                className="w-full py-3 border border-red-500/50 text-red-500 text-[9px] font-bold uppercase tracking-widest hover:bg-red-500/10 transition-all text-center"
+              >
+                Cancel Booking
+              </button>
+            </section>
+          </div>
+        </div>
       )}
 
       {/* 4. MODALS (Booking Creation, etc.) */}
       {isCreatingBooking && (
-         <div className="fixed inset-0 z-[5000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-            <div className="w-full max-w-2xl bg-white border border-gray-200 shadow-2xl overflow-hidden animate-zoomIn">
-               <div className="p-6 bg-white border-b border-gray-100 flex justify-between items-center">
-                  <div>
-                     <h3 className="text-xl font-bold text-black uppercase tracking-tighter italic">Manual Dispatch Request</h3>
-                     <p className="text-xs text-gray-500">Create a new booking directly in the system</p>
-                  </div>
-                  <button onClick={() => setIsCreatingBooking(false)} className="text-gray-400 hover:text-black"><X size={24} /></button>
-               </div>
-               <form onSubmit={handleCreateBooking} className="p-6 space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                     <div className="space-y-2">
-                        <h4 className="text-[10px] font-bold text-[#24a148] uppercase tracking-widest">Passenger Information</h4>
-                        <input 
-                           name="fullName" 
-                           value={newBookingData.fullName}
-                           onChange={e => setNewBookingData({...newBookingData, fullName: e.target.value})}
-                           required 
-                           className="w-full bg-[#f4f4f4] border-0 border-b border-gray-300 p-2.5 text-[12px] text-black focus:outline-none focus:border-[#24a148] focus:ring-0" 
-                           placeholder="Full Name" 
-                        />
-                        <input 
-                           name="phoneNumber" 
-                           value={newBookingData.phoneNumber}
-                           onChange={e => setNewBookingData({...newBookingData, phoneNumber: e.target.value})}
-                           required 
-                           className="w-full bg-[#f4f4f4] border-0 border-b border-gray-300 p-2.5 text-[12px] text-black focus:outline-none focus:border-[#24a148] focus:ring-0" 
-                           placeholder="Contact Number" 
-                        />
-                        <input 
-                           name="email" 
-                           value={newBookingData.email}
-                           onChange={e => setNewBookingData({...newBookingData, email: e.target.value})}
-                           className="w-full bg-[#f4f4f4] border-0 border-b border-gray-300 p-2.5 text-[12px] text-black focus:outline-none focus:border-[#24a148] focus:ring-0" 
-                           placeholder="Email (Optional)" 
-                        />
-                     </div>
-                     <div className="space-y-2">
-                        <h4 className="text-[10px] font-bold text-[#24a148] uppercase tracking-widest">Trip Details</h4>
-                        <div className="relative [&_input]:text-[12px] [&_input]:p-2.5">
-                           <LocationAutocomplete
-                             value={newBookingData.pickupLocation}
-                             onChange={(val) => setNewBookingData(prev => ({ ...prev, pickupLocation: val }))}
-                             onSelect={(place) => {
-                               if (place && place.address && place.coords) {
-                                 setNewBookingData(prev => ({
-                                   ...prev,
-                                   pickupLocation: place.address,
-                                   pickupCoords: place.coords
-                                 }));
-                               }
-                             }}
-                             placeholder="Search Pickup Address..."
-                           />
-                        </div>
-                        <div className="relative [&_input]:text-[12px] [&_input]:p-2.5">
-                           <LocationAutocomplete
-                             value={newBookingData.destinationLocation}
-                             onChange={(val) => setNewBookingData(prev => ({ ...prev, destinationLocation: val }))}
-                             onSelect={(place) => {
-                               if (place && place.address && place.coords) {
-                                 setNewBookingData(prev => ({
-                                   ...prev,
-                                   destinationLocation: place.address,
-                                   destCoords: place.coords
-                                 }));
-                               }
-                             }}
-                             placeholder="Search Destination Address..."
-                           />
-                        </div>
-                     </div>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-3">
-                     <div className="space-y-1">
-                        <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Schedule Type</label>
-                        <select 
-                          name="scheduleType" 
-                          value={newBookingData.scheduleType}
-                          onChange={e => setNewBookingData({...newBookingData, scheduleType: e.target.value})}
-                          className="w-full bg-[#f4f4f4] border-0 border-b border-gray-300 p-2 text-[12px] text-black focus:outline-none focus:border-[#24a148]"
-                        >
-                           <option>Immediate</option>
-                           <option>Scheduled</option>
-                        </select>
-                     </div>
-                     <div className="space-y-1">
-                        <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Vehicle Preference</label>
-                        <select 
-                          name="vehiclePreference" 
-                          value={newBookingData.vehiclePreference}
-                          onChange={e => setNewBookingData({...newBookingData, vehiclePreference: e.target.value})}
-                          className="w-full bg-[#f4f4f4] border-0 border-b border-gray-300 p-2 text-[12px] text-black focus:outline-none focus:border-[#24a148]"
-                        >
-                           <option value="Standard">No Preference</option>
-                           <option value="Car">Car</option>
-                           <option value="Luxury Van">Van / SUV</option>
-                        </select>
-                     </div>
-                     <div className="space-y-1">
-                        <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Payment Method</label>
-                        <select 
-                          name="paymentMethod" 
-                          value={newBookingData.paymentMethod}
-                          onChange={e => setNewBookingData({...newBookingData, paymentMethod: e.target.value})}
-                          className="w-full bg-[#f4f4f4] border-0 border-b border-gray-300 p-2 text-[12px] text-black focus:outline-none focus:border-[#24a148]"
-                        >
-                           <option>Cash</option>
-                           <option>Wallet</option>
-                           <option>Corporate</option>
-                        </select>
-                     </div>
-                  </div>
-
-                  <div className="space-y-3">
-                     {newBookingData.paymentMethod === 'Corporate' && (
-                        <div>
-                           <label className="text-[9px] font-bold text-[#24a148] uppercase tracking-widest">Corporate Account</label>
-                           <select 
-                              name="accountNumber" 
-                              value={newBookingData.accountNumber}
-                              onChange={e => setNewBookingData({...newBookingData, accountNumber: e.target.value})}
-                              required 
-                              className="w-full bg-[#f4f4f4] border-0 border-b border-[#24a148] p-2 text-[12px] text-black focus:outline-none focus:ring-0 mt-1" 
-                           >
-                              <option value="">Select Account / Cost Center</option>
-                              {corporateAccounts.map(acct => (
-                                 <option key={acct.id} value={acct.account_number}>
-                                    {acct.company_name} ({acct.account_number}) - Lmt: ${parseFloat(acct.credit_limit).toFixed(2)}
-                                 </option>
-                              ))}
-                           </select>
-                        </div>
-                     )}
-                     <div>
-                        <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Notes to Driver</label>
-                        <textarea 
-                           name="notes" 
-                           value={newBookingData.notes}
-                           onChange={e => setNewBookingData({...newBookingData, notes: e.target.value})}
-                           className="w-full bg-[#f4f4f4] border-0 border-b border-gray-300 p-2 text-[12px] text-black focus:outline-none focus:border-[#24a148] focus:ring-0 mt-1 resize-none h-14" 
-                           placeholder="Special instructions, gate codes, etc..." 
-                        />
-                     </div>
-                  </div>
-
-                  {newBookingData.scheduleType === 'Scheduled' && (
-                    <div className="grid grid-cols-2 gap-3 bg-gray-50 p-3 border border-gray-100 mt-2">
-                       <div className="space-y-1">
-                          <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Date</label>
-                          <input 
-                            type="date" 
-                            name="preferredDate"
-                            value={newBookingData.preferredDate}
-                            onChange={e => setNewBookingData({...newBookingData, preferredDate: e.target.value})}
-                            required
-                            className="w-full bg-white border-0 border-b border-gray-300 p-2 text-[12px] text-black focus:outline-none focus:border-[#24a148]" 
-                          />
-                       </div>
-                       <div className="space-y-1">
-                          <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Time</label>
-                          <input 
-                            type="time" 
-                            name="preferredTime"
-                            value={newBookingData.preferredTime}
-                            onChange={e => setNewBookingData({...newBookingData, preferredTime: e.target.value})}
-                            required
-                            className="w-full bg-white border-0 border-b border-gray-300 p-2 text-[12px] text-black focus:outline-none focus:border-[#24a148]" 
-                          />
-                       </div>
-                    </div>
-                  )}
-
-                  <div className="pt-4 border-t border-gray-100">
-                     <button type="submit" className="force-circle w-full py-3 bg-[#24a148] text-white text-[14px] font-medium shadow-lg hover:shadow-xl hover:bg-[#1e8a3d] active:scale-[0.98] transition-all">Submit Dispatch Request</button>
-                  </div>
-               </form>
+        <div className="fixed inset-0 z-[5000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-2xl bg-white border border-gray-200 shadow-2xl overflow-hidden animate-zoomIn">
+            <div className="p-6 bg-white border-b border-gray-100 flex justify-between items-center">
+              <div>
+                <h3 className="text-xl font-bold text-black uppercase tracking-tighter italic">Manual Dispatch Request</h3>
+                <p className="text-xs text-gray-500">Create a new booking directly in the system</p>
+              </div>
+              <button onClick={() => setIsCreatingBooking(false)} className="text-gray-400 hover:text-black"><X size={24} /></button>
             </div>
-         </div>
+            <form onSubmit={handleCreateBooking} className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <h4 className="text-[10px] font-bold text-[#24a148] uppercase tracking-widest">Passenger Information</h4>
+                  <input
+                    name="fullName"
+                    value={newBookingData.fullName}
+                    onChange={e => setNewBookingData({ ...newBookingData, fullName: e.target.value })}
+                    required
+                    className="w-full bg-[#f4f4f4] border-0 border-b border-gray-300 p-2.5 text-[12px] text-black focus:outline-none focus:border-[#24a148] focus:ring-0"
+                    placeholder="Full Name"
+                  />
+                  <input
+                    name="phoneNumber"
+                    value={newBookingData.phoneNumber}
+                    onChange={e => setNewBookingData({ ...newBookingData, phoneNumber: e.target.value })}
+                    required
+                    className="w-full bg-[#f4f4f4] border-0 border-b border-gray-300 p-2.5 text-[12px] text-black focus:outline-none focus:border-[#24a148] focus:ring-0"
+                    placeholder="Contact Number"
+                  />
+                  <input
+                    name="email"
+                    value={newBookingData.email}
+                    onChange={e => setNewBookingData({ ...newBookingData, email: e.target.value })}
+                    className="w-full bg-[#f4f4f4] border-0 border-b border-gray-300 p-2.5 text-[12px] text-black focus:outline-none focus:border-[#24a148] focus:ring-0"
+                    placeholder="Email (Optional)"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <h4 className="text-[10px] font-bold text-[#24a148] uppercase tracking-widest">Trip Details</h4>
+                  <div className="relative [&_input]:text-[12px] [&_input]:p-2.5">
+                    <LocationAutocomplete
+                      value={newBookingData.pickupLocation}
+                      onChange={(val) => setNewBookingData(prev => ({ ...prev, pickupLocation: val }))}
+                      onSelect={(place) => {
+                        if (place && place.address && place.coords) {
+                          setNewBookingData(prev => ({
+                            ...prev,
+                            pickupLocation: place.address,
+                            pickupCoords: place.coords
+                          }));
+                        }
+                      }}
+                      placeholder="Search Pickup Address..."
+                    />
+                  </div>
+                  <div className="relative [&_input]:text-[12px] [&_input]:p-2.5">
+                    <LocationAutocomplete
+                      value={newBookingData.destinationLocation}
+                      onChange={(val) => setNewBookingData(prev => ({ ...prev, destinationLocation: val }))}
+                      onSelect={(place) => {
+                        if (place && place.address && place.coords) {
+                          setNewBookingData(prev => ({
+                            ...prev,
+                            destinationLocation: place.address,
+                            destCoords: place.coords
+                          }));
+                        }
+                      }}
+                      placeholder="Search Destination Address..."
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Schedule Type</label>
+                  <select
+                    name="scheduleType"
+                    value={newBookingData.scheduleType}
+                    onChange={e => setNewBookingData({ ...newBookingData, scheduleType: e.target.value })}
+                    className="w-full bg-[#f4f4f4] border-0 border-b border-gray-300 p-2 text-[12px] text-black focus:outline-none focus:border-[#24a148]"
+                  >
+                    <option>Immediate</option>
+                    <option>Scheduled</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Vehicle Preference</label>
+                  <select
+                    name="vehiclePreference"
+                    value={newBookingData.vehiclePreference}
+                    onChange={e => setNewBookingData({ ...newBookingData, vehiclePreference: e.target.value })}
+                    className="w-full bg-[#f4f4f4] border-0 border-b border-gray-300 p-2 text-[12px] text-black focus:outline-none focus:border-[#24a148]"
+                  >
+                    <option value="Standard">No Preference</option>
+                    <option value="Car">Car</option>
+                    <option value="Luxury Van">Van / SUV</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Payment Method</label>
+                  <select
+                    name="paymentMethod"
+                    value={newBookingData.paymentMethod}
+                    onChange={e => setNewBookingData({ ...newBookingData, paymentMethod: e.target.value })}
+                    className="w-full bg-[#f4f4f4] border-0 border-b border-gray-300 p-2 text-[12px] text-black focus:outline-none focus:border-[#24a148]"
+                  >
+                    <option>Cash</option>
+                    <option>Wallet</option>
+                    <option>Corporate</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {newBookingData.paymentMethod === 'Corporate' && (
+                  <div>
+                    <label className="text-[9px] font-bold text-[#24a148] uppercase tracking-widest">Corporate Account</label>
+                    <select
+                      name="accountNumber"
+                      value={newBookingData.accountNumber}
+                      onChange={e => setNewBookingData({ ...newBookingData, accountNumber: e.target.value })}
+                      required
+                      className="w-full bg-[#f4f4f4] border-0 border-b border-[#24a148] p-2 text-[12px] text-black focus:outline-none focus:ring-0 mt-1"
+                    >
+                      <option value="">Select Account / Cost Center</option>
+                      {corporateAccounts.map(acct => (
+                        <option key={acct.id} value={acct.account_number}>
+                          {acct.company_name} ({acct.account_number}) - Lmt: ${parseFloat(acct.credit_limit).toFixed(2)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                <div>
+                  <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Notes to Driver</label>
+                  <textarea
+                    name="notes"
+                    value={newBookingData.notes}
+                    onChange={e => setNewBookingData({ ...newBookingData, notes: e.target.value })}
+                    className="w-full bg-[#f4f4f4] border-0 border-b border-gray-300 p-2 text-[12px] text-black focus:outline-none focus:border-[#24a148] focus:ring-0 mt-1 resize-none h-14"
+                    placeholder="Special instructions, gate codes, etc..."
+                  />
+                </div>
+              </div>
+
+              {newBookingData.scheduleType === 'Scheduled' && (
+                <div className="grid grid-cols-2 gap-3 bg-gray-50 p-3 border border-gray-100 mt-2">
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Date</label>
+                    <input
+                      type="date"
+                      name="preferredDate"
+                      value={newBookingData.preferredDate}
+                      onChange={e => setNewBookingData({ ...newBookingData, preferredDate: e.target.value })}
+                      required
+                      className="w-full bg-white border-0 border-b border-gray-300 p-2 text-[12px] text-black focus:outline-none focus:border-[#24a148]"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Time</label>
+                    <input
+                      type="time"
+                      name="preferredTime"
+                      value={newBookingData.preferredTime}
+                      onChange={e => setNewBookingData({ ...newBookingData, preferredTime: e.target.value })}
+                      required
+                      className="w-full bg-white border-0 border-b border-gray-300 p-2 text-[12px] text-black focus:outline-none focus:border-[#24a148]"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="pt-4 border-t border-gray-100">
+                <button type="submit" className="force-circle w-full py-3 bg-[#24a148] text-white text-[14px] font-medium shadow-lg hover:shadow-xl hover:bg-[#1e8a3d] active:scale-[0.98] transition-all">Submit Dispatch Request</button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -5980,22 +5987,22 @@ function GeofenceDashboard({ geofences, onEdit }) {
     <div className="bg-white border border-[#e0e0e0] shadow-sm animate-fadeIn">
       <div className="p-6 border-b border-[#e0e0e0] flex justify-between items-center bg-gray-50/50">
         <div className="flex gap-4 items-center">
-           <div className="relative">
-             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
-             <input type="text" placeholder="Search Zone Name..." className="pl-9 pr-4 py-2 bg-white border border-gray-300 text-sm focus:outline-none focus:border-[#10b981] w-64" />
-           </div>
-           <select className="px-4 py-2 bg-white border border-gray-300 text-sm outline-none focus:border-[#10b981]">
-             <option>All Types</option>
-             <option>Service Area</option>
-             <option>Restricted Zone</option>
-             <option>High Demand Zone</option>
-             <option>Dispatch Zone</option>
-           </select>
-           <select className="px-4 py-2 bg-white border border-gray-300 text-sm outline-none focus:border-[#10b981]">
-             <option>Status: All</option>
-             <option>Active</option>
-             <option>Inactive</option>
-           </select>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+            <input type="text" placeholder="Search Zone Name..." className="pl-9 pr-4 py-2 bg-white border border-gray-300 text-sm focus:outline-none focus:border-[#10b981] w-64" />
+          </div>
+          <select className="px-4 py-2 bg-white border border-gray-300 text-sm outline-none focus:border-[#10b981]">
+            <option>All Types</option>
+            <option>Service Area</option>
+            <option>Restricted Zone</option>
+            <option>High Demand Zone</option>
+            <option>Dispatch Zone</option>
+          </select>
+          <select className="px-4 py-2 bg-white border border-gray-300 text-sm outline-none focus:border-[#10b981]">
+            <option>Status: All</option>
+            <option>Active</option>
+            <option>Inactive</option>
+          </select>
         </div>
       </div>
       <div className="overflow-x-auto">
@@ -6014,12 +6021,11 @@ function GeofenceDashboard({ geofences, onEdit }) {
               <tr key={g.id} className="hover:bg-gray-50 transition-colors">
                 <td className="p-4 text-sm font-bold text-[#161616]">{g.name}</td>
                 <td className="p-4">
-                  <span className={`px-2 py-1 text-[10px] font-bold uppercase tracking-widest border ${
-                    g.type === 'Service' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                    g.type === 'Restricted' ? 'bg-red-50 text-red-600 border-red-100' :
-                    g.type === 'High Demand' ? 'bg-yellow-50 text-yellow-600 border-yellow-100' :
-                    'bg-purple-50 text-purple-600 border-purple-100'
-                  }`}>{g.type}</span>
+                  <span className={`px-2 py-1 text-[10px] font-bold uppercase tracking-widest border ${g.type === 'Service' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                      g.type === 'Restricted' ? 'bg-red-50 text-red-600 border-red-100' :
+                        g.type === 'High Demand' ? 'bg-yellow-50 text-yellow-600 border-yellow-100' :
+                          'bg-purple-50 text-purple-600 border-purple-100'
+                    }`}>{g.type}</span>
                 </td>
                 <td className="p-4 text-sm text-gray-500">{g.coverage} kmÃ‚Â²</td>
                 <td className="p-4">
@@ -6047,17 +6053,17 @@ function GeofenceForm({ geofence, onCancel, onSave }) {
   const [areaSize, setAreaSize] = useState(geofence?.coverage || 0);
   const [coordinates, setCoordinates] = useState(geofence?.coordinates || []);
   const [shapeData, setShapeData] = useState(geofence?.shapeData || null);
-  
+
   const mapRef = React.useRef(null);
   const leafletMap = React.useRef(null);
   const drawnItems = React.useRef(null);
 
   useEffect(() => {
     if (!mapRef.current || !window.L || !window.L.Draw) return;
-    
+
     const map = window.L.map(mapRef.current).setView([11.0500, 124.0000], 13);
     leafletMap.current = map;
-    
+
     window.L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
       attribution: '&copy; CARTO'
     }).addTo(map);
@@ -6094,11 +6100,11 @@ function GeofenceForm({ geofence, onCancel, onSave }) {
         const latlngs = layer.getLatLngs()[0];
         setCoordinates(latlngs.map(ll => `${ll.lat.toFixed(4)}Ã‚Â°N, ${ll.lng.toFixed(4)}Ã‚Â°E`));
         setShapeData({ type: 'polygon', data: latlngs });
-        
+
         // --- Accurate Spherical Area Calculation (mÃ‚Â²) ---
         let areaSqM = 0;
         const R = 6378137; // Standard Earth Radius
-        
+
         if (window.L.GeometryUtil && typeof window.L.GeometryUtil.geodesicArea === 'function') {
           areaSqM = window.L.GeometryUtil.geodesicArea(latlngs);
         } else {
@@ -6111,7 +6117,7 @@ function GeofenceForm({ geofence, onCancel, onSave }) {
           }
           areaSqM = Math.abs(total * R * R / 2.0);
         }
-        
+
         // Convert to sq km
         const km2 = areaSqM / 1000000;
         setAreaSize(km2.toFixed(3)); // Increased precision
@@ -6120,7 +6126,7 @@ function GeofenceForm({ geofence, onCancel, onSave }) {
         const radius = layer.getRadius(); // This is in meters
         setCoordinates([`Center: ${center.lat.toFixed(4)}, ${center.lng.toFixed(4)}`, `Radius: ${radius.toFixed(0)}m`]);
         setShapeData({ type: 'circle', data: { center, radius } });
-        
+
         // A = Ãâ‚¬rÃ‚Â²
         const areaSqM = Math.PI * Math.pow(radius, 2);
         const km2 = areaSqM / 1000000;
@@ -6178,16 +6184,16 @@ function GeofenceForm({ geofence, onCancel, onSave }) {
           <div className="space-y-4">
             <div>
               <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Zone Name</label>
-              <input 
+              <input
                 value={zoneName}
                 onChange={(e) => setZoneName(e.target.value)}
-                type="text" placeholder="e.g. Downtown Core" 
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:border-[#10b981]" 
+                type="text" placeholder="e.g. Downtown Core"
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:border-[#10b981]"
               />
             </div>
             <div>
               <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Zone Type</label>
-              <select 
+              <select
                 value={zoneType}
                 onChange={(e) => setZoneType(e.target.value)}
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:border-[#10b981]"
@@ -6268,9 +6274,9 @@ function GeofenceForm({ geofence, onCancel, onSave }) {
               </div>
             </div>
             <div className="pl-4 border-l border-gray-100">
-               <div className={`px-3 py-1.5 ${coordinates.length > 0 ? 'bg-green-50 text-green-600' : 'bg-gray-50 text-gray-400'} text-[9px] font-bold uppercase tracking-widest border border-current`}>
-                  {coordinates.length > 0 ? 'Ready to save' : 'Awaiting Shape'}
-               </div>
+              <div className={`px-3 py-1.5 ${coordinates.length > 0 ? 'bg-green-50 text-green-600' : 'bg-gray-50 text-gray-400'} text-[9px] font-bold uppercase tracking-widest border border-current`}>
+                {coordinates.length > 0 ? 'Ready to save' : 'Awaiting Shape'}
+              </div>
             </div>
           </div>
         </div>
@@ -6302,7 +6308,7 @@ function GeofenceMonitoring({ geofences }) {
         } else if (type === 'circle') {
           layer = window.L.circle(data.center, { radius: data.radius, color, fillOpacity: 0.2, weight: 2 }).addTo(map);
         }
-        
+
         if (layer) {
           layer.bindPopup(`<b>${g.name}</b><br/>Type: ${g.type}<br/>Area: ${g.coverage} kmÃ‚Â²`);
         }
@@ -6447,7 +6453,7 @@ function GeofencingManagement() {
             </button>
           ))}
           <div className="w-[1px] h-8 bg-gray-200 mx-2 hidden md:block" />
-          <button 
+          <button
             onClick={() => { setSelectedGeofence(null); setActiveSubTab('create'); }}
             className="px-6 py-2 bg-[#161616] text-white text-[10px] font-bold uppercase tracking-widest hover:bg-black flex items-center gap-2 shadow-lg transition-transform active:scale-95"
           >
@@ -6598,7 +6604,7 @@ function GeneralSettings() {
     try {
       const res = await fetch('/api/admin/settings', {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
         },
@@ -6624,29 +6630,29 @@ function GeneralSettings() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <div className="col-span-1 md:col-span-2">
           <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Clinic / Business Name</label>
-          <input 
-            type="text" 
-            value={settings.clinic_name} 
-            onChange={e => setSettings({...settings, clinic_name: e.target.value})}
-            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm font-bold focus:border-[#10b981] outline-none" 
+          <input
+            type="text"
+            value={settings.clinic_name}
+            onChange={e => setSettings({ ...settings, clinic_name: e.target.value })}
+            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm font-bold focus:border-[#10b981] outline-none"
           />
         </div>
         <div className="col-span-1 md:col-span-2">
           <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Business Address</label>
-          <input 
-            type="text" 
-            value={settings.clinic_address} 
-            onChange={e => setSettings({...settings, clinic_address: e.target.value})}
-            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:border-[#10b981] outline-none" 
+          <input
+            type="text"
+            value={settings.clinic_address}
+            onChange={e => setSettings({ ...settings, clinic_address: e.target.value })}
+            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:border-[#10b981] outline-none"
           />
         </div>
         <div>
           <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Contact Phone</label>
-          <input 
-            type="text" 
-            value={settings.clinic_phone} 
-            onChange={e => setSettings({...settings, clinic_phone: e.target.value})}
-            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:border-[#10b981] outline-none" 
+          <input
+            type="text"
+            value={settings.clinic_phone}
+            onChange={e => setSettings({ ...settings, clinic_phone: e.target.value })}
+            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:border-[#10b981] outline-none"
           />
         </div>
         <div>
@@ -6706,7 +6712,7 @@ function UserRolesSettings() {
 
 function DispatchSettings() {
   return (
-    <SettingsSection title="Dispatch Settings" subtitle="Automated Matching and Assignment Logic" onSave={() => {}}>
+    <SettingsSection title="Dispatch Settings" subtitle="Automated Matching and Assignment Logic" onSave={() => { }}>
       <div className="space-y-6">
         <div className="bg-gray-50 p-6 border border-gray-100 flex items-center justify-between">
           <div>
@@ -6745,7 +6751,7 @@ function DispatchSettings() {
 
 function GeofenceGlobalSettings() {
   return (
-    <SettingsSection title="Geofence Settings" subtitle="Global Rules for Geographic Zones" onSave={() => {}}>
+    <SettingsSection title="Geofence Settings" subtitle="Global Rules for Geographic Zones" onSave={() => { }}>
       <div className="space-y-4">
         {[
           { label: 'Enable Geofencing', desc: 'Activate all zone-based restrictions and rules', active: true },
@@ -6770,7 +6776,7 @@ function GeofenceGlobalSettings() {
 
 function PricingFareSettings() {
   return (
-    <SettingsSection title="Pricing & Fare Rules" subtitle="Configure Revenue Model and Surcharges" onSave={() => {}}>
+    <SettingsSection title="Pricing & Fare Rules" subtitle="Configure Revenue Model and Surcharges" onSave={() => { }}>
       <div className="grid grid-cols-3 gap-6">
         <div className="bg-[#f4f4f4] p-6 border-l-4 border-[#10b981]">
           <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Base Fare (Ã¢â€šÂ±)</label>
@@ -6860,7 +6866,7 @@ function NotificationChannelSettings() {
 
 function PaymentWalletSettings() {
   return (
-    <SettingsSection title="Payment & Wallet Settings" subtitle="Financial Flow and Payout Configurations" onSave={() => {}}>
+    <SettingsSection title="Payment & Wallet Settings" subtitle="Financial Flow and Payout Configurations" onSave={() => { }}>
       <div className="space-y-8">
         <div>
           <h4 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-4">Payment Methods</h4>
@@ -6947,7 +6953,7 @@ function IntegrationAPISettings() {
 
 function SecuritySettings() {
   return (
-    <SettingsSection title="Security Settings" subtitle="System Access and Authentication Controls" onSave={() => {}}>
+    <SettingsSection title="Security Settings" subtitle="System Access and Authentication Controls" onSave={() => { }}>
       <div className="space-y-6">
         <div className="bg-blue-900 text-white p-8 rounded-0 flex justify-between items-center shadow-xl">
           <div>
@@ -6967,11 +6973,11 @@ function SecuritySettings() {
           </div>
         </div>
         <div className="p-6 border border-[#e0e0e0] flex items-center justify-between">
-           <div>
-             <p className="text-sm font-bold text-[#161616]">End-to-End Encryption</p>
-             <p className="text-xs text-gray-500">Encrypt all customer and trip data at rest</p>
-           </div>
-           <div className="w-12 h-6 bg-[#10b981] rounded-full relative"><div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div></div>
+          <div>
+            <p className="text-sm font-bold text-[#161616]">End-to-End Encryption</p>
+            <p className="text-xs text-gray-500">Encrypt all customer and trip data at rest</p>
+          </div>
+          <div className="w-12 h-6 bg-[#10b981] rounded-full relative"><div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div></div>
         </div>
       </div>
     </SettingsSection>
@@ -7025,14 +7031,14 @@ function SystemAlertsMonitoring() {
     <SettingsSection title="System Alerts & Monitoring" subtitle="Real-time Health and Performance Alerts">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="p-8 bg-green-50 border-l-8 border-green-600 shadow-sm">
-           <h4 className="text-xl font-bold text-green-900 mb-2">API Connectivity</h4>
-           <p className="text-3xl font-light text-green-700">99.98%</p>
-           <p className="text-[10px] font-bold text-green-600 uppercase tracking-widest mt-4 flex items-center gap-2"><div className="w-2 h-2 bg-green-600 rounded-full animate-pulse"></div> Healthy</p>
+          <h4 className="text-xl font-bold text-green-900 mb-2">API Connectivity</h4>
+          <p className="text-3xl font-light text-green-700">99.98%</p>
+          <p className="text-[10px] font-bold text-green-600 uppercase tracking-widest mt-4 flex items-center gap-2"><div className="w-2 h-2 bg-green-600 rounded-full animate-pulse"></div> Healthy</p>
         </div>
         <div className="p-8 bg-gray-50 border-l-8 border-gray-800 shadow-sm">
-           <h4 className="text-xl font-bold text-gray-900 mb-2">Database Load</h4>
-           <p className="text-3xl font-light text-gray-700">12%</p>
-           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-4">Normal Operations</p>
+          <h4 className="text-xl font-bold text-gray-900 mb-2">Database Load</h4>
+          <p className="text-3xl font-light text-gray-700">12%</p>
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-4">Normal Operations</p>
         </div>
       </div>
       <div className="mt-10 space-y-4">
@@ -7128,7 +7134,7 @@ function EmailTemplateSettings() {
     try {
       const res = await fetch('/api/admin/settings', {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
         },
@@ -7158,22 +7164,22 @@ function EmailTemplateSettings() {
           <div className="space-y-4">
             <div>
               <label className="block text-[10px] text-gray-400 uppercase mb-1">Host</label>
-              <input 
-                type="text" 
-                value={settings.email_smtp_host} 
-                onChange={e => setSettings({...settings, email_smtp_host: e.target.value})}
+              <input
+                type="text"
+                value={settings.email_smtp_host}
+                onChange={e => setSettings({ ...settings, email_smtp_host: e.target.value })}
                 placeholder="smtp.gmail.com"
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:border-[#10b981] outline-none" 
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:border-[#10b981] outline-none"
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-[10px] text-gray-400 uppercase mb-1">Port</label>
-                <input 
-                  type="text" 
-                  value={settings.email_smtp_port} 
-                  onChange={e => setSettings({...settings, email_smtp_port: e.target.value})}
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:border-[#10b981] outline-none" 
+                <input
+                  type="text"
+                  value={settings.email_smtp_port}
+                  onChange={e => setSettings({ ...settings, email_smtp_port: e.target.value })}
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:border-[#10b981] outline-none"
                 />
               </div>
               <div>
@@ -7186,20 +7192,20 @@ function EmailTemplateSettings() {
             </div>
             <div>
               <label className="block text-[10px] text-gray-400 uppercase mb-1">Sender Email Address (SMTP Username)</label>
-              <input 
-                type="text" 
-                value={settings.email_smtp_user} 
-                onChange={e => setSettings({...settings, email_smtp_user: e.target.value})}
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:border-[#10b981] outline-none" 
+              <input
+                type="text"
+                value={settings.email_smtp_user}
+                onChange={e => setSettings({ ...settings, email_smtp_user: e.target.value })}
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:border-[#10b981] outline-none"
               />
             </div>
             <div>
               <label className="block text-[10px] text-gray-400 uppercase mb-1">Password / App Key</label>
-              <input 
-                type="password" 
-                value={settings.email_smtp_pass} 
-                onChange={e => setSettings({...settings, email_smtp_pass: e.target.value})}
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:border-[#10b981] outline-none" 
+              <input
+                type="password"
+                value={settings.email_smtp_pass}
+                onChange={e => setSettings({ ...settings, email_smtp_pass: e.target.value })}
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:border-[#10b981] outline-none"
               />
             </div>
           </div>
@@ -7213,43 +7219,43 @@ function EmailTemplateSettings() {
               <div>
                 <label className="block text-[10px] text-gray-400 uppercase mb-1">Primary Color</label>
                 <div className="flex gap-2">
-                  <input 
-                    type="color" 
-                    value={settings.email_primary_color} 
-                    onChange={e => setSettings({...settings, email_primary_color: e.target.value})}
-                    className="w-10 h-10 border-0 p-0 bg-transparent cursor-pointer" 
+                  <input
+                    type="color"
+                    value={settings.email_primary_color}
+                    onChange={e => setSettings({ ...settings, email_primary_color: e.target.value })}
+                    className="w-10 h-10 border-0 p-0 bg-transparent cursor-pointer"
                   />
-                  <input 
-                    type="text" 
-                    value={settings.email_primary_color} 
-                    onChange={e => setSettings({...settings, email_primary_color: e.target.value})}
-                    className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 text-xs font-mono uppercase" 
+                  <input
+                    type="text"
+                    value={settings.email_primary_color}
+                    onChange={e => setSettings({ ...settings, email_primary_color: e.target.value })}
+                    className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 text-xs font-mono uppercase"
                   />
                 </div>
               </div>
               <div>
                 <label className="block text-[10px] text-gray-400 uppercase mb-1">Accent Color</label>
                 <div className="flex gap-2">
-                  <input 
-                    type="color" 
-                    value={settings.email_accent_color} 
-                    onChange={e => setSettings({...settings, email_accent_color: e.target.value})}
-                    className="w-10 h-10 border-0 p-0 bg-transparent cursor-pointer" 
+                  <input
+                    type="color"
+                    value={settings.email_accent_color}
+                    onChange={e => setSettings({ ...settings, email_accent_color: e.target.value })}
+                    className="w-10 h-10 border-0 p-0 bg-transparent cursor-pointer"
                   />
-                  <input 
-                    type="text" 
-                    value={settings.email_accent_color} 
-                    onChange={e => setSettings({...settings, email_accent_color: e.target.value})}
-                    className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 text-xs font-mono uppercase" 
+                  <input
+                    type="text"
+                    value={settings.email_accent_color}
+                    onChange={e => setSettings({ ...settings, email_accent_color: e.target.value })}
+                    className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 text-xs font-mono uppercase"
                   />
                 </div>
               </div>
             </div>
             <div>
               <label className="block text-[10px] text-gray-400 uppercase mb-1">Font Family</label>
-              <select 
+              <select
                 value={settings.email_font_family}
-                onChange={e => setSettings({...settings, email_font_family: e.target.value})}
+                onChange={e => setSettings({ ...settings, email_font_family: e.target.value })}
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:border-[#10b981] outline-none"
               >
                 <option value="Arial, sans-serif">Arial / Helvetica</option>
@@ -7265,15 +7271,15 @@ function EmailTemplateSettings() {
             <div className="relative z-10">
               <p className="text-[9px] font-black uppercase tracking-widest text-[#10b981] mb-2">Live Preview (Concept)</p>
               <div className="border border-white/10 p-4 bg-white/5 space-y-3">
-                 <div style={{ background: settings.email_primary_color }} className="h-8 flex items-center justify-center">
-                    <span style={{ color: settings.email_accent_color }} className="text-[10px] font-bold uppercase tracking-tighter italic">CLINIC LOGO</span>
-                 </div>
-                 <div className="space-y-1">
-                    <div className="h-2 w-1/2 bg-white/20"></div>
-                    <div className="h-2 w-full bg-white/10"></div>
-                    <div className="h-2 w-3/4 bg-white/10"></div>
-                 </div>
-                 <div style={{ background: settings.email_primary_color }} className="h-6 w-24 mx-auto rounded-full"></div>
+                <div style={{ background: settings.email_primary_color }} className="h-8 flex items-center justify-center">
+                  <span style={{ color: settings.email_accent_color }} className="text-[10px] font-bold uppercase tracking-tighter italic">CLINIC LOGO</span>
+                </div>
+                <div className="space-y-1">
+                  <div className="h-2 w-1/2 bg-white/20"></div>
+                  <div className="h-2 w-full bg-white/10"></div>
+                  <div className="h-2 w-3/4 bg-white/10"></div>
+                </div>
+                <div style={{ background: settings.email_primary_color }} className="h-6 w-24 mx-auto rounded-full"></div>
               </div>
             </div>
             <div className="absolute top-0 right-0 w-32 h-32 bg-[#10b981] opacity-10 rounded-full -mr-16 -mt-16"></div>
@@ -7286,29 +7292,29 @@ function EmailTemplateSettings() {
         <div className="space-y-4">
           <div>
             <label className="block text-[10px] text-gray-400 uppercase mb-1">Subject Line</label>
-            <input 
-              type="text" 
-              value={settings.email_confirmation_subject} 
-              onChange={e => setSettings({...settings, email_confirmation_subject: e.target.value})}
-              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm font-bold focus:border-[#10b981] outline-none" 
+            <input
+              type="text"
+              value={settings.email_confirmation_subject}
+              onChange={e => setSettings({ ...settings, email_confirmation_subject: e.target.value })}
+              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm font-bold focus:border-[#10b981] outline-none"
             />
           </div>
           <div>
             <label className="block text-[10px] text-gray-400 uppercase mb-1">HTML Body (Leave blank for default system theme)</label>
-            <textarea 
+            <textarea
               rows={8}
-              value={settings.email_confirmation_body} 
-              onChange={e => setSettings({...settings, email_confirmation_body: e.target.value})}
+              value={settings.email_confirmation_body}
+              onChange={e => setSettings({ ...settings, email_confirmation_body: e.target.value })}
               placeholder="Enter custom HTML here... Use placeholders like {name}, {service}, {date}, {time}, {ref}"
               className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-xs font-mono focus:border-[#10b981] outline-none"
             ></textarea>
           </div>
           <div className="flex gap-4">
             <div className="flex-1 p-3 bg-blue-50 border border-blue-100 rounded-0">
-               <p className="text-[9px] font-bold text-blue-800 uppercase tracking-widest mb-1">Available Tags</p>
-               <p className="text-[9px] text-blue-600 font-mono">{"{name}, {service}, {date}, {time}, {ref}, {cancel_url}, {clinic_name}, {address}, {phone}"}</p>
+              <p className="text-[9px] font-bold text-blue-800 uppercase tracking-widest mb-1">Available Tags</p>
+              <p className="text-[9px] text-blue-600 font-mono">{"{name}, {service}, {date}, {time}, {ref}, {cancel_url}, {clinic_name}, {address}, {phone}"}</p>
             </div>
-            <button 
+            <button
               type="button"
               onClick={() => alert('Sending test email to administrator...')}
               className="px-6 py-3 border border-gray-300 text-[10px] font-bold uppercase tracking-widest hover:bg-gray-50 transition-all"
@@ -7368,4 +7374,3 @@ function BackupRestoreSettings() {
 /* ==========================================================================
    END SYSTEM SETTINGS MODULE
    ========================================================================== */
-

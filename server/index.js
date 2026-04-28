@@ -520,7 +520,7 @@ app.post('/api/appointments', async (req, res) => {
       }
       const account = corpResult.rows[0];
       const amount = parseFloat(totalAmount || 0);
-      if (parseFloat(account.balance) + amount > parseFloat(account.credit_limit)) {
+      if (parseFloat(account.credit_limit) > 0 && (parseFloat(account.balance) + amount > parseFloat(account.credit_limit))) {
         return res.status(400).json({ success: false, message: 'Corporate account credit limit exceeded' });
       }
       corporateAccountId = account.id;
@@ -776,12 +776,22 @@ app.get('/api/appointments/:id', async (req, res) => {
 app.patch('/api/appointments/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { status } = req.body;
+    const { status, transport_status } = req.body;
 
-    const result = await pool.query(
-      'UPDATE appointments SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *',
-      [status, id]
-    );
+    let query = 'UPDATE appointments SET status = $1, updated_at = CURRENT_TIMESTAMP';
+    const params = [status, id];
+
+    if (transport_status) {
+      query += ', transport_status = $3';
+      params.push(transport_status);
+    } else if (status === 'completed' || status === 'cancelled') {
+      // Auto-sync transport_status when main status is finalized
+      query += ', transport_status = $1';
+    }
+
+    query += ' WHERE id = $2 RETURNING *';
+
+    const result = await pool.query(query, params);
 
     if (result.rows.length === 0) {
       return res.status(404).json({
@@ -3460,6 +3470,313 @@ const initClinicSettings = async () => {
     );
   }
 };
+
+/* ==========================================================================
+   CORPORATE ACCOUNTS & BILLING MODULE
+   ========================================================================== */
+
+// Get all corporate accounts
+app.get('/api/corporate-accounts', async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT * FROM corporate_accounts ORDER BY id DESC');
+    res.json({ success: true, accounts: rows });
+  } catch (error) {
+    console.error('Fetch corporate accounts error:', error);
+    res.status(500).json({ success: false, message: 'Server error fetching corporate accounts' });
+  }
+});
+
+// Create corporate account
+app.post('/api/corporate-accounts', async (req, res) => {
+  try {
+    const { account_number, company_name, contact_person, contact_email, contact_phone, credit_limit, status } = req.body;
+    
+    const existing = await pool.query('SELECT id FROM corporate_accounts WHERE account_number = $1', [account_number]);
+    if (existing.rows.length > 0) {
+      return res.status(400).json({ success: false, message: 'Account number already exists' });
+    }
+
+    const result = await pool.query(
+      `INSERT INTO corporate_accounts (account_number, company_name, contact_person, contact_email, contact_phone, credit_limit, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [account_number, company_name, contact_person, contact_email, contact_phone, credit_limit, status || 'active']
+    );
+    res.json({ success: true, account: result.rows[0] });
+  } catch (error) {
+    console.error('Create corporate account error:', error);
+    res.status(500).json({ success: false, message: 'Server error creating corporate account' });
+  }
+});
+
+// Update corporate account
+app.put('/api/corporate-accounts/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { account_number, company_name, contact_person, contact_email, contact_phone, credit_limit, status } = req.body;
+    
+    const existing = await pool.query('SELECT id FROM corporate_accounts WHERE account_number = $1 AND id != $2', [account_number, id]);
+    if (existing.rows.length > 0) {
+      return res.status(400).json({ success: false, message: 'Account number already exists for another company' });
+    }
+
+    const result = await pool.query(
+      `UPDATE corporate_accounts SET 
+          account_number = $1, company_name = $2, contact_person = $3, 
+          contact_email = $4, contact_phone = $5, credit_limit = $6, 
+          status = $7, updated_at = NOW()
+       WHERE id = $8 RETURNING *`,
+      [account_number, company_name, contact_person, contact_email, contact_phone, credit_limit, status, id]
+    );
+
+    if (result.rows.length === 0) return res.status(404).json({ success: false, message: 'Account not found' });
+    res.json({ success: true, account: result.rows[0] });
+  } catch (error) {
+    console.error('Update corporate account error:', error);
+    res.status(500).json({ success: false, message: 'Server error updating corporate account' });
+  }
+});
+
+// Delete corporate account
+app.delete('/api/corporate-accounts/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query('DELETE FROM corporate_accounts WHERE id = $1 RETURNING id', [id]);
+    if (result.rows.length === 0) return res.status(404).json({ success: false, message: 'Account not found' });
+    res.json({ success: true, message: 'Account deleted successfully' });
+  } catch (error) {
+    console.error('Delete corporate account error:', error);
+    res.status(500).json({ success: false, message: 'Server error deleting corporate account' });
+  }
+});
+
+// Fetch ledger
+app.get('/api/corporate-accounts/:id/ledger', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rows } = await pool.query('SELECT * FROM corporate_ledgers WHERE account_id = $1 ORDER BY date DESC, id DESC', [id]);
+    res.json({ success: true, ledger: rows });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error fetching ledger' });
+  }
+});
+
+// Fetch invoices
+app.get('/api/corporate-accounts/:id/invoices', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rows } = await pool.query('SELECT * FROM corporate_invoices WHERE account_id = $1 ORDER BY date DESC, id DESC', [id]);
+    res.json({ success: true, invoices: rows });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error fetching invoices' });
+  }
+});
+
+// Fetch single invoice details with line items
+app.get('/api/corporate-accounts/:accountId/invoices/:invoiceId', async (req, res) => {
+  try {
+    const { accountId, invoiceId } = req.params;
+    const invResult = await pool.query(
+      'SELECT * FROM corporate_invoices WHERE id = $1 AND account_id = $2',
+      [invoiceId, accountId]
+    );
+    if (invResult.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Invoice not found' });
+    }
+    const invoice = invResult.rows[0];
+
+    // Fetch account info
+    const accResult = await pool.query(
+      'SELECT company_name, account_number, contact_person, contact_email, contact_phone FROM corporate_accounts WHERE id = $1',
+      [accountId]
+    );
+
+    // Fetch line items:
+    // - For 'paid' invoices: show billed trips (these were marked billed when invoice was generated)
+    // - For 'pending' invoices: show all completed trips (billed + unbilled) for the account
+    // We do NOT filter by preferred_date range — bookings can have any future/past scheduled date
+    const isPaid = invoice.status === 'paid';
+    const lineItems = await pool.query(
+      `SELECT id, full_name as passenger, 
+              preferred_date::text as date,
+              preferred_time as time,
+              COALESCE(pickup_location || ' → ' || destination_location, service_type) as route,
+              service_type, total_amount,
+              COALESCE(billing_status, 'unbilled') as billing_status,
+              updated_at::text as completed_at
+       FROM appointments
+       WHERE corporate_account_id = $1
+         AND LOWER(payment_method) = 'corporate'
+         AND (status = 'completed' OR transport_status = 'completed')
+         ${isPaid ? "AND billing_status = 'billed'" : ''}
+       ORDER BY updated_at DESC`,
+      [accountId]
+    );
+
+    res.json({
+      success: true,
+      invoice,
+      account: accResult.rows[0] || {},
+      lineItems: lineItems.rows
+    });
+  } catch (error) {
+    console.error('Invoice detail error:', error);
+    res.status(500).json({ success: false, message: 'Server error fetching invoice details' });
+  }
+});
+
+// Fetch trips for a corporate account
+app.get('/api/corporate-accounts/:id/trips', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rows } = await pool.query(
+      `SELECT id, full_name as passenger, preferred_date::text as date, 
+              COALESCE(pickup_location || ' → ' || destination_location, service_type) as route,
+              total_amount as fare, COALESCE(billing_status, 'unbilled') as status
+       FROM appointments 
+       WHERE corporate_account_id = $1 
+         AND LOWER(payment_method) = 'corporate'
+         AND (status = 'completed' OR transport_status = 'completed')
+       ORDER BY preferred_date DESC, id DESC`,
+      [id]
+    );
+    res.json({ success: true, trips: rows });
+  } catch (error) {
+    console.error('Fetch trips error:', error);
+    res.status(500).json({ success: false, message: 'Server error fetching trips' });
+  }
+});
+
+// Generate Invoice for unbilled trips
+app.post('/api/corporate-accounts/:id/invoices/generate', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { id } = req.params;
+    await client.query('BEGIN');
+
+    // 1. Fetch unbilled trips
+    const trips = await client.query(
+      `SELECT id, total_amount FROM appointments 
+       WHERE corporate_account_id = $1 AND LOWER(payment_method) = 'corporate' 
+       AND (status = 'completed' OR transport_status = 'completed') 
+       AND COALESCE(billing_status, 'unbilled') = 'unbilled'`,
+      [id]
+    );
+
+    if (trips.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ success: false, message: 'No unbilled trips to invoice' });
+    }
+
+    // 2. Calculate total amount
+    const totalAmount = trips.rows.reduce((sum, trip) => sum + parseFloat(trip.total_amount || 0), 0);
+    
+    // Generate Invoice Number
+    const invCount = await client.query('SELECT COUNT(*) FROM corporate_invoices');
+    const invoiceNumber = `INV-${new Date().getFullYear()}${(parseInt(invCount.rows[0].count) + 1).toString().padStart(4, '0')}`;
+
+    // 3. Create Invoice
+    const invoiceResult = await client.query(
+      `INSERT INTO corporate_invoices (account_id, invoice_number, amount, status, date, period_start, period_end)
+       VALUES ($1, $2, $3, 'pending', CURRENT_DATE, CURRENT_DATE - INTERVAL '15 days', CURRENT_DATE) RETURNING *`,
+      [id, invoiceNumber, totalAmount]
+    );
+
+    // 4. Update trips to billed
+    const tripIds = trips.rows.map(t => t.id);
+    await client.query(
+      `UPDATE appointments SET billing_status = 'billed' WHERE id = ANY($1::int[])`,
+      [tripIds]
+    );
+
+    // 5. Add to Ledger
+    await client.query(
+      `INSERT INTO corporate_ledgers (account_id, date, reference, description, debit, credit)
+       VALUES ($1, CURRENT_DATE, $2, $3, $4, 0)`,
+      [id, invoiceNumber, `Invoice Generation ${invoiceNumber}`, totalAmount]
+    );
+
+    // 6. Update Account Balance
+    await client.query(
+      `UPDATE corporate_accounts SET balance = balance + $1 WHERE id = $2`,
+      [totalAmount, id]
+    );
+
+    await client.query('COMMIT');
+    res.json({ success: true, invoice: invoiceResult.rows[0], message: 'Invoice generated successfully' });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Generate invoice error:', error);
+    res.status(500).json({ success: false, message: 'Server error generating invoice' });
+  } finally {
+    client.release();
+  }
+});
+
+// Fetch payments
+app.get('/api/corporate-accounts/:id/payments', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rows } = await pool.query("SELECT id, payment_date::text as date, reference_id as ref, method, amount FROM corporate_payments WHERE account_id = $1 ORDER BY payment_date DESC, id DESC", [id]);
+    res.json({ success: true, payments: rows });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error fetching payments' });
+  }
+});
+
+// Record Payment
+app.post('/api/corporate-accounts/:id/payments', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { id } = req.params;
+    const { amount, method, reference_id, invoice_id } = req.body;
+    await client.query('BEGIN');
+
+    // 1. Create Payment Record
+    const paymentResult = await client.query(
+      `INSERT INTO corporate_payments (account_id, invoice_id, amount, method, payment_date, reference_id)
+       VALUES ($1, $2, $3, $4, CURRENT_DATE, $5) RETURNING *`,
+      [id, invoice_id || null, amount, method || 'Bank Transfer', reference_id]
+    );
+
+    const payId = paymentResult.rows[0].id;
+    const finalRefId = reference_id || `PAY-${payId}`;
+
+    // Update the reference_id if it was null
+    if (!reference_id) {
+       await client.query(`UPDATE corporate_payments SET reference_id = $1 WHERE id = $2`, [finalRefId, payId]);
+    }
+
+    // 2. If tied to an invoice, mark invoice as paid
+    if (invoice_id) {
+      await client.query(
+        `UPDATE corporate_invoices SET status = 'paid' WHERE id = $1`,
+        [invoice_id]
+      );
+    }
+
+    // 3. Add to Ledger (Credit)
+    await client.query(
+      `INSERT INTO corporate_ledgers (account_id, date, reference, description, debit, credit)
+       VALUES ($1, CURRENT_DATE, $2, $3, 0, $4)`,
+      [id, finalRefId, `Payment Received - ${method || 'Bank Transfer'}`, amount]
+    );
+
+    // 4. Update Account Balance
+    await client.query(
+      `UPDATE corporate_accounts SET balance = balance - $1 WHERE id = $2`,
+      [amount, id]
+    );
+
+    await client.query('COMMIT');
+    res.json({ success: true, payment: paymentResult.rows[0], message: 'Payment recorded successfully' });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Record payment error:', error);
+    res.status(500).json({ success: false, message: 'Server error recording payment' });
+  } finally {
+    client.release();
+  }
+});
 
 // Auto-queue: forward appointments to the queue 10 minutes before their scheduled time
 const autoQueueAppointments = async () => {

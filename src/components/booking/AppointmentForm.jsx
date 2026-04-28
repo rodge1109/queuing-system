@@ -446,7 +446,7 @@ function AppointmentForm() {
                       </div>
                     </div>
                     
-                    <p className="text-[11px] text-[#525252] leading-relaxed mb-6 line-clamp-3 font-medium opacity-80 italic">
+                    <p className="text-[11px] text-[#525252] leading-relaxed mb-6 line-clamp-3 font-medium opacity-80">
                       "{service.description || 'Experience our professional and dedicated healthcare service tailored to your specific needs.'}"
                     </p>
                     
@@ -693,8 +693,8 @@ function AppointmentForm() {
         {step === 'summary' && (
           <div className="animate-fadeIn space-y-10">
             <div className="py-12 border-b border-gray-100 text-center">
-               <h3 className="text-4xl font-black uppercase tracking-tighter mb-2 text-[#161616]">Review & Confirm</h3>
-               <p className="text-gray-400 text-sm font-bold uppercase tracking-[4px]">Finalize your clinical or transport booking</p>
+               <h3 className="text-4xl font-black uppercase tracking-tighter mb-2 text-black text-center">Review & Confirm</h3>
+               <p className="text-black text-sm font-bold uppercase tracking-[4px] text-center">Finalize your clinical or transport booking</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -736,7 +736,7 @@ function AppointmentForm() {
                     <h4 className="text-2xl font-bold text-gray-900 uppercase tracking-tighter">
                       {formData.preferredDate ? new Date(formData.preferredDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '---'}
                     </h4>
-                    <p className="text-4xl font-black text-[#24a148] italic">{formData.preferredTime || '---'}</p>
+                    <p className="text-4xl font-black text-[#24a148]">{formData.preferredTime || '---'}</p>
                   </div>
                   <div className="inline-flex items-center gap-2 bg-gray-50 border border-gray-100 px-4 py-2 rounded-full">
                     <Clock size={12} className="text-[#24a148]" />
@@ -778,7 +778,7 @@ function AppointmentForm() {
                   <div className="flex justify-between items-center p-6 bg-white border border-gray-200 shadow-xl mt-8">
                     <div>
                       <p className="text-[10px] font-black text-gray-400 uppercase tracking-[3px]">Total Amount Payable</p>
-                      <p className="text-xs text-gray-500 font-medium italic">Includes all fees and insurance</p>
+                      <p className="text-xs text-gray-500 font-medium">Includes all fees and insurance</p>
                     </div>
                     <div className="text-right">
                       <p className="text-4xl font-black text-[#24a148] font-mono tracking-tighter animate-pulse">₱{calculateFees().total.toFixed(2)}</p>
