@@ -5,6 +5,7 @@ import {
   MapPin, Clock, Phone, Mail, Star, Store, CreditCard, Lock, ArrowRight, User, Calendar, Users
 } from 'lucide-react';
 import TransportMap from '../maps/TransportMap';
+import LocationAutocomplete from '../common/LocationAutocomplete';
 
 function AppointmentForm() {
   const [formData, setFormData] = useState({
@@ -196,7 +197,12 @@ function AppointmentForm() {
         specialistId: selectedStaff?.id,
         totalAmount: fees.total,
         paymentMethod,
-        corporateAccountNumber: formData.corporateAccountNumber
+        corporateAccountNumber: formData.corporateAccountNumber,
+        // Map coordinates to flat structure for backend
+        pickupLat: formData.pickupCoords?.lat,
+        pickupLng: formData.pickupCoords?.lng,
+        destLat: formData.destCoords?.lat,
+        destLng: formData.destCoords?.lng
       };
 
       const response = await fetch('/api/appointments', {
@@ -619,30 +625,26 @@ function AppointmentForm() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
               <div className="space-y-1">
                 <label className="block text-[9px] font-bold text-[#525252] uppercase tracking-widest">Pickup Location</label>
-                <input
-                  type="text"
-                  name="pickupLocation"
+                <LocationAutocomplete
                   value={formData.pickupLocation}
-                  onChange={(e) => {
-                    setFormData({ ...formData, pickupLocation: e.target.value });
-                    setMapAction({ type: 'pickup', address: e.target.value });
+                  onChange={(val) => setFormData(prev => ({ ...prev, pickupLocation: val }))}
+                  onSelect={(data) => {
+                    handleLocationSelect({ address: data.address, coords: data.coords }, null);
+                    setMapAction({ type: 'pickup', coords: data.coords, address: data.address });
                   }}
                   placeholder="Search pickup..."
-                  className="w-full bg-[#f4f4f4] border-0 border-b border-gray-300 p-2.5 text-[12px] text-black focus:outline-none focus:border-[#24a148] focus:ring-0"
                 />
               </div>
               <div className="space-y-1">
                 <label className="block text-[9px] font-bold text-[#525252] uppercase tracking-widest">Destination</label>
-                <input
-                  type="text"
-                  name="destinationLocation"
+                <LocationAutocomplete
                   value={formData.destinationLocation}
-                  onChange={(e) => {
-                    setFormData({ ...formData, destinationLocation: e.target.value });
-                    setMapAction({ type: 'dest', address: e.target.value });
+                  onChange={(val) => setFormData(prev => ({ ...prev, destinationLocation: val }))}
+                  onSelect={(data) => {
+                    handleLocationSelect(null, { address: data.address, coords: data.coords });
+                    setMapAction({ type: 'dest', coords: data.coords, address: data.address });
                   }}
                   placeholder="Search destination..."
-                  className="w-full bg-[#f4f4f4] border-0 border-b border-gray-300 p-2.5 text-[12px] text-black focus:outline-none focus:border-[#24a148] focus:ring-0"
                 />
               </div>
             </div>

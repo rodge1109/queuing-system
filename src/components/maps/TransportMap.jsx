@@ -31,30 +31,64 @@ const TransportMapBase = ({ onLocationSelect, mapAction }) => {
     }
   };
 
-  const updateRoute = () => {
+  const distanceMarker = React.useRef(null);
+
+  const updateRoute = async () => {
     if (!pickupMarker.current || !destMarker.current) return;
     const p1 = pickupMarker.current.getLatLng();
     const p2 = destMarker.current.getLatLng();
-
-    if (routeLine.current) {
-      routeLine.current.setLatLngs([p1, p2]);
-    } else {
-      const L = window.L;
-      routeLine.current = L.polyline([p1, p2], {
-        color: '#0f62fe',
-        weight: 3,
-        dashArray: '10, 10',
-        opacity: 0.8
-      }).addTo(leafletMap.current);
-    }
-    
-    // Zoom map to show both markers
     const L = window.L;
-    leafletMap.current.fitBounds(L.latLngBounds(p1, p2), { padding: [50, 50] });
-    
-    // Calculate and send distance
-    const dist = p1.distanceTo(p2) / 1000; // to KM
-    onLocationSelect(null, null, dist);
+
+    try {
+      // Use OSRM for real-road routing
+      const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${p1.lng},${p1.lat};${p2.lng},${p2.lat}?overview=full&geometries=geojson`);
+      const data = await response.json();
+
+      if (data.routes && data.routes.length > 0) {
+        const route = data.routes[0];
+        const coordinates = route.geometry.coordinates.map(c => [c[1], c[0]]);
+        const dist = route.distance / 1000; // Meters to KM
+
+        if (routeLine.current) {
+          routeLine.current.setLatLngs(coordinates);
+        } else {
+          routeLine.current = L.polyline(coordinates, {
+            color: '#24a148',
+            weight: 5,
+            opacity: 0.8,
+            lineJoin: 'round'
+          }).addTo(leafletMap.current);
+        }
+
+        // Add distance bean button in the middle
+        const midPoint = coordinates[Math.floor(coordinates.length / 2)];
+        const badgeHtml = `
+          <div style="background: #24a148; color: white; padding: 6px 18px; border-radius: 100px; font-size: 12px; font-weight: 900; white-space: nowrap; box-shadow: 0 8px 24px rgba(36, 161, 72, 0.4); border: 2px solid white; transform: translate(-50%, -50%); display: flex; align-items: center; justify-content: center; letter-spacing: 0.5px; animation: bounceIn 0.5s ease-out;">
+            <span style="margin-right: 6px; font-size: 14px;">🛣️</span>
+            ${dist.toFixed(1)} KM
+          </div>
+        `;
+
+        if (distanceMarker.current) {
+          distanceMarker.current.setLatLng(midPoint).setIcon(L.divIcon({ html: badgeHtml, className: 'distance-badge', iconSize: [0, 0] }));
+        } else {
+          distanceMarker.current = L.marker(midPoint, {
+            icon: L.divIcon({ html: badgeHtml, className: 'distance-badge', iconSize: [0, 0] })
+          }).addTo(leafletMap.current);
+        }
+
+        leafletMap.current.fitBounds(L.latLngBounds(p1, p2), { padding: [80, 80] });
+        onLocationSelect(null, null, dist);
+      } else {
+        // Fallback to straight line if OSRM fails
+        const dist = p1.distanceTo(p2) / 1000;
+        if (routeLine.current) routeLine.current.setLatLngs([p1, p2]);
+        else routeLine.current = L.polyline([p1, p2], { color: '#24a148', weight: 4, dashArray: '10, 10' }).addTo(leafletMap.current);
+        onLocationSelect(null, null, dist);
+      }
+    } catch (err) {
+      console.error('Routing error:', err);
+    }
   };
 
   React.useEffect(() => {

@@ -508,6 +508,15 @@ app.post('/api/appointments', async (req, res) => {
       });
     }
 
+    // Geolocation Validation (Solidifying the process)
+    // If a pickup location is provided, coordinates MUST be present to ensure map visibility
+    if (pickupLocation && (!pickupLat || !pickupLng)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Geocoding Error: Pickup coordinates are missing. Please select the location from the map.'
+      });
+    }
+
     // Corporate Account Logic
     let corporateAccountId = null;
     if (paymentMethod === 'corporate' && corporateAccountNumber) {
@@ -592,6 +601,19 @@ app.post('/api/appointments', async (req, res) => {
     const smsMessage = applyTemplate(smsTpl, makeVars(appointment));
     sendSMS(appointment.phone_number, smsMessage).catch(err => console.error('SMS error:', err));
 
+    // Broadcast new_booking to all connected admin WebSocket clients
+    wsBroadcast({
+      type: 'new_booking',
+      appointment: {
+        id: appointment.id,
+        full_name: appointment.full_name,
+        service_type: appointment.service_type,
+        preferred_date: appointment.preferred_date,
+        preferred_time: appointment.preferred_time,
+        status: appointment.status
+      }
+    });
+
     res.status(201).json({
       success: true,
       message: 'Appointment booked successfully! A confirmation email has been sent.',
@@ -673,7 +695,12 @@ app.get('/api/available-slots', async (req, res) => {
 app.get('/api/appointments', async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT * FROM appointments ORDER BY created_at DESC'
+      `SELECT a.*, 
+              a.preferred_date::text AS preferred_date,
+              ca.account_number AS corporate_account_number
+       FROM appointments a
+       LEFT JOIN corporate_accounts ca ON a.corporate_account_id = ca.id
+       ORDER BY a.preferred_date DESC, a.preferred_time DESC`
     );
     res.json({
       success: true,
@@ -693,39 +720,44 @@ app.get('/api/appointments/search', async (req, res) => {
   try {
     const { query, startDate, endDate, status } = req.query;
 
-    let sql = 'SELECT * FROM appointments WHERE 1=1';
+    let sql = `SELECT a.*, 
+                 a.preferred_date::text AS preferred_date,
+                 ca.account_number AS corporate_account_number
+      FROM appointments a
+      LEFT JOIN corporate_accounts ca ON a.corporate_account_id = ca.id
+      WHERE 1=1`;
     const params = [];
     let paramIndex = 1;
 
     if (query) {
       sql += ` AND (
-        LOWER(full_name) LIKE LOWER($${paramIndex}) OR
-        phone_number LIKE $${paramIndex} OR
-        LOWER(email) LIKE LOWER($${paramIndex})
+        LOWER(a.full_name) LIKE LOWER($${paramIndex}) OR
+        a.phone_number LIKE $${paramIndex} OR
+        LOWER(a.email) LIKE LOWER($${paramIndex})
       )`;
       params.push(`%${query}%`);
       paramIndex++;
     }
 
     if (startDate) {
-      sql += ` AND preferred_date >= $${paramIndex}`;
+      sql += ` AND a.preferred_date >= $${paramIndex}`;
       params.push(startDate);
       paramIndex++;
     }
 
     if (endDate) {
-      sql += ` AND preferred_date <= $${paramIndex}`;
+      sql += ` AND a.preferred_date <= $${paramIndex}`;
       params.push(endDate);
       paramIndex++;
     }
 
     if (status && status !== 'all') {
-      sql += ` AND status = $${paramIndex}`;
+      sql += ` AND a.status = $${paramIndex}`;
       params.push(status);
       paramIndex++;
     }
 
-    sql += ' ORDER BY preferred_date DESC, preferred_time DESC';
+    sql += ' ORDER BY a.preferred_date DESC, a.preferred_time DESC';
 
     const result = await pool.query(sql, params);
 
@@ -1931,13 +1963,17 @@ app.get('/api/calendar', async (req, res) => {
   try {
     const { month, year } = req.query;
 
-    const startDate = `${year}-${month.padStart(2, '0')}-01`;
-    const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+    const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+    const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
+    const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
     const appointments = await pool.query(
-      `SELECT id, full_name, service_type, preferred_date, preferred_time, status
+      `SELECT id, full_name, service_type,
+              TO_CHAR(preferred_date AT TIME ZONE 'Asia/Manila', 'YYYY-MM-DD') AS preferred_date,
+              preferred_time, status
        FROM appointments
-       WHERE preferred_date >= $1 AND preferred_date <= $2
+       WHERE preferred_date AT TIME ZONE 'Asia/Manila' >= $1::date
+         AND preferred_date AT TIME ZONE 'Asia/Manila' <= ($2::date + interval '1 day' - interval '1 second')
        ORDER BY preferred_date, preferred_time`,
       [startDate, endDate]
     );
@@ -2996,10 +3032,42 @@ app.post('/api/rider/login', async (req, res) => {
       return res.status(401).json({ success: false, message: 'Invalid username or password' });
     }
     
+    const rider = rows[0];
     console.log(`[Rider Login] SUCCESS for: ${username}`);
-    res.json({ success: true, rider: rows[0] });
+
+    // Check for active job
+    const activeJob = await pool.query(
+      `SELECT * FROM appointments 
+       WHERE rider_id = $1 
+       AND transport_status NOT IN ('completed', 'cancelled', 'unassigned')
+       ORDER BY created_at DESC LIMIT 1`,
+      [rider.id]
+    );
+
+    res.json({ 
+      success: true, 
+      rider,
+      activeJob: activeJob.rows[0] || null 
+    });
   } catch (error) {
     console.error('[Rider Login] Error:', error);
+    res.status(500).json({ success: false });
+  }
+});
+
+// Get active job for a rider (to poll/refresh)
+app.get('/api/rider/active-job/:riderId', async (req, res) => {
+  try {
+    const { riderId } = req.params;
+    const { rows } = await pool.query(
+      `SELECT * FROM appointments 
+       WHERE rider_id = $1 
+       AND transport_status NOT IN ('completed', 'cancelled', 'unassigned')
+       ORDER BY created_at DESC LIMIT 1`,
+      [riderId]
+    );
+    res.json({ success: true, activeJob: rows[0] || null });
+  } catch (error) {
     res.status(500).json({ success: false });
   }
 });
@@ -3553,9 +3621,19 @@ app.delete('/api/corporate-accounts/:id', async (req, res) => {
 app.get('/api/corporate-accounts/:id/ledger', async (req, res) => {
   try {
     const { id } = req.params;
-    const { rows } = await pool.query('SELECT * FROM corporate_ledgers WHERE account_id = $1 ORDER BY date DESC, id DESC', [id]);
+    // Calculate running balance on the fly. 
+    // We order by original column names in the window function to avoid ambiguity with text-casted aliases.
+    const { rows } = await pool.query(
+      `SELECT id, date::text as date, reference, description, debit, credit,
+              SUM(debit - credit) OVER (ORDER BY corporate_ledgers.date ASC, corporate_ledgers.id ASC) as balance
+       FROM corporate_ledgers 
+       WHERE account_id = $1 
+       ORDER BY corporate_ledgers.date ASC, corporate_ledgers.id ASC`, 
+      [id]
+    );
     res.json({ success: true, ledger: rows });
   } catch (error) {
+    console.error('Ledger fetch error:', error);
     res.status(500).json({ success: false, message: 'Server error fetching ledger' });
   }
 });
@@ -3590,13 +3668,11 @@ app.get('/api/corporate-accounts/:accountId/invoices/:invoiceId', async (req, re
       [accountId]
     );
 
-    // Fetch line items:
-    // - For 'paid' invoices: show billed trips (these were marked billed when invoice was generated)
-    // - For 'pending' invoices: show all completed trips (billed + unbilled) for the account
-    // We do NOT filter by preferred_date range — bookings can have any future/past scheduled date
-    const isPaid = invoice.status === 'paid';
+    // Fetch line items scoped precisely to this invoice:
+    // Only show trips that were specifically linked to this invoice ID.
+    console.log(`Fetching line items for invoice ID: ${invoiceId}`);
     const lineItems = await pool.query(
-      `SELECT id, full_name as passenger, 
+      `SELECT id, full_name as passenger,
               preferred_date::text as date,
               preferred_time as time,
               COALESCE(pickup_location || ' → ' || destination_location, service_type) as route,
@@ -3604,13 +3680,11 @@ app.get('/api/corporate-accounts/:accountId/invoices/:invoiceId', async (req, re
               COALESCE(billing_status, 'unbilled') as billing_status,
               updated_at::text as completed_at
        FROM appointments
-       WHERE corporate_account_id = $1
-         AND LOWER(payment_method) = 'corporate'
-         AND (status = 'completed' OR transport_status = 'completed')
-         ${isPaid ? "AND billing_status = 'billed'" : ''}
-       ORDER BY updated_at DESC`,
-      [accountId]
+       WHERE invoice_id = $1::integer
+       ORDER BY updated_at ASC`,
+      [invoiceId]
     );
+    console.log(`Found ${lineItems.rows.length} line items.`);
 
     res.json({
       success: true,
@@ -3681,11 +3755,11 @@ app.post('/api/corporate-accounts/:id/invoices/generate', async (req, res) => {
       [id, invoiceNumber, totalAmount]
     );
 
-    // 4. Update trips to billed
+    // 4. Update trips: mark as billed AND stamp invoice_id
     const tripIds = trips.rows.map(t => t.id);
     await client.query(
-      `UPDATE appointments SET billing_status = 'billed' WHERE id = ANY($1::int[])`,
-      [tripIds]
+      `UPDATE appointments SET billing_status = 'billed', invoice_id = $1 WHERE id = ANY($2::int[])`,
+      [invoiceResult.rows[0].id, tripIds]
     );
 
     // 5. Add to Ledger
@@ -3716,7 +3790,11 @@ app.post('/api/corporate-accounts/:id/invoices/generate', async (req, res) => {
 app.get('/api/corporate-accounts/:id/payments', async (req, res) => {
   try {
     const { id } = req.params;
-    const { rows } = await pool.query("SELECT id, payment_date::text as date, reference_id as ref, method, amount FROM corporate_payments WHERE account_id = $1 ORDER BY payment_date DESC, id DESC", [id]);
+    const { rows } = await pool.query(
+      `SELECT id, payment_date::text as date, reference_id as ref, method, amount, check_number, notes 
+       FROM corporate_payments WHERE account_id = $1 ORDER BY payment_date DESC, id DESC`, 
+      [id]
+    );
     res.json({ success: true, payments: rows });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error fetching payments' });
@@ -3728,14 +3806,14 @@ app.post('/api/corporate-accounts/:id/payments', async (req, res) => {
   const client = await pool.connect();
   try {
     const { id } = req.params;
-    const { amount, method, reference_id, invoice_id } = req.body;
+    const { amount, method, reference_id, invoice_id, check_number, bank_name, notes } = req.body;
     await client.query('BEGIN');
 
     // 1. Create Payment Record
     const paymentResult = await client.query(
-      `INSERT INTO corporate_payments (account_id, invoice_id, amount, method, payment_date, reference_id)
-       VALUES ($1, $2, $3, $4, CURRENT_DATE, $5) RETURNING *`,
-      [id, invoice_id || null, amount, method || 'Bank Transfer', reference_id]
+      `INSERT INTO corporate_payments (account_id, invoice_id, amount, method, payment_date, reference_id, check_number, bank_name, notes)
+       VALUES ($1, $2, $3, $4, CURRENT_DATE, $5, $6, $7, $8) RETURNING *`,
+      [id, invoice_id || null, amount, method || 'Bank Transfer', reference_id, check_number, bank_name, notes]
     );
 
     const payId = paymentResult.rows[0].id;
@@ -3755,10 +3833,16 @@ app.post('/api/corporate-accounts/:id/payments', async (req, res) => {
     }
 
     // 3. Add to Ledger (Credit)
+    let description = `Payment Received - ${method || 'Bank Transfer'}`;
+    if (method === 'Check') {
+      description += ` (Check #${check_number || 'N/A'}, Bank: ${bank_name || 'N/A'})`;
+    }
+    if (notes) description += ` | Note: ${notes}`;
+
     await client.query(
       `INSERT INTO corporate_ledgers (account_id, date, reference, description, debit, credit)
        VALUES ($1, CURRENT_DATE, $2, $3, 0, $4)`,
-      [id, finalRefId, `Payment Received - ${method || 'Bank Transfer'}`, amount]
+      [id, finalRefId, description, amount]
     );
 
     // 4. Update Account Balance
@@ -3773,6 +3857,42 @@ app.post('/api/corporate-accounts/:id/payments', async (req, res) => {
     await client.query('ROLLBACK');
     console.error('Record payment error:', error);
     res.status(500).json({ success: false, message: 'Server error recording payment' });
+  } finally {
+    client.release();
+  }
+});
+
+app.post('/api/corporate-accounts/:id/ledger/adjust', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { id } = req.params;
+    const { type, amount, description, reference } = req.body;
+    await client.query('BEGIN');
+
+    const debit = type === 'debit' ? amount : 0;
+    const credit = type === 'credit' ? amount : 0;
+    const finalRef = reference || `ADJ-${Date.now()}`;
+
+    // 1. Insert into Ledger
+    await client.query(
+      `INSERT INTO corporate_ledgers (account_id, date, reference, description, debit, credit)
+       VALUES ($1, CURRENT_DATE, $2, $3, $4, $5)`,
+      [id, finalRef, `Manual Adjustment: ${description}`, debit, credit]
+    );
+
+    // 2. Update Account Balance
+    const balanceAdjustment = debit - credit;
+    await client.query(
+      `UPDATE corporate_accounts SET balance = balance + $1 WHERE id = $2`,
+      [balanceAdjustment, id]
+    );
+
+    await client.query('COMMIT');
+    res.json({ success: true, message: 'Adjustment recorded successfully' });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Adjustment error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
   } finally {
     client.release();
   }

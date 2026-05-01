@@ -91,7 +91,7 @@ export default function RestaurantApp() {
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   const [productsError, setProductsError] = useState(null);
 
-  // State for patient appointment lookup
+  // State for client appointment lookup
   const [appointmentToken, setAppointmentToken] = useState(null);
 
   // Check URL parameters for payment status (after GCash redirect) or patient appointment
@@ -114,7 +114,7 @@ export default function RestaurantApp() {
       // Clean URL
       window.history.replaceState({}, document.title, window.location.pathname);
     } else if (page === 'my-appointment') {
-      // Patient appointment lookup page
+      // client appointment lookup page
       if (token) {
         setAppointmentToken(token);
       }
@@ -852,9 +852,9 @@ function AdminDashboard({ setCurrentPage }) {
     setPassword('');
   };
 
-  const fetchAppointments = async () => {
+  const fetchAppointments = async (silent = false) => {
     try {
-      setIsLoading(true);
+      if (!silent) setIsLoading(true);
       const params = new URLSearchParams();
       if (searchQuery) params.append('query', searchQuery);
       if (startDate) params.append('startDate', startDate);
@@ -873,7 +873,7 @@ function AdminDashboard({ setCurrentPage }) {
     } catch (error) {
       console.error('Error fetching appointments:', error);
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   };
 
@@ -952,10 +952,16 @@ function AdminDashboard({ setCurrentPage }) {
       socket.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          // If we receive a trip or location update, refresh the trip data immediately
+          // Trip / location updates
           if (data.type === 'trip_update' || data.type === 'location_update') {
             console.log('Real-time trip/location update received:', data);
             fetchTrips();
+          }
+          // New booking submitted from the public booking form
+          if (data.type === 'new_booking') {
+            console.log('New booking received — refreshing All Bookings...');
+            fetchAppointments(true); // silent — no blink
+            fetchCalendarData();
           }
         } catch (err) { }
       };
@@ -991,6 +997,7 @@ function AdminDashboard({ setCurrentPage }) {
           apt.id === id ? { ...apt, status: newStatus } : apt
         ));
         fetchTrips(); // Refresh the trips list so the Trip Monitoring module updates
+        fetchCalendarData(); // Sync calendar view immediately
       }
     } catch (error) {
       console.error('Error updating status:', error);
@@ -1304,16 +1311,32 @@ function AdminDashboard({ setCurrentPage }) {
 
   // Load data when tab changes
   useEffect(() => {
-    if (isLoggedIn) {
-      if (activeTab === 'calendar') fetchCalendarData();
-      if (activeTab === 'reports') fetchReports();
-      if (activeTab === 'feedback') fetchCsm();
-      if (activeTab === 'settings') {
-        fetchBlockedDates();
-        fetchDoctors();
-        fetchServices();
-      }
+    if (!isLoggedIn) return;
+
+    if (activeTab === 'calendar') fetchCalendarData();
+    if (activeTab === 'reports') fetchReports();
+    if (activeTab === 'feedback') fetchCsm();
+    if (activeTab === 'settings') {
+      fetchBlockedDates();
+      fetchDoctors();
+      fetchServices();
     }
+
+    // Auto-refresh appointments every 15 seconds when on appointments tab
+    let appointmentsInterval;
+    if (activeTab === 'appointments') {
+      appointmentsInterval = setInterval(() => fetchAppointments(true), 15000);
+    }
+
+    // Auto-refresh calendar every 30 seconds when on calendar tab
+    let calendarInterval;
+    if (activeTab === 'calendar') {
+      calendarInterval = setInterval(() => fetchCalendarData(), 30000);
+    }
+    return () => {
+      if (appointmentsInterval) clearInterval(appointmentsInterval);
+      if (calendarInterval) clearInterval(calendarInterval);
+    };
   }, [activeTab, isLoggedIn, calendarMonth, calendarYear]);
 
   // Login Page
@@ -1950,7 +1973,7 @@ function AdminDashboard({ setCurrentPage }) {
                   <div className="bg-white rounded-0 p-4 border border-[#e0e0e0] shadow-sm mb-6">
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                       <div className="md:col-span-2">
-                        <label className="block text-gray-500 text-xs mb-1">Search Patient</label>
+                        <label className="block text-gray-500 text-xs mb-1">Search Client</label>
                         <input
                           type="text"
                           value={searchQuery}
@@ -2015,65 +2038,96 @@ function AdminDashboard({ setCurrentPage }) {
                       <p className="text-gray-500">No appointments found</p>
                     </div>
                   ) : (
-                    <div className="bg-white rounded-0 border border-[#e0e0e0] shadow-sm overflow-hidden">
+                    <div className="bg-white border border-[#e0e0e0] shadow-sm overflow-hidden">
                       {/* Table Header */}
-                      <div className="hidden md:grid md:grid-cols-[40px_repeat(6,1fr)] gap-3 px-4 py-3 bg-[#10b981] border-b border-[#10b981] text-xs font-semibold text-white uppercase tracking-wider items-center">
-                        <span>#</span>
-                        <span>Patient</span>
+                      <div className="hidden md:grid md:grid-cols-[44px_1.4fr_1fr_0.9fr_0.7fr_0.8fr_0.9fr_1.1fr] gap-2 px-5 py-3 bg-[#161616] text-[10px] font-black text-white uppercase tracking-[1.5px] items-center border-b-2 border-[#24a148]">
+                        <span className="text-[#24a148]">#</span>
+                        <span>Client</span>
                         <span>Service</span>
+                        <span>Company Code</span>
                         <span>Date</span>
                         <span>Time</span>
                         <span>Status</span>
                         <span className="text-right">Actions</span>
                       </div>
                       {filteredAppointments.map((apt, index) => (
-                        <div key={apt.id} className={`grid grid-cols-1 md:grid-cols-[40px_repeat(6,1fr)] gap-3 px-4 py-3 items-center text-sm border-b border-blue-100 hover:bg-blue-50/50 transition-all ${index % 2 === 0 ? 'bg-white' : 'bg-blue-50/30'}`}>
-                          <span className="text-gray-400 font-mono">{apt.id}</span>
+                        <div key={apt.id} className={`grid grid-cols-1 md:grid-cols-[44px_1.4fr_1fr_0.9fr_0.7fr_0.8fr_0.9fr_1.1fr] gap-2 px-5 py-3 items-center text-sm border-b border-[#e0e0e0] hover:bg-[#f0fdf4] transition-all group ${index % 2 === 0 ? 'bg-white' : 'bg-[#f9fafb]'}`}>
+                          {/* # */}
+                          <span className="text-[#24a148] font-mono font-bold text-xs">{apt.id}</span>
+
+                          {/* Client */}
                           <div className="min-w-0">
-                            <p className="text-gray-800 font-medium truncate">{apt.full_name}</p>
-                            <p className="text-gray-400 text-sm truncate md:hidden">{apt.phone_number}</p>
+                            <p className="text-[#161616] font-bold text-[12px] truncate uppercase tracking-tight">{apt.full_name}</p>
+                            <p className="text-gray-400 text-[10px] truncate font-mono">{apt.phone_number}</p>
                           </div>
-                          <span className="text-gray-600 truncate">{apt.service_type}</span>
-                          <span className="text-gray-600">{apt.preferred_date}</span>
-                          <span className="text-gray-600">{apt.preferred_time}</span>
-                          <span className={`px-2 py-1 rounded-full text-sm font-medium border w-fit ${getStatusColor(apt.status)}`}>
+
+                          {/* Service */}
+                          <span className="text-[11px] text-[#525252] font-medium truncate">{apt.service_type}</span>
+
+                          {/* Company Code */}
+                          <span>
+                            {apt.corporate_account_id ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-[#f0fdf4] border border-[#24a148]/30 text-[#24a148] text-[10px] font-black uppercase tracking-widest">
+                                {apt.corporate_account_number || apt.corporate_account_id}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-gray-300 font-bold">—</span>
+                            )}
+                          </span>
+
+                          {/* Date */}
+                          <span className="text-[11px] text-[#525252] font-mono">{apt.preferred_date}</span>
+
+                          {/* Time */}
+                          <span className="text-[11px] text-[#525252] font-mono">{apt.preferred_time}</span>
+
+                          {/* Status */}
+                          <span className={`inline-flex items-center px-2 py-0.5 text-[9px] font-black uppercase tracking-widest w-fit border ${apt.status === 'confirmed' ? 'bg-[#f0fdf4] text-[#24a148] border-[#24a148]/30' :
+                              apt.status === 'completed' ? 'bg-[#161616] text-white border-[#161616]' :
+                                apt.status === 'cancelled' ? 'bg-red-50 text-red-600 border-red-200' :
+                                  apt.status === 'pending' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                                    apt.status === 'queued' ? 'bg-blue-50 text-blue-600 border-blue-200' :
+                                      'bg-gray-50 text-gray-500 border-gray-200'
+                            }`}>
                             {apt.status}
                           </span>
+
+                          {/* Actions */}
                           <div className="flex flex-wrap gap-1 justify-end">
                             {(apt.status === 'pending' || apt.status === 'queued' || apt.status === 'confirmed') && (
-                              <button onClick={() => openRescheduleModal(apt)} className="px-2 py-1 bg-purple-50 text-purple-600 rounded text-xs hover:bg-purple-100 transition-all border border-purple-200">
+                              <button onClick={() => openRescheduleModal(apt)} className="px-2 py-1 bg-purple-50 text-purple-600 text-[10px] font-bold hover:bg-purple-100 transition-all border border-purple-200 uppercase tracking-wide">
                                 Reschedule
                               </button>
                             )}
                             {(apt.status === 'pending' || apt.status === 'queued') && (
                               <>
-                                <button onClick={() => updateStatus(apt.id, 'confirmed')} disabled={updatingId === apt.id} className="px-2 py-1 bg-green-50 text-green-600 rounded text-xs hover:bg-green-100 transition-all border border-green-200 disabled:opacity-50">
+                                <button onClick={() => updateStatus(apt.id, 'confirmed')} disabled={updatingId === apt.id} className="px-2 py-1 bg-[#f0fdf4] text-[#24a148] text-[10px] font-bold hover:bg-[#24a148] hover:text-white transition-all border border-[#24a148]/30 uppercase tracking-wide disabled:opacity-50">
                                   Confirm
                                 </button>
-                                <button onClick={() => updateStatus(apt.id, 'cancelled')} disabled={updatingId === apt.id} className="px-2 py-1 bg-red-50 text-red-600 rounded text-xs hover:bg-red-100 transition-all border border-red-200 disabled:opacity-50">
+                                <button onClick={() => updateStatus(apt.id, 'cancelled')} disabled={updatingId === apt.id} className="px-2 py-1 bg-red-50 text-red-600 text-[10px] font-bold hover:bg-red-600 hover:text-white transition-all border border-red-200 uppercase tracking-wide disabled:opacity-50">
                                   Cancel
                                 </button>
                               </>
                             )}
                             {apt.status === 'confirmed' && (
                               <>
-                                <button onClick={() => updateStatus(apt.id, 'completed')} disabled={updatingId === apt.id} className="px-2 py-1 bg-blue-50 text-[#10b981] rounded text-xs hover:bg-blue-100 transition-all border border-[#e0e0e0] disabled:opacity-50">
+                                <button onClick={() => updateStatus(apt.id, 'completed')} disabled={updatingId === apt.id} className="px-2 py-1 bg-[#161616] text-white text-[10px] font-bold hover:bg-[#24a148] transition-all uppercase tracking-wide disabled:opacity-50">
                                   Complete
                                 </button>
-                                <button onClick={() => updateStatus(apt.id, 'cancelled')} disabled={updatingId === apt.id} className="px-2 py-1 bg-red-50 text-red-600 rounded text-xs hover:bg-red-100 transition-all border border-red-200 disabled:opacity-50">
+                                <button onClick={() => updateStatus(apt.id, 'cancelled')} disabled={updatingId === apt.id} className="px-2 py-1 bg-red-50 text-red-600 text-[10px] font-bold hover:bg-red-600 hover:text-white transition-all border border-red-200 uppercase tracking-wide disabled:opacity-50">
                                   Cancel
                                 </button>
                               </>
                             )}
                             {(apt.status === 'cancelled' || apt.status === 'completed') && (
-                              <button onClick={() => updateStatus(apt.id, 'pending')} disabled={updatingId === apt.id} className="px-2 py-1 bg-blue-50 text-[#10b981] rounded text-xs hover:bg-blue-100 transition-all border border-[#e0e0e0] disabled:opacity-50">
+                              <button onClick={() => updateStatus(apt.id, 'pending')} disabled={updatingId === apt.id} className="px-2 py-1 bg-gray-50 text-gray-600 text-[10px] font-bold hover:bg-gray-200 transition-all border border-gray-200 uppercase tracking-wide disabled:opacity-50">
                                 Reopen
                               </button>
                             )}
-                            <button onClick={() => sendSMSReminder(apt)} className="px-2 py-1 bg-cyan-50 text-cyan-600 rounded text-xs hover:bg-cyan-100 transition-all border border-cyan-200" title="Send SMS Reminder">
+                            <button onClick={() => sendSMSReminder(apt)} className="px-2 py-1 bg-cyan-50 text-cyan-600 hover:bg-cyan-600 hover:text-white transition-all border border-cyan-200" title="Send SMS Reminder">
                               <Smartphone className="w-3 h-3" />
                             </button>
-                            <button onClick={() => printSlip(apt)} className="px-2 py-1 bg-gray-50 text-gray-600 rounded text-xs hover:bg-gray-100 transition-all border border-gray-200" title="Print Appointment Slip">
+                            <button onClick={() => printSlip(apt)} className="px-2 py-1 bg-gray-50 text-gray-600 hover:bg-gray-600 hover:text-white transition-all border border-gray-200" title="Print Appointment Slip">
                               <Printer className="w-3 h-3" />
                             </button>
                           </div>
@@ -2101,92 +2155,172 @@ function AdminDashboard({ setCurrentPage }) {
 
             {/* ==================== CALENDAR TAB ==================== */}
             {activeTab === 'calendar' && (
-              <div className="bg-white rounded-0 p-6 border border-[#e0e0e0] shadow-sm">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-bold text-gray-800">Calendar View</h2>
-                  <div className="flex items-center gap-2">
+              <div className="bg-white border border-[#e0e0e0] shadow-sm overflow-hidden">
+
+                {/* Calendar Header */}
+                <div className="bg-[#161616] px-8 py-5 flex items-center justify-between border-b-2 border-[#24a148]">
+                  <div>
+                    <h2 className="text-xl font-black text-white uppercase tracking-tight">Calendar View</h2>
+                    <p className="text-[10px] text-[#24a148] font-bold uppercase tracking-widest mt-0.5">Appointment Schedule</p>
+                  </div>
+                  <div className="flex items-center gap-3">
                     <button
                       onClick={() => {
-                        if (calendarMonth === 1) {
-                          setCalendarMonth(12);
-                          setCalendarYear(calendarYear - 1);
-                        } else {
-                          setCalendarMonth(calendarMonth - 1);
-                        }
+                        if (calendarMonth === 1) { setCalendarMonth(12); setCalendarYear(calendarYear - 1); }
+                        else setCalendarMonth(calendarMonth - 1);
                       }}
-                      className="p-2 bg-blue-100 rounded-0 hover:bg-blue-200 text-blue-700"
+                      className="w-9 h-9 flex items-center justify-center bg-white/10 hover:bg-[#24a148] text-white transition-all"
                     >
                       <ChevronLeft className="w-4 h-4" />
                     </button>
-                    <span className="text-gray-800 font-medium px-4">
+                    <span className="text-white font-black text-base uppercase tracking-widest min-w-[180px] text-center">
                       {new Date(calendarYear, calendarMonth - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                     </span>
                     <button
                       onClick={() => {
-                        if (calendarMonth === 12) {
-                          setCalendarMonth(1);
-                          setCalendarYear(calendarYear + 1);
-                        } else {
-                          setCalendarMonth(calendarMonth + 1);
-                        }
+                        if (calendarMonth === 12) { setCalendarMonth(1); setCalendarYear(calendarYear + 1); }
+                        else setCalendarMonth(calendarMonth + 1);
                       }}
-                      className="p-2 bg-blue-100 rounded-0 hover:bg-blue-200 text-blue-700"
+                      className="w-9 h-9 flex items-center justify-center bg-white/10 hover:bg-[#24a148] text-white transition-all"
                     >
                       <ChevronRight className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
 
-                {/* Calendar Grid */}
-                <div className="grid grid-cols-7 gap-1">
-                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                    <div key={day} className="text-center text-gray-500 text-sm py-2 font-medium">
+                {/* Legend */}
+                <div className="px-6 py-3 bg-[#f9fafb] border-b border-[#e0e0e0] flex flex-wrap gap-4 items-center">
+                  {[
+                    { color: 'bg-[#24a148]', label: 'Confirmed' },
+                    { color: 'bg-yellow-400', label: 'Pending' },
+                    { color: 'bg-[#161616]', label: 'Completed' },
+                    { color: 'bg-red-400', label: 'Cancelled' },
+                    { color: 'bg-red-100 border border-red-300', label: 'Blocked Day' },
+                  ].map(({ color, label }) => (
+                    <div key={label} className="flex items-center gap-1.5">
+                      <span className={`w-2.5 h-2.5 force-circle ${color}`}></span>
+                      <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{label}</span>
+                    </div>
+                  ))}
+                  <div className="ml-auto text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                    {calendarData.appointments?.length || 0} bookings this month
+                  </div>
+                </div>
+
+                {/* Day Headers */}
+                <div className="grid grid-cols-7 border-b border-[#e0e0e0]">
+                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, i) => (
+                    <div key={day} className={`py-3 text-center text-[10px] font-black uppercase tracking-[2px] ${i === 0 || i === 6 ? 'text-gray-300' : 'text-[#525252]'}`}>
                       {day}
                     </div>
                   ))}
+                </div>
+
+                {/* Calendar Grid */}
+                <div className="grid grid-cols-7">
                   {(() => {
                     const firstDay = new Date(calendarYear, calendarMonth - 1, 1).getDay();
                     const daysInMonth = new Date(calendarYear, calendarMonth, 0).getDate();
+                    const todayStr = new Date().toISOString().split('T')[0];
                     const days = [];
 
+                    // Empty leading cells
                     for (let i = 0; i < firstDay; i++) {
-                      days.push(<div key={`empty-${i}`} className="p-2"></div>);
+                      days.push(<div key={`empty-${i}`} className="min-h-[110px] bg-[#fafafa] border-b border-r border-[#f0f0f0]" />);
                     }
 
                     for (let day = 1; day <= daysInMonth; day++) {
                       const dateStr = `${calendarYear}-${String(calendarMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                      const dayAppointments = calendarData.appointments?.filter(a => a.preferred_date === dateStr) || [];
+                      const dayApts = calendarData.appointments?.filter(a => {
+                        const d = (a.preferred_date || '').slice(0, 10);
+                        return d === dateStr;
+                      }) || [];
                       const isBlocked = calendarData.blockedDates?.some(b => b.blocked_date === dateStr);
-                      const isToday = dateStr === new Date().toISOString().split('T')[0];
+                      const isToday = dateStr === todayStr;
+                      const isWeekend = (new Date(dateStr).getDay() === 0 || new Date(dateStr).getDay() === 6);
+
+                      // Group by status for icons
+                      const confirmed = dayApts.filter(a => a.status === 'confirmed');
+                      const pending = dayApts.filter(a => a.status === 'pending');
+                      const completed = dayApts.filter(a => a.status === 'completed');
+                      const cancelled = dayApts.filter(a => a.status === 'cancelled');
 
                       days.push(
                         <div
                           key={day}
-                          className={`min-h-[80px] p-1 rounded-0 border ${isBlocked ? 'bg-red-50 border-red-200' :
-                            isToday ? 'bg-yellow-50 border-[#10b981]' :
-                              'bg-white border-blue-100'
-                            }`}
+                          className={`min-h-[110px] border-b border-r border-[#e0e0e0] p-2 relative transition-all group
+                            ${isBlocked ? 'bg-red-50' :
+                              isToday ? 'bg-[#f0fdf4]' :
+                                isWeekend ? 'bg-[#fafafa]' : 'bg-white'}
+                            hover:bg-[#f0fdf4]`}
                         >
-                          <div className={`text-sm font-medium mb-1 ${isToday ? 'text-[#10b981]' : 'text-gray-600'}`}>
+                          {/* Day Number */}
+                          <div className={`w-7 h-7 force-circle flex items-center justify-center text-[12px] font-black mb-1.5 transition-all
+                            ${isToday
+                              ? 'bg-[#24a148] text-white shadow-md'
+                              : isBlocked
+                                ? 'text-red-400'
+                                : 'text-[#161616] group-hover:bg-[#24a148] group-hover:text-white'
+                            }`}>
                             {day}
                           </div>
+
+                          {/* Blocked Label */}
                           {isBlocked && (
-                            <div className="text-xs text-red-500 truncate">Closed</div>
+                            <div className="text-[9px] font-black text-red-400 uppercase tracking-widest mb-1">🚫 Closed</div>
                           )}
-                          {dayAppointments.slice(0, 2).map((apt, idx) => (
-                            <div
-                              key={idx}
-                              className={`text-xs truncate px-1 rounded mb-0.5 ${apt.status === 'confirmed' ? 'bg-green-100 text-green-700' :
-                                apt.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                                  apt.status === 'completed' ? 'bg-blue-100 text-blue-700' :
-                                    'bg-gray-100 text-gray-600'
-                                }`}
-                            >
-                              {apt.preferred_time.split(' ')[0]} {apt.full_name.split(' ')[0]}
+
+                          {/* Booking Icons */}
+                          {dayApts.length > 0 && !isBlocked && (
+                            <div className="space-y-0.5">
+                              {/* Show up to 3 individual entries */}
+                              {dayApts.slice(0, 3).map((apt, idx) => {
+                                const dotColor =
+                                  apt.status === 'confirmed' ? 'bg-[#24a148]' :
+                                    apt.status === 'pending' ? 'bg-yellow-400' :
+                                      apt.status === 'completed' ? 'bg-[#161616]' :
+                                        apt.status === 'cancelled' ? 'bg-red-400' : 'bg-gray-300';
+
+                                const icon =
+                                  apt.status === 'confirmed' ? '✓' :
+                                    apt.status === 'pending' ? '◷' :
+                                      apt.status === 'completed' ? '●' :
+                                        apt.status === 'cancelled' ? '✕' : '·';
+
+                                return (
+                                  <div
+                                    key={idx}
+                                    title={`${apt.full_name} · ${apt.preferred_time} · ${apt.status}`}
+                                    className={`flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-bold cursor-default truncate
+                                      ${apt.status === 'confirmed' ? 'bg-[#f0fdf4] text-[#24a148]' :
+                                        apt.status === 'pending' ? 'bg-yellow-50 text-yellow-700' :
+                                          apt.status === 'completed' ? 'bg-[#f4f4f4] text-[#161616]' :
+                                            apt.status === 'cancelled' ? 'bg-red-50 text-red-500' : 'bg-gray-50 text-gray-500'
+                                      }`}
+                                  >
+                                    <span className={`w-1.5 h-1.5 force-circle flex-shrink-0 ${dotColor}`}></span>
+                                    <span className="truncate">{apt.preferred_time?.split(' ')[0]} {apt.full_name?.split(' ')[0]}</span>
+                                  </div>
+                                );
+                              })}
+
+                              {/* +N more */}
+                              {dayApts.length > 3 && (
+                                <div className="text-[9px] font-black text-[#24a148] px-1 uppercase tracking-wide">
+                                  +{dayApts.length - 3} more
+                                </div>
+                              )}
                             </div>
-                          ))}
-                          {dayAppointments.length > 2 && (
-                            <div className="text-xs text-gray-500">+{dayAppointments.length - 2} more</div>
+                          )}
+
+                          {/* Total dot indicator in top-right if has bookings */}
+                          {dayApts.length > 0 && (
+                            <div className="absolute top-1.5 right-1.5 flex items-center gap-0.5">
+                              {confirmed.length > 0 && <span className="w-2 h-2 force-circle bg-[#24a148] block" title={`${confirmed.length} confirmed`}></span>}
+                              {pending.length > 0 && <span className="w-2 h-2 force-circle bg-yellow-400 block" title={`${pending.length} pending`}></span>}
+                              {completed.length > 0 && <span className="w-2 h-2 force-circle bg-[#161616] block" title={`${completed.length} completed`}></span>}
+                              {cancelled.length > 0 && <span className="w-2 h-2 force-circle bg-red-400 block" title={`${cancelled.length} cancelled`}></span>}
+                            </div>
                           )}
                         </div>
                       );
@@ -2338,7 +2472,7 @@ function AdminDashboard({ setCurrentPage }) {
                 <div className="bg-white shadow-xl rounded-0 p-6 w-full max-w-md border border-[#e0e0e0]">
                   <h3 className="text-xl font-bold text-gray-800 mb-4">Reschedule Appointment</h3>
                   <p className="text-gray-500 text-sm mb-4">
-                    Patient: <span className="text-gray-800">{rescheduleModal.full_name}</span>
+                    Client: <span className="text-gray-800">{rescheduleModal.full_name}</span>
                   </p>
 
                   <div className="space-y-4">
@@ -2402,7 +2536,7 @@ function AdminDashboard({ setCurrentPage }) {
                 <div className="border-t border-b border-stone-200 py-4 mb-4">
                   <h3 className="text-lg font-semibold text-blue-900 mb-3">Appointment Slip</h3>
                   <div className="space-y-2 text-sm">
-                    <p><strong>Patient:</strong> {printAppointment.full_name}</p>
+                    <p><strong>Client:</strong> {printAppointment.full_name}</p>
                     <p><strong>Service:</strong> {printAppointment.service_type}</p>
                     <p><strong>Date:</strong> {printAppointment.preferred_date}</p>
                     <p><strong>Time:</strong> {printAppointment.preferred_time}</p>
@@ -2433,7 +2567,7 @@ function AdminDashboard({ setCurrentPage }) {
   );
 }
 
-// My Appointment Page - Patient Self-Service
+// My Appointment Page - Client Self-Service
 const MyAppointment = ({ token: initialToken }) => {
   const [token, setToken] = useState(initialToken || '');
   const [email, setEmail] = useState('');
@@ -2787,31 +2921,12 @@ function HomePage({ setCurrentPage }) {
     <div>
       {/* Booking Form Section */}
       <section className="bg-[#f4f4f4] py-12 lg:py-20">
-        <div className="max-w-[1584px] mx-auto px-8">
-          <div className="mb-12">
-            <h2 className="text-5xl font-light text-[#161616] uppercase tracking-tighter italic">Booking Engine</h2>
+        <div className="max-w-4xl mx-auto px-8">
+          <div className="mb-12 text-center">
+            <h2 className="text-5xl font-light text-[#161616] uppercase tracking-tighter">Booking Engine</h2>
             <p className="text-[#525252] mt-2 text-sm uppercase tracking-widest font-bold opacity-60">Complete the steps below to schedule your visit</p>
           </div>
           <AppointmentForm />
-        </div>
-      </section>
-
-      {/* Stats Section - Alternating Background */}
-      <section className="bg-white py-24 border-t border-[#e0e0e0]">
-        <div className="max-w-[1584px] mx-auto px-8">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-1 border-l border-t border-[#e0e0e0]">
-            {[
-              { val: '15+', label: 'Years Experience' },
-              { val: '10k+', label: 'Happy Patients' },
-              { val: '20+', label: 'Specialists' },
-              { val: '24/7', label: 'Support Available' }
-            ].map((s, i) => (
-              <div key={i} className="bg-[#f4f4f4] p-10 border-r border-b border-[#e0e0e0] hover:bg-white transition-colors group">
-                <div className="text-4xl font-mono text-[#161616] mb-2 tracking-tight">{s.val}</div>
-                <div className="text-[12px] text-[#525252] uppercase font-bold tracking-[0.32px] group-hover:text-[#10b981] transition-colors">{s.label}</div>
-              </div>
-            ))}
-          </div>
         </div>
       </section>
 
@@ -4840,22 +4955,71 @@ function TripMonitoring({ trips, stats, riders, incidents, onRefresh }) {
   const availableRiders = riders?.filter(r => r.status === 'online') || [];
   const [selectedTripId, setSelectedTripId] = useState(null);
   const [viewMode, setViewMode] = useState('all'); // all, ongoing, completed, sos
+  const [searchQuery, setSearchQuery] = useState('');
+  const [focusId, setFocusId] = useState(null);
 
   const selectedTrip = trips.find(t => t.id === selectedTripId);
 
   const filteredTrips = trips.filter(t => {
-    if (viewMode === 'all') return true;
-    if (viewMode === 'ongoing') return ['accepted', 'on_way_to_pickup', 'en_route', 'arrived_at_pickup', 'picked_up'].includes(t.transport_status);
-    if (viewMode === 'completed') return t.transport_status === 'completed';
-    if (viewMode === 'sos') return t.transport_status === 'sos';
-    return true;
+    // Stage 1: Status Filtering
+    let statusMatch = false;
+    if (viewMode === 'all') statusMatch = !['completed', 'cancelled'].includes(t.transport_status);
+    else if (viewMode === 'ongoing') statusMatch = ['accepted', 'on_way_to_pickup', 'en_route', 'arrived_at_pickup', 'picked_up'].includes(t.transport_status);
+    else if (viewMode === 'completed') statusMatch = t.transport_status === 'completed';
+    else if (viewMode === 'sos') statusMatch = t.transport_status === 'sos';
+    
+    if (!statusMatch) return false;
+
+    // Stage 2: Smart Search Filtering (Rider, Passenger, Plate)
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      t.rider_name?.toLowerCase().includes(q) ||
+      t.full_name?.toLowerCase().includes(q) ||
+      t.plate_number?.toLowerCase().includes(q) ||
+      t.id.toString().includes(q)
+    );
   });
 
   return (
     <div className="h-full relative flex flex-col min-h-0 overflow-hidden bg-[#f4f4f4] rounded-0">
       {/* BACKGROUND LAYER: Full Screen Map */}
       <div className="absolute inset-0 z-0">
-        <MonitoringMap trips={filteredTrips} selectedTrip={selectedTrip} />
+        <MonitoringMap trips={filteredTrips} selectedTrip={selectedTrip} focusId={focusId} />
+      </div>
+
+      {/* SEARCH OVERLAY (Top Center) */}
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 w-full max-w-md px-4">
+        <div className="bg-white/70 backdrop-blur-md border border-white/40 shadow-2xl rounded-xl p-1.5 flex items-center gap-2">
+          <div className="pl-3 text-gray-400">
+            <Search size={16} />
+          </div>
+          <input 
+            type="text"
+            placeholder="Search Rider, Passenger or Plate No..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="flex-1 bg-transparent border-none outline-none text-sm font-medium text-gray-900 placeholder:text-gray-400 py-2"
+          />
+          {searchQuery && (
+            <button 
+              onClick={() => setSearchQuery('')}
+              className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X size={14} />
+            </button>
+          )}
+          <div className="h-6 w-[1px] bg-gray-300/30 mx-1"></div>
+          <button 
+            onClick={() => {
+              const first = filteredTrips[0];
+              if (first) setFocusId(first.id + '_' + Date.now());
+            }}
+            className="px-4 py-2 bg-gray-900 text-white text-[10px] font-bold uppercase tracking-widest rounded-lg hover:bg-black transition-all active:scale-95"
+          >
+            Locate
+          </button>
+        </div>
       </div>
 
       {/* OVERLAY LAYER 1: Metric Cards (Top) */}
@@ -4996,10 +5160,39 @@ function TripStatusBadge({ status }) {
   );
 }
 
-function MonitoringMap({ trips, selectedTrip }) {
+function MonitoringMap({ trips, selectedTrip, focusId }) {
   const mapRef = React.useRef(null);
   const leafletMap = React.useRef(null);
   const markersRef = React.useRef(new Map());
+  const destMarkersRef = React.useRef(new Map());
+  const polylinesRef = React.useRef(new Map());
+
+  // Focus Logic: Fly to the marker when focusId changes
+  React.useEffect(() => {
+    if (!leafletMap.current || !focusId) return;
+    const actualId = focusId.split('_')[0];
+    const marker = markersRef.current.get(Number(actualId));
+    if (marker) {
+      const latLng = marker.getLatLng();
+      leafletMap.current.flyTo(latLng, 16, {
+        animate: true,
+        duration: 1.5,
+        easeLinearity: 0.25
+      });
+      marker.openPopup();
+    }
+  }, [focusId]);
+
+  // Helper: Calculate bearing between two points
+  const calculateBearing = (lat1, lon1, lat2, lon2) => {
+    const toRad = (v) => (v * Math.PI) / 180;
+    const toDeg = (v) => (v * 180) / Math.PI;
+    const φ1 = toRad(lat1), φ2 = toRad(lat2);
+    const Δλ = toRad(lon2 - lon1);
+    const y = Math.sin(Δλ) * Math.cos(φ2);
+    const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+    return (toDeg(Math.atan2(y, x)) + 360) % 360;
+  };
 
   useEffect(() => {
     // Return early if Leaflet is not loaded or missing container
@@ -5031,14 +5224,33 @@ function MonitoringMap({ trips, selectedTrip }) {
           marker.remove();
           markersRef.current.delete(id);
         }
+        if (!currentTripIds.has(id) && destMarkersRef.current.has(id)) {
+          destMarkersRef.current.get(id).remove();
+          destMarkersRef.current.delete(id);
+        }
       }
 
       // 2. Add or update markers
       trips.forEach(trip => {
-        // Use live rider position if available, otherwise fallback to pickup for unassigned or static data
-        const isLive = ['accepted', 'on_way_to_pickup', 'en_route', 'arrived_at_pickup', 'picked_up', 'sos'].includes(trip.transport_status);
-        const lat = parseFloat(isLive ? (trip.rider_lat || trip.current_lat || trip.pickup_lat) : trip.pickup_lat);
-        const lng = parseFloat(isLive ? (trip.rider_lng || trip.current_lng || trip.pickup_lng) : trip.pickup_lng);
+        // Priority Logic: 
+        // 1. If actually MOVING with passenger (en_route, picked_up, sos), follow RIDER GPS.
+        // 2. If awaiting pickup (accepted, on_way), anchor to PICKUP POINT for clarity.
+        const isActuallyMoving = ['en_route', 'picked_up', 'sos'].includes(trip.transport_status);
+        
+        let lat = parseFloat(isActuallyMoving ? (trip.rider_lat || trip.current_lat || trip.pickup_lat) : trip.pickup_lat);
+        let lng = parseFloat(isActuallyMoving ? (trip.rider_lng || trip.current_lng || trip.pickup_lng) : trip.pickup_lng);
+
+        // Fallback to pickup point if coordinates are missing but trip is active
+        if (isActuallyMoving && (isNaN(lat) || isNaN(lng))) {
+          lat = parseFloat(trip.pickup_lat);
+          lng = parseFloat(trip.pickup_lng);
+        }
+
+        // Final safety fallback to map center if even pickup is missing
+        if (isNaN(lat) || isNaN(lng)) {
+          lat = 11.0500;
+          lng = 124.0000;
+        }
 
         if (isNaN(lat) || isNaN(lng)) return;
 
@@ -5049,32 +5261,112 @@ function MonitoringMap({ trips, selectedTrip }) {
         if (markersRef.current.has(trip.id)) {
           const marker = markersRef.current.get(trip.id);
           marker.setLatLng([lat, lng]);
+          
+          // Update rotation
+          const dLat = parseFloat(trip.dest_lat || trip.pickup_lat);
+          const dLng = parseFloat(trip.dest_lng || trip.pickup_lng);
+          if (!isNaN(dLat) && !isNaN(dLng)) {
+            const bearing = calculateBearing(lat, lng, dLat, dLng);
+            const iconContainer = marker.getElement()?.querySelector('.vehicle-icon-wrapper');
+            if (iconContainer) {
+              iconContainer.style.transform = `rotate(${bearing}deg)`;
+            }
+          }
         } else {
           // Custom Icon based on status and vehicle type
           let iconHtml = '';
           const vType = (trip.vehicle_type || 'car').toLowerCase();
           const isSOS = trip.transport_status === 'sos';
-          const isEnRoute = ['en_route', 'picked_up'].includes(trip.transport_status);
-          const iconColor = isSOS ? '#da1e28' : (trip.transport_status === 'picked_up' ? '#0891b2' : '#10b981');
+          const isAssigned = ['accepted', 'on_way_to_pickup', 'arrived_at_pickup', 'en_route', 'picked_up'].includes(trip.transport_status);
+          const iconColor = isSOS ? '#da1e28' : (['picked_up', 'en_route'].includes(trip.transport_status) ? '#0891b2' : '#10b981');
 
-          if (isSOS || isEnRoute) {
-            // Dynamic SVG based on vehicle type
+          if (isSOS || isAssigned) {
+            const statusText = (trip.transport_status || 'active').replace(/_/g, ' ').toUpperCase();
+
+            // Grab-style Top-down SVG paths
             let svgPath = '';
+            let viewBox = "0 0 24 24";
+
             if (vType.includes('van') || vType.includes('suv')) {
-              svgPath = '<path d="M21 17h-2.5a2.5 2.5 0 0 1-5 0h-3a2.5 2.5 0 0 1-5 0H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h13.2l2.3 2.3c.3.3.5.7.5 1.1v1.6a1 1 0 0 1-1 1ZM3 12V7a1 1 0 0 1 1-1h11a1 1 0 0 1 1 1v4h-5"/><circle cx="7.5" cy="17" r="2.5"/><circle cx="16" cy="17" r="2.5"/>';
+              // Ultra-Clean Pro Van (Grab Style) - Long cabin
+              svgPath = `
+                <path d="M12 1c-4 0-7 1-7 4v16c0 2 2 2.5 7 2.5s7-0.5 7-2.5v-16c0-3-4-4-7-4z" fill="${iconColor}" />
+                <!-- Curved Windshield (Moved forward) -->
+                <path d="M5.8 7 Q12 4 18.2 7 Z" fill="#1a1a1a" />
+                <!-- Side Windows (Longer cabin) -->
+                <rect x="5.5" y="8" width="0.8" height="11" fill="#1a1a1a" />
+                <rect x="17.7" y="8" width="0.8" height="11" fill="#1a1a1a" />
+                <rect x="7" y="7.5" width="10" height="11.5" rx="1" fill="black" opacity="0.15" />
+                <!-- Curved Rear Window (Moved backward) -->
+                <path d="M7.5 19.5 Q12 22 16.5 19.5 Z" fill="#1a1a1a" />
+                <rect x="4.2" y="6.5" width="1.2" height="2.5" rx="0.5" fill="${iconColor}" />
+                <rect x="18.6" y="6.5" width="1.2" height="2.5" rx="0.5" fill="${iconColor}" />
+                <!-- Emphasized Brake Lights -->
+                <rect x="6" y="21.5" width="4.5" height="1" rx="0.3" fill="#ff3333" />
+                <rect x="13.5" y="21.5" width="4.5" height="1" rx="0.3" fill="#ff3333" />
+              `;
             } else {
-              svgPath = '<path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-1.1 0-2 .9-2 2v7c0 1.1.9 2 2 2h10c0-1.1.9-2 2-2z"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/>';
+              // Ultra-Clean Pro Car (Grab Style) - Long cabin
+              svgPath = `
+                <path d="M12 1.5C8 1.5 6 3 6 5.5v14c0 2.5 2 3 6 3s6-0.5 6-3v-14c0-2.5-2-4-6-4z" fill="${iconColor}" />
+                <!-- Curved Windshield (Moved forward) -->
+                <path d="M6.8 8 Q12 5 17.2 8 Z" fill="#1a1a1a" />
+                <!-- Side Windows (Longer cabin) -->
+                <rect x="6.5" y="9" width="0.8" height="8" fill="#1a1a1a" />
+                <rect x="16.7" y="9" width="0.8" height="8" fill="#1a1a1a" />
+                <rect x="7.8" y="8.5" width="8.4" height="8" rx="1.5" fill="black" opacity="0.15" />
+                <!-- Curved Rear Window (Moved backward) -->
+                <path d="M8 17.5 Q12 20 16 17.5 Z" fill="#1a1a1a" />
+                <circle cx="5" cy="8" r="1.2" fill="${iconColor}" />
+                <circle cx="19" cy="8" r="1.2" fill="${iconColor}" />
+                <!-- Emphasized Brake Lights -->
+                <rect x="7" y="20.5" width="3.5" height="1" rx="0.3" fill="#ff3333" />
+                <rect x="13.5" y="20.5" width="3.5" height="1" rx="0.3" fill="#ff3333" />
+              `;
             }
 
             iconHtml = `
-               <div style="position: relative; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;">
-                 ${isSOS ? '<div class="force-circle" style="position: absolute; inset: -4px; background: rgba(218, 30, 40, 0.4); border-radius: 50% !important; animation: pulse 2s infinite;"></div>' : ''}
-                 <div class="force-circle" style="width: 36px; height: 36px; background: white; border: 3px solid ${iconColor}; border-radius: 50% !important; display: flex; align-items: center; justify-content: center; shadow: 0 4px 12px rgba(0,0,0,0.3); overflow: hidden;">
-                   <div style="padding: 6px; color: ${iconColor}; display: flex; align-items: center; justify-content: center;">
-                     <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">${svgPath}</svg>
+               <div style="position: relative; display: flex; flex-direction: column; align-items: center; transform: translateY(-50%);">
+                 <!-- Ultra-Minimalist Badge -->
+                 <div style="background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); color: #161616; padding: 6px 10px; border-radius: 4px; font-size: 9px; font-weight: 500; white-space: nowrap; margin-bottom: 8px; border: 1px solid rgba(255, 255, 255, 0.5); border-top: 3px solid ${iconColor}; box-shadow: 0 4px 15px rgba(0,0,0,0.1); min-width: 140px; pointer-events: auto; font-family: 'Inter', sans-serif;">
+                   <!-- Header: Rider & Plate -->
+                   <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                     <span style="color: #161616; font-weight: 700;">${(trip.rider_name || 'RIDER').toUpperCase()}</span>
+                     <span style="opacity: 0.5; font-size: 8px;">${trip.plate_number || '---'}</span>
                    </div>
+                   
+                   <!-- Body: Details -->
+                   <div style="display: flex; flex-direction: column; gap: 2px; border-top: 1px solid rgba(0,0,0,0.05); padding-top: 4px; margin-bottom: 4px;">
+                     <div style="display: flex; align-items: center; gap: 5px;">
+                       <span style="opacity: 0.4;">👤</span>
+                       <span style="color: #161616;">${trip.full_name || '---'}</span>
+                     </div>
+                     <div style="display: flex; align-items: center; gap: 5px;">
+                       <span style="opacity: 0.4;">🏁</span>
+                       <span style="max-width: 110px; overflow: hidden; text-overflow: ellipsis; color: #161616;">${trip.destination_location || 'UNSET'}</span>
+                     </div>
+                   </div>
+
+                   <!-- Footer: Status & Speed -->
+                   <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 4px; border-top: 1px solid rgba(0,0,0,0.05);">
+                     <span style="color: ${iconColor}; font-weight: 700;">${statusText}</span>
+                     <span style="color: #161616; opacity: 0.7;">${trip.speed || Math.floor(Math.random() * 15 + 35)} KM/H</span>
+                   </div>
+                   
+                   <!-- Pointer Arrow pointing towards the icon -->
+                   <div style="position: absolute; bottom: -8px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 8px solid rgba(255, 255, 255, 0.7);"></div>
                  </div>
-                 <div style="position: absolute; bottom: -2px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 8px solid ${iconColor};"></div>
+                 
+                 <!-- Dynamic Status Pulse Effect (Ripple) -->
+                 <div class="force-circle animate-marker-pulse" style="position: absolute; bottom: 0; width: 60px; height: 60px; background: ${iconColor}; opacity: 0.2; border-radius: 50% !important; z-index: -1;"></div>
+                 
+                 <!-- SOS Pulse Effect (Deeper red if SOS) -->
+                 ${isSOS ? '<div class="force-circle" style="position: absolute; bottom: 0; width: 70px; height: 70px; background: rgba(218, 30, 40, 0.3); border-radius: 50% !important; animation: markerPulse 1.5s infinite; z-index: -2;"></div>' : ''}
+                 
+                 <!-- Detailed Top-Down Vehicle Icon -->
+                 <div class="vehicle-icon-wrapper" style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1)); transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);">
+                   <svg viewBox="${viewBox}" width="36" height="36" stroke-linecap="round" stroke-linejoin="round">${svgPath}</svg>
+                 </div>
                </div>
              `;
           } else {
@@ -5101,6 +5393,90 @@ function MonitoringMap({ trips, selectedTrip }) {
             </div>
           `);
           markersRef.current.set(trip.id, marker);
+        }
+
+        // 2.5 Handle Destination Pin
+        const dLat = Number(trip.dest_lat);
+        const dLng = Number(trip.dest_lng);
+        
+        if (!isNaN(dLat) && !isNaN(dLng) && dLat !== 0) {
+          if (destMarkersRef.current.has(trip.id)) {
+            destMarkersRef.current.get(trip.id).setLatLng([dLat, dLng]);
+          } else {
+            console.log(`[MAP] Adding Dest Pin for Trip #${trip.id} at ${dLat}, ${dLng}`);
+            const destIcon = window.L.divIcon({
+              html: `
+                <div style="position: relative; display: flex; flex-direction: column; align-items: center; pointer-events: auto;">
+                  <!-- Label -->
+                  <div style="background: #da1e28; color: white; padding: 3px 10px; font-size: 10px; font-weight: 800; border-radius: 4px; white-space: nowrap; margin-bottom: 5px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 1px solid white;">
+                    ${(trip.destination_location || 'DEST').split(',')[0].toUpperCase()}
+                  </div>
+                  <!-- SVG Pin -->
+                  <div style="filter: drop-shadow(0 4px 6px rgba(0,0,0,0.4));">
+                    <svg viewBox="0 0 24 24" width="40" height="40">
+                      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#da1e28" stroke="white" stroke-width="1.5"/>
+                    </svg>
+                  </div>
+                  <!-- Redundant Base Circle for visibility -->
+                  <div class="force-circle" style="position: absolute; bottom: 0; width: 12px; height: 12px; background: #da1e28; border: 2px solid white; border-radius: 50% !important; z-index: -1;"></div>
+                </div>
+              `,
+              className: 'custom-dest-pin',
+              iconSize: [120, 100],
+              iconAnchor: [60, 95]
+            });
+            const dMarker = window.L.marker([dLat, dLng], { 
+              icon: destIcon, 
+              zIndexOffset: 5000 
+            }).addTo(leafletMap.current);
+            destMarkersRef.current.set(trip.id, dMarker);
+          }
+        } else if (destMarkersRef.current.has(trip.id)) {
+          destMarkersRef.current.get(trip.id).remove();
+          destMarkersRef.current.delete(trip.id);
+        }
+
+        // 3. Handle Routes
+        const showRoute = ['accepted', 'on_way_to_pickup', 'en_route', 'picked_up'].includes(trip.transport_status);
+        if (showRoute) {
+          const startLat = lat;
+          const startLng = lng;
+          
+          // The route should always point to the final destination now 
+          // because the car stays at pickup during the initial phase.
+          const endLat = parseFloat(trip.dest_lat);
+          const endLng = parseFloat(trip.dest_lng);
+
+          // Only draw if we have a valid target coordinate that is different from start
+          if (!isNaN(startLat) && !isNaN(startLng) && !isNaN(endLat) && !isNaN(endLng) && (Math.abs(startLat - endLat) > 0.0001 || Math.abs(startLng - endLng) > 0.0001)) {
+            const routeId = `${trip.id}_${startLat.toFixed(5)}_${startLng.toFixed(5)}_${endLat.toFixed(5)}_${endLng.toFixed(5)}`;
+            
+            if (!polylinesRef.current.has(trip.id) || polylinesRef.current.get(trip.id).routeId !== routeId) {
+              fetch(`https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${endLng},${endLat}?overview=full&geometries=geojson`)
+                .then(r => r.json())
+                .then(data => {
+                  if (data.routes && data.routes[0]) {
+                    if (polylinesRef.current.has(trip.id)) {
+                      polylinesRef.current.get(trip.id).line.remove();
+                    }
+
+                    const coordinates = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+                    const polyline = window.L.polyline(coordinates, {
+                      color: trip.transport_status === 'sos' ? '#da1e28' : '#24a148',
+                      weight: 4,
+                      opacity: 0.5,
+                      dashArray: trip.transport_status === 'accepted' ? '10, 10' : null,
+                      lineJoin: 'round'
+                    }).addTo(leafletMap.current);
+
+                    polylinesRef.current.set(trip.id, { line: polyline, routeId });
+                  }
+                }).catch(e => console.error("OSRM Error:", e));
+            }
+          }
+        } else if (polylinesRef.current.has(trip.id)) {
+          polylinesRef.current.get(trip.id).line.remove();
+          polylinesRef.current.delete(trip.id);
         }
       });
 
@@ -5263,9 +5639,20 @@ function DispatchMap({ trips, riders, selectedBooking }) {
   const mapRef = React.useRef(null);
   const leafletMap = React.useRef(null);
   const markersRef = React.useRef(new Map());
+  const destMarkersRef = React.useRef(new Map());
+  const polylinesRef = React.useRef(new Map());
   const [leafletReady, setLeafletReady] = React.useState(!!window.L);
 
-  // Wait for Leaflet to be available (loaded via CDN)
+  const calculateBearing = (lat1, lon1, lat2, lon2) => {
+    const toRad = (v) => (v * Math.PI) / 180;
+    const toDeg = (v) => (v * 180) / Math.PI;
+    const φ1 = toRad(lat1), φ2 = toRad(lat2);
+    const Δλ = toRad(lon2 - lon1);
+    const y = Math.sin(Δλ) * Math.cos(φ2);
+    const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+    return (toDeg(Math.atan2(y, x)) + 360) % 360;
+  };
+
   React.useEffect(() => {
     if (window.L) { setLeafletReady(true); return; }
     const interval = setInterval(() => {
@@ -5276,100 +5663,132 @@ function DispatchMap({ trips, riders, selectedBooking }) {
 
   React.useEffect(() => {
     if (!leafletReady || !mapRef.current || leafletMap.current) return;
-
-    leafletMap.current = window.L.map(mapRef.current, {
-      zoomControl: false,
-      attributionControl: false
-    }).setView([11.0500, 124.0000], 13);
-
-    window.L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-      maxZoom: 20
-    }).addTo(leafletMap.current);
-
-    // Initial resize
-    setTimeout(() => {
-      if (leafletMap.current) leafletMap.current.invalidateSize();
-    }, 500);
-
-    return () => {
-      if (leafletMap.current) {
-        leafletMap.current.remove();
-        leafletMap.current = null;
-      }
-    };
+    leafletMap.current = window.L.map(mapRef.current, { zoomControl: false, attributionControl: false }).setView([11.0500, 124.0000], 12);
+    window.L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 20 }).addTo(leafletMap.current);
+    setTimeout(() => { if (leafletMap.current) leafletMap.current.invalidateSize(); }, 500);
   }, [leafletReady]);
 
-  // Render markers Ã¢â‚¬â€ MUST be declared before any early return (Rules of Hooks)
   React.useEffect(() => {
     if (!leafletMap.current || !leafletReady) return;
 
-    // Clear existing transient markers
-    markersRef.current.forEach(m => leafletMap.current.removeLayer(m));
-    markersRef.current.clear();
+    try {
+      const currentIds = new Set();
 
-    // 1. RENDER RIDERS
-    riders.forEach(rider => {
-      const isAvailable = (rider.status === 'available');
-      const lat = parseFloat(rider.current_lat);
-      const lng = parseFloat(rider.current_lng);
-      if (!lat || !lng) return;
+      // 1. RENDER RIDERS
+      riders.forEach(rider => {
+        const id = `rider-${rider.id}`;
+        currentIds.add(id);
+        const lat = parseFloat(rider.current_lat);
+        const lng = parseFloat(rider.current_lng);
+        if (isNaN(lat) || !lng) return;
 
-      const iconColor = isAvailable ? '#24a148' : '#8d8d8d';
-      const iconHtml = `
-         <div class="force-circle" style="width: 24px; height: 24px; background: white; border: 2px solid ${iconColor}; border-radius: 50% !important; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
-           <div class="force-circle" style="width: 12px; height: 12px; background: ${iconColor}; border-radius: 50% !important;"></div>
-         </div>
-       `;
+        if (markersRef.current.has(id)) {
+          markersRef.current.get(id).setLatLng([lat, lng]);
+        } else {
+          const iconColor = rider.status === 'online' ? '#10b981' : '#8d8d8d';
+          const m = window.L.marker([lat, lng], {
+            icon: window.L.divIcon({
+              html: `<div class="force-circle" style="width: 14px; height: 14px; background: white; border: 3px solid ${iconColor}; border-radius: 50% !important; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"></div>`,
+              className: '', iconSize: [14, 14], iconAnchor: [7, 7]
+            })
+          }).addTo(leafletMap.current).bindPopup(`<b>${rider.name}</b><br/>${rider.vehicle_type}<br/>Status: ${rider.status}`);
+          markersRef.current.set(id, m);
+        }
+      });
 
-      const m = window.L.marker([lat, lng], {
-        icon: window.L.divIcon({
-          html: iconHtml,
-          className: '',
-          iconSize: [24, 24],
-          iconAnchor: [12, 12]
-        })
-      }).addTo(leafletMap.current)
-        .bindPopup(`<b>${rider.name}</b><br/>${rider.vehicle_type} - ${rider.plate_number}<br/>Status: ${rider.status}`);
+      // 2. RENDER TRIPS
+      trips.forEach(trip => {
+        const id = `trip-${trip.id}`;
+        currentIds.add(id);
+        
+        const isActuallyMoving = ['en_route', 'picked_up', 'sos'].includes(trip.transport_status);
+        const lat = parseFloat(isActuallyMoving ? (trip.rider_lat || trip.current_lat || trip.pickup_lat) : trip.pickup_lat);
+        const lng = parseFloat(isActuallyMoving ? (trip.rider_lng || trip.current_lng || trip.pickup_lng) : trip.pickup_lng);
+        if (isNaN(lat) || isNaN(lng)) return;
 
-      markersRef.current.set(`rider-${rider.id}`, m);
-    });
+        if (markersRef.current.has(id)) {
+          const m = markersRef.current.get(id);
+          m.setLatLng([lat, lng]);
+          
+          // Rotation
+          const dLat = parseFloat(trip.dest_lat);
+          const dLng = parseFloat(trip.dest_lng);
+          if (!isNaN(dLat)) {
+            const bearing = calculateBearing(lat, lng, dLat, dLng);
+            const iconWrap = m.getElement()?.querySelector('.vehicle-icon-wrapper');
+            if (iconWrap) iconWrap.style.transform = `rotate(${bearing}deg)`;
+          }
+        } else {
+          const isPending = !trip.rider_id;
+          const iconColor = isPending ? '#f1c21b' : '#10b981';
+          const statusText = (trip.transport_status || 'PENDING').toUpperCase();
 
-    // 2. RENDER PENDING / ONGOING TRIPS
-    trips.forEach(trip => {
-      const lat = parseFloat(trip.pickup_lat);
-      const lng = parseFloat(trip.pickup_lng);
-      if (!lat || !lng) return;
+          const m = window.L.marker([lat, lng], {
+            icon: window.L.divIcon({
+              html: `
+                <div style="position: relative; display: flex; flex-direction: column; align-items: center;">
+                  <div style="background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); color: #161616; padding: 4px 10px; border-radius: 4px; font-size: 8px; font-weight: 800; border-top: 2px solid ${iconColor}; border: 1px solid rgba(255, 255, 255, 0.4); box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 4px; white-space: nowrap;">
+                    ${trip.full_name?.split(' ')[0].toUpperCase()}
+                  </div>
+                  <div class="vehicle-icon-wrapper" style="width: 24px; height: 24px; transition: transform 0.8s ease;">
+                    <svg viewBox="0 0 24 24" width="24" height="24">
+                      <path d="M12 1.5C8 1.5 6 3 6 5.5v14c0 2.5 2 3 6 3s6-0.5 6-3v-14c0-2.5-2-4-6-4z" fill="${iconColor}" stroke="white" stroke-width="1" />
+                    </svg>
+                  </div>
+                </div>
+              `,
+              className: '', iconSize: [60, 50], iconAnchor: [30, 45]
+            })
+          }).addTo(leafletMap.current).bindPopup(`<b>Booking #${trip.id}</b><br/>${trip.full_name}<br/>Status: ${statusText}`);
+          markersRef.current.set(id, m);
+        }
 
-      const isPending = !trip.rider_id;
-      const iconColor = isPending ? '#f1c21b' : '#10b981';
+        // Destination Pin
+        const destId = `dest-${trip.id}`;
+        currentIds.add(destId);
+        const dl = Number(trip.dest_lat);
+        const dg = Number(trip.dest_lng);
+        if (!isNaN(dl) && !isNaN(dg) && dl !== 0) {
+          if (destMarkersRef.current.has(id)) {
+            destMarkersRef.current.get(id).setLatLng([dl, dg]);
+          } else {
+            const destIcon = window.L.divIcon({
+              html: `<div style="background: #da1e28; color: white; padding: 3px 10px; font-size: 8px; font-weight: bold; border-radius: 4px; margin-bottom: 5px; box-shadow: 0 2px 6px rgba(0,0,0,0.3); border: 1px solid white; white-space: nowrap;">BOGO CITY</div>
+                     <div class="force-circle" style="width: 14px; height: 14px; background: #da1e28; border: 2px solid white; border-radius: 50% !important; box-shadow: 0 4px 10px rgba(0,0,0,0.3);"></div>`,
+              className: '', iconSize: [60, 50], iconAnchor: [30, 45]
+            });
+            const dMarker = window.L.marker([dl, dg], { icon: destIcon, zIndexOffset: 5000 }).addTo(leafletMap.current);
+            destMarkersRef.current.set(id, dMarker);
+          }
+        }
 
-      const iconHtml = `
-         <div style="position: relative; width: 30px; height: 38px;">
-           <div style="width: 30px; height: 30px; background: ${iconColor}; border: 2px solid white; border-radius: 50%; box-shadow: 0 4px 10px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center;">
-             <svg viewBox="0 0 24 24" width="16" height="16" stroke="white" stroke-width="3" fill="none"><path d="M12 21s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 7.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg>
-           </div>
-           <div style="position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 8px solid ${iconColor};"></div>
-         </div>
-       `;
+        // Routes
+        const showRoute = ['accepted', 'on_way_to_pickup', 'en_route', 'picked_up'].includes(trip.transport_status);
+        if (showRoute && !isNaN(dl)) {
+          const routeId = `${trip.id}_${lat.toFixed(4)}_${lng.toFixed(4)}_${dl.toFixed(4)}_${dg.toFixed(4)}`;
+          if (!polylinesRef.current.has(trip.id) || polylinesRef.current.get(trip.id).routeId !== routeId) {
+            fetch(`https://router.project-osrm.org/route/v1/driving/${lng},${lat};${dg},${dl}?overview=full&geometries=geojson`)
+              .then(r => r.json()).then(data => {
+                if (data.routes?.[0]) {
+                  if (polylinesRef.current.has(trip.id)) polylinesRef.current.get(trip.id).line.remove();
+                  const coords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+                  const line = window.L.polyline(coords, { color: '#24a148', weight: 3, opacity: 0.4 }).addTo(leafletMap.current);
+                  polylinesRef.current.set(trip.id, { line, routeId });
+                }
+              }).catch(() => {});
+          }
+        }
+      });
 
-      const m = window.L.marker([lat, lng], {
-        icon: window.L.divIcon({
-          html: iconHtml,
-          className: '',
-          iconSize: [30, 38],
-          iconAnchor: [15, 38]
-        })
-      }).addTo(leafletMap.current)
-        .bindPopup(`<b>Booking #${trip.id}</b><br/>${trip.full_name}<br/>Status: ${trip.transport_status}<br/>${trip.pickup_location}`);
-
-      markersRef.current.set(`trip-${trip.id}`, m);
-
-      if (selectedBooking && selectedBooking.id === trip.id) {
-        leafletMap.current.setView([lat, lng], 15);
-        m.openPopup();
+      // Cleanup
+      for (const [id, marker] of markersRef.current.entries()) {
+        if (!currentIds.has(id)) { marker.remove(); markersRef.current.delete(id); }
       }
-    });
+      for (const [id, marker] of destMarkersRef.current.entries()) {
+        if (!currentIds.has(`dest-${id.replace('trip-', '')}`)) { marker.remove(); destMarkersRef.current.delete(id); }
+      }
 
+    } catch (e) { console.error(e); }
   }, [trips, riders, selectedBooking, leafletReady]);
 
   // Early return AFTER all hooks
@@ -6022,9 +6441,9 @@ function GeofenceDashboard({ geofences, onEdit }) {
                 <td className="p-4 text-sm font-bold text-[#161616]">{g.name}</td>
                 <td className="p-4">
                   <span className={`px-2 py-1 text-[10px] font-bold uppercase tracking-widest border ${g.type === 'Service' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                      g.type === 'Restricted' ? 'bg-red-50 text-red-600 border-red-100' :
-                        g.type === 'High Demand' ? 'bg-yellow-50 text-yellow-600 border-yellow-100' :
-                          'bg-purple-50 text-purple-600 border-purple-100'
+                    g.type === 'Restricted' ? 'bg-red-50 text-red-600 border-red-100' :
+                      g.type === 'High Demand' ? 'bg-yellow-50 text-yellow-600 border-yellow-100' :
+                        'bg-purple-50 text-purple-600 border-purple-100'
                     }`}>{g.type}</span>
                 </td>
                 <td className="p-4 text-sm text-gray-500">{g.coverage} kmÃ‚Â²</td>

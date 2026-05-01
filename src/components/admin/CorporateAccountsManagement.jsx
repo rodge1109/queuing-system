@@ -205,6 +205,27 @@ function CorporateAccountsManagement() {
     }
   };
 
+  const handleManualAdjustment = async (adjustmentData) => {
+    try {
+      const res = await fetch(`/api/corporate-accounts/${selectedAccount.id}/ledger/adjust`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(adjustmentData)
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('Adjustment recorded successfully!');
+        fetchBillingData(selectedAccount.id);
+        fetchAccounts();
+      } else {
+        alert(data.message || 'Failed to record adjustment');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error recording adjustment');
+    }
+  };
+
   const handleEdit = (account) => {
     setFormData({
       account_number: account.account_number,
@@ -236,6 +257,7 @@ function CorporateAccountsManagement() {
       payments={payments}
       onGenerateInvoice={handleGenerateInvoice}
       onRecordPayment={handleRecordPayment}
+      onManualAdjustment={handleManualAdjustment}
       isBillingLoading={isBillingLoading}
     />;
   }
@@ -246,20 +268,20 @@ function CorporateAccountsManagement() {
       <div className="p-6 grid grid-cols-1 md:grid-cols-4 gap-4 bg-white border-b border-gray-100">
         <SummaryCard 
           label="Total Receivables" 
-          value="$124,500.00" 
+          value="₱124,500.00" 
           icon={<TrendingUp className="text-blue-500" />} 
           trend="+12% from last month"
         />
         <SummaryCard 
           label="Overdue Amount" 
-          value="$18,240.00" 
+          value="₱18,240.00" 
           icon={<AlertTriangle className="text-red-500" />} 
           trend="8 clients overdue"
           warning
         />
         <SummaryCard 
           label="Collected (MTD)" 
-          value="$82,400.00" 
+          value="₱82,400.00" 
           icon={<CheckCircle2 className="text-green-500" />} 
           trend="On track for target"
         />
@@ -360,12 +382,12 @@ function CorporateAccountsManagement() {
                   <div className="space-y-2 mb-4">
                     <div className="flex justify-between items-center text-[11px]">
                       <span className="text-gray-500 uppercase font-bold tracking-tighter">Credit Limit</span>
-                      <span className="text-black font-bold">${parseFloat(account.credit_limit || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                      <span className="text-black font-bold">₱{parseFloat(account.credit_limit || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                     </div>
                     <div className="flex justify-between items-center text-[11px]">
                       <span className="text-gray-500 uppercase font-bold tracking-tighter">Current Balance</span>
                       <span className={`font-bold ${parseFloat(account.balance) > parseFloat(account.credit_limit) ? 'text-red-500' : 'text-[#24a148]'}`}>
-                        ${parseFloat(account.balance || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}
+                        ₱{parseFloat(account.balance || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}
                       </span>
                     </div>
                     {/* Progress Bar */}
@@ -604,11 +626,15 @@ function SummaryCard({ label, value, icon, trend, warning }) {
   );
 }
 
-function AccountDetailView({ account, onBack, activeTab, setActiveTab, ledger, invoices, trips, payments, onGenerateInvoice, onRecordPayment, isBillingLoading }) {
+function AccountDetailView({ account, onBack, activeTab, setActiveTab, ledger, invoices, trips, payments, onGenerateInvoice, onRecordPayment, onManualAdjustment, isBillingLoading }) {
+  const [showAdjustmentModal, setShowAdjustmentModal] = useState(false);
   const [paymentForm, setPaymentForm] = useState({
     invoice_id: '',
     amount: '',
-    method: 'Bank Transfer'
+    method: 'Bank Transfer',
+    check_number: '',
+    bank_name: '',
+    notes: ''
   });
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [invoiceDetail, setInvoiceDetail] = useState(null);
@@ -638,15 +664,30 @@ function AccountDetailView({ account, onBack, activeTab, setActiveTab, ledger, i
       alert('Please enter a valid amount');
       return;
     }
+
+    if (paymentForm.method === 'Check' && (!paymentForm.check_number || !paymentForm.bank_name)) {
+      alert('Please enter check number and bank name');
+      return;
+    }
     
     onRecordPayment({
       invoice_id: paymentForm.invoice_id ? parseInt(paymentForm.invoice_id) : null,
       amount: parseFloat(paymentForm.amount),
-      method: paymentForm.method
+      method: paymentForm.method,
+      check_number: paymentForm.check_number,
+      bank_name: paymentForm.bank_name,
+      notes: paymentForm.notes
     });
 
     // Reset form
-    setPaymentForm({ invoice_id: '', amount: '', method: 'Bank Transfer' });
+    setPaymentForm({ 
+      invoice_id: '', 
+      amount: '', 
+      method: 'Bank Transfer',
+      check_number: '',
+      bank_name: '',
+      notes: ''
+    });
   };
 
   return (
@@ -670,11 +711,11 @@ function AccountDetailView({ account, onBack, activeTab, setActiveTab, ledger, i
         <div className="flex gap-4">
            <div className="text-right border-r pr-4 border-gray-100">
              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Total Outstanding</p>
-             <p className="text-xl font-black text-red-500 tracking-tight">${parseFloat(account.balance || 0).toLocaleString()}</p>
+             <p className="text-xl font-black text-red-500 tracking-tight">₱{parseFloat(account.balance || 0).toLocaleString()}</p>
            </div>
            <div className="text-right">
              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Available Credit</p>
-             <p className="text-xl font-black text-[#24a148] tracking-tight">${parseFloat(account.credit_limit - (account.balance || 0)).toLocaleString()}</p>
+             <p className="text-xl font-black text-[#24a148] tracking-tight">₱{parseFloat(account.credit_limit - (account.balance || 0)).toLocaleString()}</p>
            </div>
         </div>
       </div>
@@ -862,7 +903,10 @@ function AccountDetailView({ account, onBack, activeTab, setActiveTab, ledger, i
           <div className="bg-white border border-gray-100 shadow-sm overflow-hidden">
             <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center drag-handle">
               <h3 className="text-xs font-black uppercase tracking-widest text-black">Audit Ledger (Single Source of Truth)</h3>
-              <button className="flex items-center gap-2 bg-black text-white px-4 py-2 text-[10px] font-black uppercase tracking-widest hover:bg-gray-800 transition-all">
+              <button 
+                onClick={() => setShowAdjustmentModal(true)}
+                className="flex items-center gap-2 bg-black text-white px-4 py-2 text-[10px] font-black uppercase tracking-widest hover:bg-gray-800 transition-all"
+              >
                 <Plus size={14} />
                 Manual Adjustment
               </button>
@@ -884,9 +928,9 @@ function AccountDetailView({ account, onBack, activeTab, setActiveTab, ledger, i
                      <td className="p-4 text-[11px] font-mono text-gray-500">{entry.date}</td>
                      <td className="p-4 text-[11px] font-bold text-blue-600">{entry.reference}</td>
                      <td className="p-4 text-[11px] text-gray-600">{entry.description}</td>
-                     <td className="p-4 text-[11px] font-bold text-red-500">{parseFloat(entry.debit || 0) > 0 ? `+ $${parseFloat(entry.debit || 0).toFixed(2)}` : '--'}</td>
-                     <td className="p-4 text-[11px] font-bold text-green-600">{parseFloat(entry.credit || 0) > 0 ? `- $${parseFloat(entry.credit || 0).toFixed(2)}` : '--'}</td>
-                     <td className="p-4 text-[11px] font-black text-black text-right">${parseFloat(entry.balance || 0).toFixed(2)}</td>
+                     <td className="p-4 text-[11px] font-bold text-red-500">{parseFloat(entry.debit || 0) > 0 ? `+ ₱${parseFloat(entry.debit || 0).toFixed(2)}` : '--'}</td>
+                     <td className="p-4 text-[11px] font-bold text-green-600">{parseFloat(entry.credit || 0) > 0 ? `- ₱${parseFloat(entry.credit || 0).toFixed(2)}` : '--'}</td>
+                     <td className="p-4 text-[11px] font-black text-black text-right">₱{parseFloat(entry.balance || 0).toFixed(2)}</td>
                    </tr>
                  ))}
                </tbody>
@@ -916,7 +960,7 @@ function AccountDetailView({ account, onBack, activeTab, setActiveTab, ledger, i
                     <div className="flex justify-between items-end">
                       <div>
                         <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Total Amount</p>
-                        <p className="text-lg font-black text-black tracking-tighter">${parseFloat(invoice.amount || 0).toFixed(2)}</p>
+                        <p className="text-lg font-black text-black tracking-tighter">₱{parseFloat(invoice.amount || 0).toFixed(2)}</p>
                       </div>
                       <div className="flex gap-1">
                         <button className="p-2 text-gray-400 hover:text-black transition-all"><Download size={16}/></button>
@@ -953,22 +997,24 @@ function AccountDetailView({ account, onBack, activeTab, setActiveTab, ledger, i
                 <thead>
                   <tr className="bg-white border-b border-gray-100">
                     <th className="p-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Date</th>
-                    <th className="p-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">ID</th>
+                    <th className="p-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Ref #</th>
                     <th className="p-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Method</th>
-                    <th className="p-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Amount</th>
+                    <th className="p-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Check #</th>
+                    <th className="p-4 text-[10px] font-black text-black uppercase tracking-widest text-right">Amount</th>
                   </tr>
                 </thead>
                   <tbody>
                     {payments.length === 0 ? (
                       <tr>
-                        <td colSpan="4" className="p-8 text-center text-gray-400 text-xs uppercase tracking-widest font-bold">No payments recorded yet</td>
+                        <td colSpan="5" className="p-8 text-center text-gray-400 text-xs uppercase tracking-widest font-bold">No payments recorded yet</td>
                       </tr>
                     ) : payments.map((pay, i) => (
                       <tr key={i} className="border-b border-gray-50 hover:bg-gray-50/50 transition-all">
-                        <td className="p-4 text-[11px] font-mono text-gray-500">{pay.date || (pay.created_at ? pay.created_at.slice(0,10) : "N/A")}</td>
-                        <td className="p-4 text-[11px] font-bold text-[#24a148]">{pay.reference || pay.id}</td>
-                        <td className="p-4 text-[11px] text-gray-600">{pay.method || pay.payment_method || "N/A"}</td>
-                        <td className="p-4 text-[11px] font-black text-black text-right">${parseFloat(pay.amount || 0).toFixed(2)}</td>
+                        <td className="p-4 text-[11px] font-mono text-gray-500">{pay.date}</td>
+                        <td className="p-4 text-[11px] font-bold text-[#24a148]">{pay.ref || pay.id}</td>
+                        <td className="p-4 text-[11px] text-gray-600">{pay.method}</td>
+                        <td className="p-4 text-[11px] font-mono text-gray-500">{pay.method === 'Check' ? pay.check_number : '--'}</td>
+                        <td className="p-4 text-[11px] font-black text-black text-right">₱{parseFloat(pay.amount || 0).toFixed(2)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -990,12 +1036,12 @@ function AccountDetailView({ account, onBack, activeTab, setActiveTab, ledger, i
                     >
                       <option value="">Manual / Advance Payment</option>
                       {invoices.filter(i => i.status !== 'paid').map(inv => (
-                        <option key={inv.id} value={inv.id}>{inv.invoice_number} (${parseFloat(inv.amount || 0).toFixed(2)})</option>
+                        <option key={inv.id} value={inv.id}>{inv.invoice_number} (₱{parseFloat(inv.amount || 0).toFixed(2)})</option>
                       ))}
                     </select>
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Amount to Pay ($)</label>
+                    <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Amount to Pay (₱)</label>
                     <input 
                       type="number" 
                       value={paymentForm.amount}
@@ -1016,6 +1062,42 @@ function AccountDetailView({ account, onBack, activeTab, setActiveTab, ledger, i
                       <option>Cash</option>
                     </select>
                   </div>
+
+                  {paymentForm.method === 'Check' && (
+                    <div className="grid grid-cols-2 gap-2 animate-fadeIn">
+                      <div className="space-y-1.5">
+                        <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Check #</label>
+                        <input 
+                          type="text" 
+                          value={paymentForm.check_number}
+                          onChange={(e) => setPaymentForm({...paymentForm, check_number: e.target.value})}
+                          placeholder="e.g. 123456" 
+                          className="w-full bg-[#f4f4f4] border-0 border-b border-gray-200 p-2 text-[11px] focus:outline-none" 
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Bank Name</label>
+                        <input 
+                          type="text" 
+                          value={paymentForm.bank_name}
+                          onChange={(e) => setPaymentForm({...paymentForm, bank_name: e.target.value})}
+                          placeholder="e.g. BDO / Metrobank" 
+                          className="w-full bg-[#f4f4f4] border-0 border-b border-gray-200 p-2 text-[11px] focus:outline-none" 
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-1.5">
+                    <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Additional Notes</label>
+                    <textarea 
+                      value={paymentForm.notes}
+                      onChange={(e) => setPaymentForm({...paymentForm, notes: e.target.value})}
+                      placeholder="Enter payment notes..." 
+                      className="w-full bg-[#f4f4f4] border-0 border-b border-gray-200 p-2 text-[11px] focus:outline-none min-h-[60px] resize-none" 
+                    />
+                  </div>
+
                   <button 
                     onClick={handlePaymentSubmit}
                     className="w-full bg-black text-white py-4 text-[10px] font-black uppercase tracking-[2px] shadow-lg hover:bg-gray-800 transition-all mt-4"
@@ -1027,6 +1109,17 @@ function AccountDetailView({ account, onBack, activeTab, setActiveTab, ledger, i
           </div>
         )}
       </div>
+
+      {/* Manual Adjustment Modal */}
+      {showAdjustmentModal && (
+        <ManualAdjustmentModal 
+          onClose={() => setShowAdjustmentModal(false)}
+          onConfirm={(data) => {
+            onManualAdjustment(data);
+            setShowAdjustmentModal(false);
+          }}
+        />
+      )}
 
       {/* Invoice Detail Modal */}
       {selectedInvoice && (
@@ -1050,17 +1143,7 @@ function InvoiceDetailModal({ invoice, detail, isLoading, onClose, account }) {
 
   // ── Print: hide everything except the invoice ──────────────────────────────
   const handlePrint = () => {
-    const style = document.createElement('style');
-    style.id = '__invoice_print_style__';
-    style.innerHTML = `
-      @media print {
-        body > * { display: none !important; }
-        #invoice-printable-root { display: block !important; position: fixed; inset: 0; z-index: 99999; background: white; }
-      }
-    `;
-    document.head.appendChild(style);
     window.print();
-    setTimeout(() => { const s = document.getElementById('__invoice_print_style__'); if (s) s.remove(); }, 1000);
   };
 
   // ── PDF export via jsPDF + html2canvas ─────────────────────────────────────
@@ -1171,15 +1254,31 @@ function InvoiceDetailModal({ invoice, detail, isLoading, onClose, account }) {
       {/* Print styles injected inline — only #invoice-printable-root shows on print */}
       <style>{`
         @media print {
-          body > *:not(#invoice-print-portal) { display: none !important; }
-          #invoice-print-portal { display: block !important; }
-          #invoice-printable-root { 
-            position: static !important; 
-            box-shadow: none !important; 
+          /* Hide everything by default */
+          body * {
+            visibility: hidden;
+          }
+          /* Show the printable root and its contents */
+          #invoice-printable-root, #invoice-printable-root * {
+            visibility: visible;
+          }
+          /* Position the printable area at the top left and center it */
+          #invoice-printable-root {
+            position: absolute !important;
+            left: 0 !important;
+            right: 0 !important;
+            top: 0 !important;
+            margin: 0 auto !important;
+            width: 190mm !important; /* Standard A4 width minus margins */
             max-height: none !important;
             overflow: visible !important;
+            box-shadow: none !important;
+            border: none !important;
           }
-          .no-print { display: none !important; }
+          /* Specifically hide UI elements even if they are inside the printable root */
+          .no-print {
+            display: none !important;
+          }
         }
       `}</style>
 
@@ -1338,6 +1437,117 @@ function InvoiceDetailModal({ invoice, detail, isLoading, onClose, account }) {
         </div>
       </div>
     </>
+  );
+}
+
+function ManualAdjustmentModal({ onClose, onConfirm }) {
+  const [formData, setFormData] = useState({
+    type: 'debit',
+    amount: '',
+    description: '',
+    reference: ''
+  });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!formData.amount || isNaN(formData.amount) || Number(formData.amount) <= 0) {
+      alert('Please enter a valid amount');
+      return;
+    }
+    if (!formData.description) {
+      alert('Please enter a description');
+      return;
+    }
+    onConfirm({
+      ...formData,
+      amount: parseFloat(formData.amount)
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 z-[8000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
+      <div className="w-full max-w-md bg-white shadow-2xl animate-zoomIn">
+        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-black text-white">
+          <h3 className="text-sm font-black uppercase tracking-widest">Manual Ledger Adjustment</h3>
+          <button onClick={onClose} className="hover:rotate-90 transition-all"><X size={20}/></button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Adjustment Type</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button 
+                type="button"
+                onClick={() => setFormData({...formData, type: 'debit'})}
+                className={`py-2 text-[10px] font-bold uppercase tracking-wider border transition-all ${
+                  formData.type === 'debit' ? 'bg-red-50 border-red-500 text-red-600' : 'bg-white border-gray-200 text-gray-400'
+                }`}
+              >
+                Debit (+) Increase Balance
+              </button>
+              <button 
+                type="button"
+                onClick={() => setFormData({...formData, type: 'credit'})}
+                className={`py-2 text-[10px] font-bold uppercase tracking-wider border transition-all ${
+                  formData.type === 'credit' ? 'bg-green-50 border-green-500 text-green-600' : 'bg-white border-gray-200 text-gray-400'
+                }`}
+              >
+                Credit (-) Decrease Balance
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Amount</label>
+            <input 
+              type="number" 
+              step="0.01"
+              value={formData.amount}
+              onChange={(e) => setFormData({...formData, amount: e.target.value})}
+              placeholder="0.00"
+              className="w-full bg-[#f4f4f4] border-0 border-b border-black p-3 text-lg font-black focus:outline-none"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Description</label>
+            <input 
+              type="text" 
+              value={formData.description}
+              onChange={(e) => setFormData({...formData, description: e.target.value})}
+              placeholder="e.g. Account Correction"
+              className="w-full bg-[#f4f4f4] border-0 border-b border-gray-200 p-2 text-[12px] focus:outline-none"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Reference (Optional)</label>
+            <input 
+              type="text" 
+              value={formData.reference}
+              onChange={(e) => setFormData({...formData, reference: e.target.value})}
+              placeholder="e.g. CORR-001"
+              className="w-full bg-[#f4f4f4] border-0 border-b border-gray-200 p-2 text-[12px] focus:outline-none"
+            />
+          </div>
+
+          <div className="pt-4 flex gap-2">
+            <button 
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-3 border border-gray-200 text-[10px] font-black uppercase tracking-widest hover:bg-gray-50 transition-all"
+            >
+              Cancel
+            </button>
+            <button 
+              type="submit"
+              className="flex-1 py-3 bg-black text-white text-[10px] font-black uppercase tracking-widest hover:bg-gray-800 transition-all shadow-lg"
+            >
+              Confirm Adjustment
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 }
 

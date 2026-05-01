@@ -3,7 +3,10 @@ import React, { useState, useEffect } from 'react';
 import { Car, ChevronLeft } from 'lucide-react';
 
 const RiderPortal = () => {
-  const [rider, setRider] = useState(null);
+  const [rider, setRider] = useState(() => {
+    const saved = localStorage.getItem('rider_user');
+    return saved ? JSON.parse(saved) : null;
+  });
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [requests, setRequests] = useState([]);
@@ -11,6 +14,32 @@ const RiderPortal = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [locationPulse, setLocationPulse] = useState(null);
+
+  useEffect(() => {
+    if (rider) {
+      localStorage.setItem('rider_user', JSON.stringify(rider));
+    } else {
+      localStorage.removeItem('rider_user');
+    }
+  }, [rider]);
+
+  useEffect(() => {
+    if (rider && !activeJob) {
+      const checkActive = async () => {
+        try {
+          const res = await fetch(`/api/rider/active-job/${rider.id}`);
+          const data = await res.json();
+          if (data.success && data.activeJob) {
+            setActiveJob(data.activeJob);
+            startTracking();
+          }
+        } catch (e) { }
+      };
+      checkActive();
+      const interval = setInterval(checkActive, 10000); // Check every 10s if no job
+      return () => clearInterval(interval);
+    }
+  }, [rider, activeJob]);
 
   const fetchRequests = async () => {
     try {
@@ -32,6 +61,10 @@ const RiderPortal = () => {
       const data = await res.json();
       if (data.success) {
         setRider(data.rider);
+        if (data.activeJob) {
+          setActiveJob(data.activeJob);
+          startTracking();
+        }
         fetchRequests();
       } else {
         setError('Rider not found or unauthorized');
