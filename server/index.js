@@ -3135,7 +3135,19 @@ app.post('/api/rider/update-status', async (req, res) => {
     const { appointmentId, status } = req.body; // on_way_to_pickup, arrived_at_pickup, picked_up, completed
     
     let aptStatus = 'confirmed';
-    if (status === 'completed') aptStatus = 'completed';
+    if (status === 'completed') {
+      aptStatus = 'completed';
+      // Credit rider balance
+      const { rows: trip } = await pool.query('SELECT rider_id, total_amount FROM appointments WHERE id = $1', [appointmentId]);
+      if (trip[0] && trip[0].rider_id) {
+        const amount = parseFloat(trip[0].total_amount) || 0;
+        await pool.query('UPDATE riders SET balance = balance + $1 WHERE id = $2', [amount, trip[0].rider_id]);
+        await pool.query(
+          "INSERT INTO rider_wallet_transactions (rider_id, amount, type, description) VALUES ($1, $2, 'trip_income', $3)",
+          [trip[0].rider_id, amount, `Income from Trip #${appointmentId}`]
+        );
+      }
+    }
 
     await pool.query(
       'UPDATE appointments SET transport_status = $1, status = $2, updated_at = NOW() WHERE id = $3',
@@ -3151,6 +3163,105 @@ app.post('/api/rider/update-status', async (req, res) => {
     });
 
     res.json({ success: true, transport_status: status });
+  } catch (error) {
+    res.status(500).json({ success: false });
+  }
+});
+
+// SOS Emergency Alert
+app.post('/api/rider/sos', async (req, res) => {
+  try {
+    const { tripId, riderId, lat, lng, description } = req.body;
+    
+    // Insert incident record
+    const { rows } = await pool.query(
+      `INSERT INTO trip_incidents (trip_id, rider_id, lat, lng, description, type, status) 
+       VALUES ($1, $2, $3, $4, $5, 'SOS', 'pending') RETURNING *`,
+      [tripId, riderId, lat, lng, description || 'Emergency SOS triggered by rider']
+    );
+
+    // Update trip status to SOS
+    await pool.query('UPDATE appointments SET transport_status = $1 WHERE id = $2', ['sos', tripId]);
+
+    // Broadcast to Admin
+    wsBroadcast({
+      type: 'sos_alert',
+      incident: rows[0],
+      timestamp: new Date()
+    });
+
+    res.json({ success: true, message: 'Emergency alert sent' });
+  } catch (error) {
+    console.error('[SOS] Error:', error);
+    res.status(500).json({ success: false });
+  }
+});
+
+// Rider Wallet & Earnings
+app.get('/api/rider/wallet/:riderId', async (req, res) => {
+  try {
+    const { riderId } = req.params;
+    const { rows: riderRow } = await pool.query('SELECT balance FROM riders WHERE id = $1', [riderId]);
+    const { rows: transactions } = await pool.query(
+      "SELECT id, amount, created_at as date, type, description FROM rider_wallet_transactions WHERE rider_id = $1 ORDER BY created_at DESC LIMIT 50",
+      [riderId]
+    );
+    res.json({ success: true, total: riderRow[0]?.balance || 0, earnings: transactions });
+  } catch (error) {
+    res.status(500).json({ success: false });
+  }
+});
+
+// Add Funds (Top Up)
+app.post('/api/rider/fund', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { riderId, amount } = req.body;
+    await client.query('BEGIN');
+    
+    // Update balance
+    await client.query('UPDATE riders SET balance = balance + $1 WHERE id = $2', [amount, riderId]);
+    
+    // Log transaction
+    await client.query(
+      `INSERT INTO rider_wallet_transactions (rider_id, amount, type, description) 
+       VALUES ($1, $2, 'topup', $3)`,
+      [riderId, amount, `Manual Top-up via Rider Portal`]
+    );
+    
+    await client.query('COMMIT');
+    res.json({ success: true, message: 'Funds added successfully' });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ success: false });
+  } finally {
+    client.release();
+  }
+});
+
+// Rider Trip History
+app.get('/api/rider/history/:riderId', async (req, res) => {
+  try {
+    const { riderId } = req.params;
+    const { rows: history } = await pool.query(
+      "SELECT * FROM appointments WHERE rider_id = $1 AND transport_status = 'completed' ORDER BY updated_at DESC",
+      [riderId]
+    );
+    res.json({ success: true, history });
+  } catch (error) {
+    res.status(500).json({ success: false });
+  }
+});
+
+// Rider Inbox
+app.get('/api/rider/inbox/:riderId', async (req, res) => {
+  try {
+    const { riderId } = req.params;
+    const { rows: notifications } = await pool.query(
+      "SELECT * FROM rider_notifications WHERE rider_id = $1 OR rider_id IS NULL ORDER BY created_at DESC LIMIT 50",
+      [riderId]
+    );
+    res.json({ success: true, notifications });
   } catch (error) {
     res.status(500).json({ success: false });
   }
@@ -3352,7 +3463,7 @@ app.get('/api/patient/appointment/:token/tracker', async (req, res) => {
 
 // ==================== CLINIC SETTINGS ENDPOINTS ====================
 
-app.get('/api/clinic-settings', async (_req, res) => {
+app.get('/api/admin/settings', async (_req, res) => {
   try {
     const { rows } = await pool.query('SELECT key, value FROM clinic_settings');
     const settings = {};
@@ -3364,7 +3475,7 @@ app.get('/api/clinic-settings', async (_req, res) => {
   }
 });
 
-app.post('/api/clinic-settings', async (req, res) => {
+app.post('/api/admin/settings', async (req, res) => {
   try {
     const { settings } = req.body;
     for (const [key, value] of Object.entries(settings)) {
@@ -3379,6 +3490,48 @@ app.post('/api/clinic-settings', async (req, res) => {
   } catch (error) {
     console.error('Error saving clinic settings:', error);
     res.status(500).json({ success: false, message: 'Failed to save settings' });
+  }
+});
+
+app.post('/api/admin/test-email', async (req, res) => {
+  try {
+    const { settings } = req.body;
+    
+    const testTransporter = nodemailer.createTransport({
+      host: settings.email_smtp_host,
+      port: parseInt(settings.email_smtp_port || '587'),
+      secure: settings.email_smtp_port === '465',
+      auth: {
+        user: settings.email_smtp_user,
+        pass: settings.email_smtp_pass
+      }
+    });
+
+    const vars = makeVars({
+      full_name: 'Test Administrator',
+      preferred_date: new Date().toISOString().split('T')[0],
+      preferred_time: '10:00 AM',
+      service_type: 'System Diagnostic',
+      id: 'TEST-001',
+      cancel_token: 'test-token'
+    }, '#');
+
+    // Override vars with what's in the request for preview accuracy
+    vars.primary_color = settings.email_primary_color || vars.primary_color;
+    vars.accent_color = settings.email_accent_color || vars.accent_color;
+    vars.font_family = settings.email_font_family || vars.font_family;
+
+    await testTransporter.sendMail({
+      from: `"${getSetting('clinic_name', 'HealthCare Clinic')}" <${settings.email_smtp_user}>`,
+      to: settings.email_smtp_user,
+      subject: applyTemplate(settings.email_confirmation_subject, vars),
+      html: applyTemplate(settings.email_confirmation_body, vars),
+    });
+
+    res.json({ success: true, message: 'Test email successfully sent to ' + settings.email_smtp_user });
+  } catch (error) {
+    console.error('Test email error:', error);
+    res.status(500).json({ success: false, message: 'SMTP Error: ' + error.message });
   }
 });
 
@@ -3439,9 +3592,25 @@ const initClinicSettings = async () => {
       vehicle_type VARCHAR(50),
       plate_number VARCHAR(20),
       brand_model VARCHAR(100),
+      balance DECIMAL(12, 2) DEFAULT 0.00,
       last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
+
+  // Rider Wallet Transactions
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS rider_wallet_transactions (
+      id SERIAL PRIMARY KEY,
+      rider_id INTEGER,
+      amount DECIMAL(12, 2),
+      type VARCHAR(50), -- 'topup', 'trip_income', 'withdrawal'
+      description TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Migration for additional rider fields
+  await pool.query(`ALTER TABLE riders ADD COLUMN IF NOT EXISTS balance DECIMAL(12, 2) DEFAULT 0.00`);
 
   // Migration for additional rider fields
   await pool.query(`ALTER TABLE riders ADD COLUMN IF NOT EXISTS email VARCHAR(100)`);
@@ -3530,6 +3699,13 @@ const initClinicSettings = async () => {
     ['email_cancellation_body',    DEFAULT_CANCELLATION_HTML],
     ['email_reschedule_body',      DEFAULT_RESCHEDULE_HTML],
     ['email_reminder_body',        DEFAULT_REMINDER_HTML],
+    ['email_smtp_host',            'smtp.gmail.com'],
+    ['email_smtp_port',            '587'],
+    ['email_smtp_user',            ''],
+    ['email_smtp_pass',            ''],
+    ['email_primary_color',        '#10b981'],
+    ['email_accent_color',         '#E4FE7B'],
+    ['email_font_family',          "'Inter', sans-serif"],
   ];
   for (const [key, value] of defaults) {
     await pool.query(
@@ -3965,7 +4141,19 @@ setTimeout(autoQueueAppointments, 3000);
 // Initialize clinic settings table + seed defaults, then start server
 initClinicSettings()
   .then(() => loadSettings())
-  .then(() => {
+  .then(async () => {
+    // Rider notifications table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS rider_notifications (
+        id SERIAL PRIMARY KEY,
+        rider_id INTEGER,
+        title VARCHAR(255),
+        message TEXT,
+        type VARCHAR(50) DEFAULT 'system',
+        is_read BOOLEAN DEFAULT false,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
     console.log('Clinic settings loaded.');
     server.listen(PORT, () => {
       console.log(`Server running on http://localhost:${PORT}`);

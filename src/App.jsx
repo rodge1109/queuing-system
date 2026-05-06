@@ -528,8 +528,8 @@ export default function RestaurantApp() {
           border-color: #047857 !important;
         }
       `}</style>
-      <div className={`min-h-screen bg-white ${currentPage === 'admin' ? 'p-0 flex flex-col' : 'pb-16 md:pb-0 pt-[100px]'}`}>
-        {currentPage !== 'admin' && (
+      <div className={`min-h-screen bg-white ${['admin', 'rider'].includes(currentPage) ? 'p-0 flex flex-col' : 'pb-16 md:pb-0 pt-[100px]'}`}>
+        {!['admin', 'rider'].includes(currentPage) && (
           <Header
             currentPage={currentPage}
             setCurrentPage={setCurrentPage}
@@ -554,8 +554,8 @@ export default function RestaurantApp() {
           />
         )}
 
-        {/* Mobile Bottom Navigation - Hide on Admin */}
-        {currentPage !== 'admin' && (
+        {/* Mobile Bottom Navigation - Hide on Admin and Rider */}
+        {!['admin', 'rider'].includes(currentPage) && (
           <nav className="fixed bottom-0 left-0 right-0 bg-[#F5F3F5] border-t border-[#F5F3F5] md:hidden z-50 pb-safe">
             <div className="flex justify-around items-center py-2">
               <div className="relative">
@@ -5054,7 +5054,7 @@ function TripMonitoring({ trips, stats, riders, incidents, onRefresh }) {
       </div>
 
       {/* OVERLAY LAYER 2: Sidebar Trip List (Draggable) */}
-      <DraggableGlassPanel initialX={16} initialY={160} width="320px" height="calc(100% - 176px)">
+      <DraggableGlassPanel initialX={5} initialY={100} width="320px" height="calc(100% - 120px)">
         <div className="h-full bg-white/10 backdrop-blur-3xl border border-white/30 shadow-[0_8px_32px_0_rgba(31,38,135,0.2)] flex flex-col overflow-hidden">
           <div className="p-4 border-b border-[#002d9c] flex justify-between items-center bg-[#10b981] text-white drag-handle shadow-md">
             <div className="flex gap-1 pointer-events-auto">
@@ -5131,12 +5131,12 @@ function MetricCard({ label, value, icon, color, active }) {
     gray: 'bg-gray-600/20 text-gray-700'
   };
   return (
-    <div className={`p-4 min-w-[160px] bg-white/20 backdrop-blur-2xl border-t border-l border-white/50 border-r border-b border-white/10 ${active ? 'border-red-500 animate-pulse ring-2 ring-red-100' : ''} shadow-[0_8px_32px_0_rgba(31,38,135,0.15)] transition-all hover:bg-white/30 group`}>
-      <div className="flex justify-between items-start mb-4">
-        <div className={`p-2 force-circle transition-transform group-hover:scale-110 ${colors[color] || colors.gray}`}>{React.cloneElement(icon, { size: 16 })}</div>
-        <p className="text-2xl font-bold text-[#161616] tracking-tighter">{value}</p>
+    <div className={`p-3 min-w-[130px] bg-white/20 backdrop-blur-2xl border-t border-l border-white/50 border-r border-b border-white/10 ${active ? 'border-red-500 animate-pulse ring-2 ring-red-100' : ''} shadow-[0_4px_16px_0_rgba(31,38,135,0.1)] transition-all hover:bg-white/30 group`}>
+      <div className="flex justify-between items-center mb-1">
+        <div className={`p-1.5 force-circle transition-transform group-hover:scale-105 ${colors[color] || colors.gray}`}>{React.cloneElement(icon, { size: 14 })}</div>
+        <p className="text-xl font-bold text-[#161616] tracking-tighter">{value}</p>
       </div>
-      <p className="text-[9px] font-bold text-gray-500 uppercase tracking-[2px]">{label}</p>
+      <p className="text-[8px] font-bold text-gray-500 uppercase tracking-[1.5px]">{label}</p>
     </div>
   );
 }
@@ -5166,6 +5166,8 @@ function MonitoringMap({ trips, selectedTrip, focusId }) {
   const markersRef = React.useRef(new Map());
   const destMarkersRef = React.useRef(new Map());
   const polylinesRef = React.useRef(new Map());
+  const [leafletReady, setLeafletReady] = React.useState(!!window.L);
+  const [currentZoom, setCurrentZoom] = React.useState(13);
 
   // Focus Logic: Fly to the marker when focusId changes
   React.useEffect(() => {
@@ -5210,6 +5212,11 @@ function MonitoringMap({ trips, selectedTrip, focusId }) {
           attribution: '&copy; CARTO'
         }).addTo(leafletMap.current);
 
+        // Track zoom
+        leafletMap.current.on('zoomend', () => {
+          setCurrentZoom(leafletMap.current.getZoom());
+        });
+
         // Fix for containers that are hidden on load
         setTimeout(() => {
           if (leafletMap.current) leafletMap.current.invalidateSize();
@@ -5217,62 +5224,74 @@ function MonitoringMap({ trips, selectedTrip, focusId }) {
       }
 
       // Sync Markers
-      // 1. Remove markers for trips no longer present
-      const currentTripIds = new Set(trips.map(t => t.id));
+      const isZoomedOut = currentZoom < 14;
+      const currentTripIds = new Set(trips.map(t => Number(t.id)));
       for (const [id, marker] of markersRef.current.entries()) {
-        if (!currentTripIds.has(id)) {
+        const idNum = Number(id);
+        if (!currentTripIds.has(idNum)) {
           marker.remove();
           markersRef.current.delete(id);
         }
-        if (!currentTripIds.has(id) && destMarkersRef.current.has(id)) {
-          destMarkersRef.current.get(id).remove();
-          destMarkersRef.current.delete(id);
+        if (!currentTripIds.has(idNum) && destMarkersRef.current.has(idNum)) {
+          destMarkersRef.current.get(idNum).remove();
+          destMarkersRef.current.delete(idNum);
         }
       }
 
       // 2. Add or update markers
       trips.forEach(trip => {
-        // Priority Logic: 
-        // 1. If actually MOVING with passenger (en_route, picked_up, sos), follow RIDER GPS.
-        // 2. If awaiting pickup (accepted, on_way), anchor to PICKUP POINT for clarity.
-        const isActuallyMoving = ['en_route', 'picked_up', 'sos'].includes(trip.transport_status);
-        
-        let lat = parseFloat(isActuallyMoving ? (trip.rider_lat || trip.current_lat || trip.pickup_lat) : trip.pickup_lat);
-        let lng = parseFloat(isActuallyMoving ? (trip.rider_lng || trip.current_lng || trip.pickup_lng) : trip.pickup_lng);
-
-        // Fallback to pickup point if coordinates are missing but trip is active
-        if (isActuallyMoving && (isNaN(lat) || isNaN(lng))) {
-          lat = parseFloat(trip.pickup_lat);
-          lng = parseFloat(trip.pickup_lng);
-        }
-
-        // Final safety fallback to map center if even pickup is missing
-        if (isNaN(lat) || isNaN(lng)) {
-          lat = 11.0500;
-          lng = 124.0000;
-        }
-
-        if (isNaN(lat) || isNaN(lng)) return;
-
-        const isSOS = trip.transport_status === 'sos';
-        const isUnassigned = trip.transport_status === 'unassigned';
-        const isEnRoute = ['en_route', 'picked_up'].includes(trip.transport_status);
-
-        if (markersRef.current.has(trip.id)) {
-          const marker = markersRef.current.get(trip.id);
-          marker.setLatLng([lat, lng]);
+        try {
+          const tripId = Number(trip.id);
           
-          // Update rotation
-          const dLat = parseFloat(trip.dest_lat || trip.pickup_lat);
-          const dLng = parseFloat(trip.dest_lng || trip.pickup_lng);
-          if (!isNaN(dLat) && !isNaN(dLng)) {
-            const bearing = calculateBearing(lat, lng, dLat, dLng);
-            const iconContainer = marker.getElement()?.querySelector('.vehicle-icon-wrapper');
-            if (iconContainer) {
-              iconContainer.style.transform = `rotate(${bearing}deg)`;
+          // Priority Logic: 
+          // 1. If actually MOVING with passenger (en_route, picked_up, sos), follow RIDER GPS.
+          // 2. If awaiting pickup (accepted, on_way), anchor to PICKUP POINT for clarity.
+          const isActuallyMoving = ['en_route', 'picked_up', 'sos'].includes(trip.transport_status);
+          
+          let lat = Number(isActuallyMoving ? (trip.rider_lat || trip.current_lat || trip.pickup_lat) : trip.pickup_lat);
+          let lng = Number(isActuallyMoving ? (trip.rider_lng || trip.current_lng || trip.pickup_lng) : trip.pickup_lng);
+
+          // Fallback to pickup point if coordinates are missing but trip is active
+          if (isActuallyMoving && (isNaN(lat) || isNaN(lng))) {
+            lat = Number(trip.pickup_lat);
+            lng = Number(trip.pickup_lng);
+          }
+
+          // Final safety fallback to map center if even pickup is missing
+          if (isNaN(lat) || isNaN(lng)) {
+            lat = 11.0500;
+            lng = 124.0000;
+          }
+
+          if (isNaN(lat) || isNaN(lng)) return;
+
+          if (markersRef.current.has(tripId)) {
+            const marker = markersRef.current.get(tripId);
+            
+            // Check if we need to RE-CREATE the icon because zoom state changed
+            const currentHtml = marker.options.icon.options.html;
+            const needsRefresh = (isZoomedOut && currentHtml.includes('Ultra-Minimalist Badge')) || (!isZoomedOut && !currentHtml.includes('Ultra-Minimalist Badge'));
+            
+            if (!needsRefresh) {
+              marker.setLatLng([lat, lng]);
+              
+              // Update rotation
+              const dLat = Number(trip.dest_lat || trip.pickup_lat);
+              const dLng = Number(trip.dest_lng || trip.pickup_lng);
+              if (!isNaN(dLat) && !isNaN(dLng)) {
+                const bearing = calculateBearing(lat, lng, dLat, dLng);
+                const iconContainer = marker.getElement()?.querySelector('.vehicle-icon-wrapper');
+                if (iconContainer) {
+                  iconContainer.style.transform = `rotate(${bearing}deg)`;
+                }
+              }
+              return;
+            } else {
+              marker.remove();
+              markersRef.current.delete(tripId);
             }
           }
-        } else {
+          
           // Custom Icon based on status and vehicle type
           let iconHtml = '';
           const vType = (trip.vehicle_type || 'car').toLowerCase();
@@ -5291,81 +5310,78 @@ function MonitoringMap({ trips, selectedTrip, focusId }) {
               // Ultra-Clean Pro Van (Grab Style) - Long cabin
               svgPath = `
                 <path d="M12 1c-4 0-7 1-7 4v16c0 2 2 2.5 7 2.5s7-0.5 7-2.5v-16c0-3-4-4-7-4z" fill="${iconColor}" />
-                <!-- Curved Windshield (Moved forward) -->
                 <path d="M5.8 7 Q12 4 18.2 7 Z" fill="#1a1a1a" />
-                <!-- Side Windows (Longer cabin) -->
                 <rect x="5.5" y="8" width="0.8" height="11" fill="#1a1a1a" />
                 <rect x="17.7" y="8" width="0.8" height="11" fill="#1a1a1a" />
                 <rect x="7" y="7.5" width="10" height="11.5" rx="1" fill="black" opacity="0.15" />
-                <!-- Curved Rear Window (Moved backward) -->
                 <path d="M7.5 19.5 Q12 22 16.5 19.5 Z" fill="#1a1a1a" />
                 <rect x="4.2" y="6.5" width="1.2" height="2.5" rx="0.5" fill="${iconColor}" />
                 <rect x="18.6" y="6.5" width="1.2" height="2.5" rx="0.5" fill="${iconColor}" />
-                <!-- Emphasized Brake Lights -->
                 <rect x="6" y="21.5" width="4.5" height="1" rx="0.3" fill="#ff3333" />
                 <rect x="13.5" y="21.5" width="4.5" height="1" rx="0.3" fill="#ff3333" />
               `;
             } else {
-              // Ultra-Clean Pro Car (Grab Style) - Long cabin
+              // Ultra-Clean Pro Car (Grab Style)
               svgPath = `
                 <path d="M12 1.5C8 1.5 6 3 6 5.5v14c0 2.5 2 3 6 3s6-0.5 6-3v-14c0-2.5-2-4-6-4z" fill="${iconColor}" />
-                <!-- Curved Windshield (Moved forward) -->
                 <path d="M6.8 8 Q12 5 17.2 8 Z" fill="#1a1a1a" />
-                <!-- Side Windows (Longer cabin) -->
                 <rect x="6.5" y="9" width="0.8" height="8" fill="#1a1a1a" />
                 <rect x="16.7" y="9" width="0.8" height="8" fill="#1a1a1a" />
                 <rect x="7.8" y="8.5" width="8.4" height="8" rx="1.5" fill="black" opacity="0.15" />
-                <!-- Curved Rear Window (Moved backward) -->
                 <path d="M8 17.5 Q12 20 16 17.5 Z" fill="#1a1a1a" />
                 <circle cx="5" cy="8" r="1.2" fill="${iconColor}" />
                 <circle cx="19" cy="8" r="1.2" fill="${iconColor}" />
-                <!-- Emphasized Brake Lights -->
                 <rect x="7" y="20.5" width="3.5" height="1" rx="0.3" fill="#ff3333" />
                 <rect x="13.5" y="20.5" width="3.5" height="1" rx="0.3" fill="#ff3333" />
               `;
             }
 
+            const badgeHtml = isZoomedOut ? '' : `
+                   <!-- Ultra-Minimalist Badge -->
+                   <div style="background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); color: #161616; padding: 6px 10px; border-radius: 4px; font-size: 9px; font-weight: 500; white-space: nowrap; margin-bottom: 8px; border: 1px solid rgba(255, 255, 255, 0.5); border-top: 3px solid ${iconColor}; box-shadow: 0 4px 15px rgba(0,0,0,0.1); min-width: 140px; pointer-events: auto; font-family: 'Inter', sans-serif;">
+                    <!-- Header: Rider & Plate -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+                      <span style="color: #161616; font-weight: 700;">${(trip.rider_name || 'RIDER').toUpperCase()}</span>
+                      <span style="font-family: monospace; font-weight: 900; color: ${iconColor}; font-size: 10px;">#${trip.id}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; opacity: 0.6; font-size: 8px;">
+                      <span>${trip.plate_number || '---'}</span>
+                      <span>${vType.toUpperCase()}</span>
+                    </div>
+                     
+                     <!-- Body: Details -->
+                     <div style="display: flex; flex-direction: column; gap: 2px; border-top: 1px solid rgba(0,0,0,0.05); padding-top: 4px; margin-bottom: 4px;">
+                       <div style="display: flex; align-items: center; gap: 5px;">
+                         <span style="opacity: 0.4;">👤</span>
+                         <span style="color: #161616;">${trip.full_name || '---'}</span>
+                       </div>
+                       <div style="display: flex; align-items: center; gap: 5px;">
+                         <span style="opacity: 0.4;">🏁</span>
+                         <span style="max-width: 110px; overflow: hidden; text-overflow: ellipsis; color: #161616;">${trip.destination_location || 'UNSET'}</span>
+                       </div>
+                     </div>
+
+                     <!-- Footer: Status & Speed -->
+                     <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 4px; border-top: 1px solid rgba(0,0,0,0.05);">
+                       <span style="color: ${iconColor}; font-weight: 700;">${statusText}</span>
+                       <span style="color: #161616; opacity: 0.7;">${trip.speed || Math.floor(Math.random() * 15 + 35)} KM/H</span>
+                     </div>
+                     
+                     <!-- Pointer Arrow pointing towards the icon -->
+                     <div style="position: absolute; bottom: -8px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 8px solid rgba(255, 255, 255, 0.7);"></div>
+                   </div>
+            `;
+
             iconHtml = `
                <div style="position: relative; display: flex; flex-direction: column; align-items: center; transform: translateY(-50%);">
-                 <!-- Ultra-Minimalist Badge -->
-                 <div style="background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); color: #161616; padding: 6px 10px; border-radius: 4px; font-size: 9px; font-weight: 500; white-space: nowrap; margin-bottom: 8px; border: 1px solid rgba(255, 255, 255, 0.5); border-top: 3px solid ${iconColor}; box-shadow: 0 4px 15px rgba(0,0,0,0.1); min-width: 140px; pointer-events: auto; font-family: 'Inter', sans-serif;">
-                   <!-- Header: Rider & Plate -->
-                   <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                     <span style="color: #161616; font-weight: 700;">${(trip.rider_name || 'RIDER').toUpperCase()}</span>
-                     <span style="opacity: 0.5; font-size: 8px;">${trip.plate_number || '---'}</span>
-                   </div>
-                   
-                   <!-- Body: Details -->
-                   <div style="display: flex; flex-direction: column; gap: 2px; border-top: 1px solid rgba(0,0,0,0.05); padding-top: 4px; margin-bottom: 4px;">
-                     <div style="display: flex; align-items: center; gap: 5px;">
-                       <span style="opacity: 0.4;">👤</span>
-                       <span style="color: #161616;">${trip.full_name || '---'}</span>
-                     </div>
-                     <div style="display: flex; align-items: center; gap: 5px;">
-                       <span style="opacity: 0.4;">🏁</span>
-                       <span style="max-width: 110px; overflow: hidden; text-overflow: ellipsis; color: #161616;">${trip.destination_location || 'UNSET'}</span>
-                     </div>
-                   </div>
-
-                   <!-- Footer: Status & Speed -->
-                   <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 4px; border-top: 1px solid rgba(0,0,0,0.05);">
-                     <span style="color: ${iconColor}; font-weight: 700;">${statusText}</span>
-                     <span style="color: #161616; opacity: 0.7;">${trip.speed || Math.floor(Math.random() * 15 + 35)} KM/H</span>
-                   </div>
-                   
-                   <!-- Pointer Arrow pointing towards the icon -->
-                   <div style="position: absolute; bottom: -8px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 8px solid rgba(255, 255, 255, 0.7);"></div>
-                 </div>
+                 ${badgeHtml}
                  
                  <!-- Dynamic Status Pulse Effect (Ripple) -->
-                 <div class="force-circle animate-marker-pulse" style="position: absolute; bottom: 0; width: 60px; height: 60px; background: ${iconColor}; opacity: 0.2; border-radius: 50% !important; z-index: -1;"></div>
-                 
-                 <!-- SOS Pulse Effect (Deeper red if SOS) -->
-                 ${isSOS ? '<div class="force-circle" style="position: absolute; bottom: 0; width: 70px; height: 70px; background: rgba(218, 30, 40, 0.3); border-radius: 50% !important; animation: markerPulse 1.5s infinite; z-index: -2;"></div>' : ''}
+                 <div class="force-circle animate-marker-pulse" style="position: absolute; bottom: 0; width: ${isZoomedOut ? '20px' : '60px'}; height: ${isZoomedOut ? '20px' : '60px'}; background: ${iconColor}; opacity: 0.2; border-radius: 50% !important; z-index: -1;"></div>
                  
                  <!-- Detailed Top-Down Vehicle Icon -->
-                 <div class="vehicle-icon-wrapper" style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1)); transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);">
-                   <svg viewBox="${viewBox}" width="36" height="36" stroke-linecap="round" stroke-linejoin="round">${svgPath}</svg>
+                 <div class="vehicle-icon-wrapper" style="width: ${isZoomedOut ? '20px' : '36px'}; height: ${isZoomedOut ? '20px' : '36px'}; display: flex; align-items: center; justify-content: center; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1)); transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);">
+                   <svg viewBox="${viewBox}" width="${isZoomedOut ? '20' : '36'}" height="${isZoomedOut ? '20' : '36'}" stroke-linecap="round" stroke-linejoin="round">${svgPath}</svg>
                  </div>
                </div>
              `;
@@ -5376,107 +5392,95 @@ function MonitoringMap({ trips, selectedTrip, focusId }) {
           const markerIcon = window.L.divIcon({
             html: iconHtml,
             className: 'custom-marker',
-            iconSize: [44, 52],
-            iconAnchor: [22, 52]
+            iconSize: isZoomedOut ? [20, 20] : [44, 52],
+            iconAnchor: isZoomedOut ? [10, 10] : [22, 52]
           });
 
           const marker = window.L.marker([lat, lng], { icon: markerIcon }).addTo(leafletMap.current);
-          marker.bindPopup(`
-            <div class="p-1">
-              <p class="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Active Trip</p>
-              <h4 class="font-bold text-gray-900">${trip.full_name}</h4>
-              <p class="text-[10px] text-gray-500">${trip.rider_name || 'Awaiting Rider'}</p>
-              <div class="mt-2 pt-2 border-t border-gray-100 flex items-center gap-2">
-                <span class="w-2 h-2 rounded-full ${isSOS ? 'bg-red-500' : isEnRoute ? 'bg-blue-500' : 'bg-gray-400'}"></span>
-                <span class="text-[9px] font-bold uppercase">${trip.transport_status?.replace('_', ' ')}</span>
-              </div>
-            </div>
-          `);
-          markersRef.current.set(trip.id, marker);
-        }
+          markersRef.current.set(tripId, marker);
 
-        // 2.5 Handle Destination Pin
-        const dLat = Number(trip.dest_lat);
-        const dLng = Number(trip.dest_lng);
-        
-        if (!isNaN(dLat) && !isNaN(dLng) && dLat !== 0) {
-          if (destMarkersRef.current.has(trip.id)) {
-            destMarkersRef.current.get(trip.id).setLatLng([dLat, dLng]);
-          } else {
-            console.log(`[MAP] Adding Dest Pin for Trip #${trip.id} at ${dLat}, ${dLng}`);
-            const destIcon = window.L.divIcon({
-              html: `
-                <div style="position: relative; display: flex; flex-direction: column; align-items: center; pointer-events: auto;">
-                  <!-- Label -->
-                  <div style="background: #da1e28; color: white; padding: 3px 10px; font-size: 10px; font-weight: 800; border-radius: 4px; white-space: nowrap; margin-bottom: 5px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 1px solid white;">
-                    ${(trip.destination_location || 'DEST').split(',')[0].toUpperCase()}
+          // 2.5 Handle Destination Pin
+          const dLat = Number(trip.dest_lat);
+          const dLng = Number(trip.dest_lng);
+          if (!isNaN(dLat) && !isNaN(dLng) && dLat !== 0) {
+            if (destMarkersRef.current.has(tripId)) {
+              destMarkersRef.current.get(tripId).setLatLng([dLat, dLng]);
+            } else {
+              const destIcon = window.L.divIcon({
+                html: `
+                  <div style="position: relative; display: flex; flex-direction: column; align-items: center; pointer-events: auto;">
+                    <!-- Glass Tag -->
+                    <div style="background: rgba(218, 30, 40, 0.85); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); color: white; padding: 2px 8px; font-size: 8px; font-weight: 900; border-radius: 3px; white-space: nowrap; margin-bottom: 2px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 1px solid rgba(255, 255, 255, 0.4); text-shadow: 0 1px 2px rgba(0,0,0,0.5);">
+                      ${(trip.destination_location || 'DEST').split(',')[0].toUpperCase()}
+                    </div>
+                    <!-- Superimposed Mini Pin -->
+                    <div style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));">
+                      <svg viewBox="0 0 24 24" width="24" height="24">
+                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="#da1e28" stroke="white" stroke-width="2"/>
+                        <circle cx="12" cy="9" r="3" fill="white"/>
+                      </svg>
+                    </div>
                   </div>
-                  <!-- SVG Pin -->
-                  <div style="filter: drop-shadow(0 4px 6px rgba(0,0,0,0.4));">
-                    <svg viewBox="0 0 24 24" width="40" height="40">
-                      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#da1e28" stroke="white" stroke-width="1.5"/>
-                    </svg>
-                  </div>
-                  <!-- Redundant Base Circle for visibility -->
-                  <div class="force-circle" style="position: absolute; bottom: 0; width: 12px; height: 12px; background: #da1e28; border: 2px solid white; border-radius: 50% !important; z-index: -1;"></div>
-                </div>
-              `,
-              className: 'custom-dest-pin',
-              iconSize: [120, 100],
-              iconAnchor: [60, 95]
-            });
-            const dMarker = window.L.marker([dLat, dLng], { 
-              icon: destIcon, 
-              zIndexOffset: 5000 
-            }).addTo(leafletMap.current);
-            destMarkersRef.current.set(trip.id, dMarker);
-          }
-        } else if (destMarkersRef.current.has(trip.id)) {
-          destMarkersRef.current.get(trip.id).remove();
-          destMarkersRef.current.delete(trip.id);
-        }
-
-        // 3. Handle Routes
-        const showRoute = ['accepted', 'on_way_to_pickup', 'en_route', 'picked_up'].includes(trip.transport_status);
-        if (showRoute) {
-          const startLat = lat;
-          const startLng = lng;
-          
-          // The route should always point to the final destination now 
-          // because the car stays at pickup during the initial phase.
-          const endLat = parseFloat(trip.dest_lat);
-          const endLng = parseFloat(trip.dest_lng);
-
-          // Only draw if we have a valid target coordinate that is different from start
-          if (!isNaN(startLat) && !isNaN(startLng) && !isNaN(endLat) && !isNaN(endLng) && (Math.abs(startLat - endLat) > 0.0001 || Math.abs(startLng - endLng) > 0.0001)) {
-            const routeId = `${trip.id}_${startLat.toFixed(5)}_${startLng.toFixed(5)}_${endLat.toFixed(5)}_${endLng.toFixed(5)}`;
-            
-            if (!polylinesRef.current.has(trip.id) || polylinesRef.current.get(trip.id).routeId !== routeId) {
-              fetch(`https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${endLng},${endLat}?overview=full&geometries=geojson`)
-                .then(r => r.json())
-                .then(data => {
-                  if (data.routes && data.routes[0]) {
-                    if (polylinesRef.current.has(trip.id)) {
-                      polylinesRef.current.get(trip.id).line.remove();
-                    }
-
-                    const coordinates = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
-                    const polyline = window.L.polyline(coordinates, {
-                      color: trip.transport_status === 'sos' ? '#da1e28' : '#24a148',
-                      weight: 4,
-                      opacity: 0.5,
-                      dashArray: trip.transport_status === 'accepted' ? '10, 10' : null,
-                      lineJoin: 'round'
-                    }).addTo(leafletMap.current);
-
-                    polylinesRef.current.set(trip.id, { line: polyline, routeId });
-                  }
-                }).catch(e => console.error("OSRM Error:", e));
+                `,
+                className: 'custom-dest-pin',
+                iconSize: [80, 60],
+                iconAnchor: [40, 55]
+              });
+              const dMarker = window.L.marker([dLat, dLng], { 
+                icon: destIcon, 
+                zIndexOffset: 5000 
+              }).addTo(leafletMap.current);
+              destMarkersRef.current.set(tripId, dMarker);
             }
+          } else if (destMarkersRef.current.has(tripId)) {
+            destMarkersRef.current.get(tripId).remove();
+            destMarkersRef.current.delete(tripId);
           }
-        } else if (polylinesRef.current.has(trip.id)) {
-          polylinesRef.current.get(trip.id).line.remove();
-          polylinesRef.current.delete(trip.id);
+
+          // 3. Handle Routes
+          const showRoute = ['accepted', 'on_way_to_pickup', 'en_route', 'picked_up'].includes(trip.transport_status);
+          if (showRoute) {
+            const startLat = lat;
+            const startLng = lng;
+            
+            // The route should always point to the final destination now 
+            // because the car stays at pickup during the initial phase.
+            const endLat = Number(trip.dest_lat);
+            const endLng = Number(trip.dest_lng);
+
+            // Only draw if we have a valid target coordinate that is different from start
+            if (!isNaN(startLat) && !isNaN(startLng) && !isNaN(endLat) && !isNaN(endLng) && (Math.abs(startLat - endLat) > 0.0001 || Math.abs(startLng - endLng) > 0.0001)) {
+              const routeId = `${tripId}_${startLat.toFixed(4)}_${startLng.toFixed(4)}_${endLat.toFixed(4)}_${endLng.toFixed(4)}`;
+              
+              if (!polylinesRef.current.has(tripId) || polylinesRef.current.get(tripId).routeId !== routeId) {
+                fetch(`https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${endLng},${endLat}?overview=full&geometries=geojson`)
+                  .then(r => r.json())
+                  .then(data => {
+                    if (data.routes && data.routes[0]) {
+                      if (polylinesRef.current.has(tripId)) {
+                        polylinesRef.current.get(tripId).line.remove();
+                      }
+
+                      const coordinates = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+                      const polyline = window.L.polyline(coordinates, {
+                        color: trip.transport_status === 'sos' ? '#da1e28' : '#24a148',
+                        weight: 4,
+                        opacity: 0.5,
+                        dashArray: trip.transport_status === 'accepted' ? '10, 10' : null,
+                        lineJoin: 'round'
+                      }).addTo(leafletMap.current);
+
+                      polylinesRef.current.set(tripId, { line: polyline, routeId });
+                    }
+                  }).catch(e => console.error("OSRM Error:", e));
+              }
+            }
+          } else if (polylinesRef.current.has(tripId)) {
+            polylinesRef.current.get(tripId).line.remove();
+            polylinesRef.current.delete(tripId);
+          }
+        } catch (err) {
+          console.error('Trip Marker Rendering Error:', err, trip);
         }
       });
 
@@ -5691,7 +5695,7 @@ function DispatchMap({ trips, riders, selectedBooking }) {
               html: `<div class="force-circle" style="width: 14px; height: 14px; background: white; border: 3px solid ${iconColor}; border-radius: 50% !important; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"></div>`,
               className: '', iconSize: [14, 14], iconAnchor: [7, 7]
             })
-          }).addTo(leafletMap.current).bindPopup(`<b>${rider.name}</b><br/>${rider.vehicle_type}<br/>Status: ${rider.status}`);
+          }).addTo(leafletMap.current);
           markersRef.current.set(id, m);
         }
       });
@@ -5739,7 +5743,7 @@ function DispatchMap({ trips, riders, selectedBooking }) {
               `,
               className: '', iconSize: [60, 50], iconAnchor: [30, 45]
             })
-          }).addTo(leafletMap.current).bindPopup(`<b>Booking #${trip.id}</b><br/>${trip.full_name}<br/>Status: ${statusText}`);
+          }).addTo(leafletMap.current);
           markersRef.current.set(id, m);
         }
 
@@ -5753,9 +5757,19 @@ function DispatchMap({ trips, riders, selectedBooking }) {
             destMarkersRef.current.get(id).setLatLng([dl, dg]);
           } else {
             const destIcon = window.L.divIcon({
-              html: `<div style="background: #da1e28; color: white; padding: 3px 10px; font-size: 8px; font-weight: bold; border-radius: 4px; margin-bottom: 5px; box-shadow: 0 2px 6px rgba(0,0,0,0.3); border: 1px solid white; white-space: nowrap;">BOGO CITY</div>
-                     <div class="force-circle" style="width: 14px; height: 14px; background: #da1e28; border: 2px solid white; border-radius: 50% !important; box-shadow: 0 4px 10px rgba(0,0,0,0.3);"></div>`,
-              className: '', iconSize: [60, 50], iconAnchor: [30, 45]
+              html: `
+                <div style="position: relative; display: flex; flex-direction: column; align-items: center;">
+                  <div style="background: rgba(218, 30, 40, 0.85); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); color: white; padding: 2px 6px; font-size: 7px; font-weight: 900; border-radius: 3px; margin-bottom: 2px; box-shadow: 0 2px 6px rgba(0,0,0,0.3); border: 1px solid rgba(255, 255, 255, 0.4);">
+                    ${(trip.destination_location || 'DEST').split(',')[0].toUpperCase()}
+                  </div>
+                  <div style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));">
+                    <svg viewBox="0 0 24 24" width="18" height="18">
+                      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="#da1e28" stroke="white" stroke-width="2"/>
+                    </svg>
+                  </div>
+                </div>
+              `,
+              className: '', iconSize: [50, 40], iconAnchor: [25, 35]
             });
             const dMarker = window.L.marker([dl, dg], { icon: destIcon, zIndexOffset: 5000 }).addTo(leafletMap.current);
             destMarkersRef.current.set(id, dMarker);
@@ -7563,10 +7577,36 @@ function EmailTemplateSettings() {
       if (data.success) {
         alert('Email settings updated successfully!');
       } else {
-        alert('Failed to save settings');
+        alert('Failed to save settings: ' + (data.message || 'Unknown error'));
       }
     } catch (err) {
-      alert('Save failed');
+      alert('Save failed: ' + err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleTestEmail = async () => {
+    if (!settings.email_smtp_user) return alert('Please enter an SMTP user/email first');
+    
+    setIsSaving(true);
+    try {
+      const res = await fetch('/api/admin/test-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
+        },
+        body: JSON.stringify({ settings })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message);
+      } else {
+        alert('Test failed: ' + data.message);
+      }
+    } catch (err) {
+      alert('Request failed: ' + err.message);
     } finally {
       setIsSaving(false);
     }
@@ -7603,9 +7643,13 @@ function EmailTemplateSettings() {
               </div>
               <div>
                 <label className="block text-[10px] text-gray-400 uppercase mb-1">Encryption</label>
-                <select className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:border-[#10b981] outline-none">
-                  <option>TLS / STARTTLS</option>
-                  <option>SSL</option>
+                <select 
+                  value={settings.email_smtp_port === '465' ? 'SSL' : 'TLS / STARTTLS'}
+                  onChange={e => setSettings({ ...settings, email_smtp_port: e.target.value === 'SSL' ? '465' : '587' })}
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:border-[#10b981] outline-none"
+                >
+                  <option value="TLS / STARTTLS">TLS / STARTTLS (587)</option>
+                  <option value="SSL">SSL (465)</option>
                 </select>
               </div>
             </div>
@@ -7735,10 +7779,11 @@ function EmailTemplateSettings() {
             </div>
             <button
               type="button"
-              onClick={() => alert('Sending test email to administrator...')}
-              className="px-6 py-3 border border-gray-300 text-[10px] font-bold uppercase tracking-widest hover:bg-gray-50 transition-all"
+              disabled={isSaving}
+              onClick={handleTestEmail}
+              className={`px-6 py-3 border border-gray-300 text-[10px] font-bold uppercase tracking-widest transition-all ${isSaving ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}`}
             >
-              Send Test Email
+              {isSaving ? 'Processing...' : 'Send Test Email'}
             </button>
           </div>
         </div>
