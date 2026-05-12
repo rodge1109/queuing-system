@@ -64,24 +64,24 @@ const RideScheduling = ({ trips = [], riders = [], fetchTrips }) => {
     <div className="h-full bg-[#f8f9fa] text-black flex flex-col font-sans overflow-hidden animate-fadeIn">
       
       {/* Financial Dashboard Summary (Exact match to Corporate style) */}
-      <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-4 bg-white border-b border-gray-100">
+      <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50/50 border-b border-gray-100">
         <SummaryCard 
           label="Pending Assignments" 
           value={`${pendingCount} Trips`} 
-          icon={<AlertCircle className="text-red-500" />} 
+          icon={<AlertCircle />} 
           trend="Action Required"
           warning={pendingCount > 0}
         />
         <SummaryCard 
           label="Total Scheduled" 
           value={`${trips.length} Bookings`} 
-          icon={<Calendar className="text-blue-500" />} 
+          icon={<Calendar />} 
           trend="Total Log"
         />
         <SummaryCard 
           label="Active Dispatch" 
           value="Real-time" 
-          icon={<CheckCircle2 className="text-green-500" />} 
+          icon={<CheckCircle2 />} 
           trend="Network Healthy"
         />
       </div>
@@ -320,15 +320,23 @@ const RideScheduling = ({ trips = [], riders = [], fetchTrips }) => {
 // Sub-component (exact match to Corporate style)
 function SummaryCard({ label, value, icon, trend, warning }) {
   return (
-    <div className={`p-4 border border-gray-100 shadow-sm ${warning ? 'bg-red-50/30' : 'bg-white'}`}>
-      <div className="flex justify-between items-start mb-2">
-        <div className="p-2 bg-gray-50 rounded-lg">{icon}</div>
-        <span className={`text-[9px] font-semibold px-2 py-0.5 rounded-full ${warning ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
+    <div className={`p-6 shadow-sm flex flex-col justify-between transition-all hover:scale-[1.02] ${
+      warning 
+        ? 'bg-gradient-to-br from-red-600 to-red-800 text-white border-0' 
+        : 'bg-gradient-to-br from-[#24a148] to-[#1e8a3d] text-white border-0'
+    }`}>
+      <div className="flex justify-between items-start mb-4">
+        <div className="p-2.5 bg-white/20 backdrop-blur-md rounded-xl text-white">
+          {React.cloneElement(icon, { size: 20 })}
+        </div>
+        <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-black/20 text-white uppercase tracking-widest">
           {trend}
         </span>
       </div>
-      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">{label}</p>
-      <h4 className="text-xl font-semibold text-black tracking-tight">{value}</h4>
+      <div>
+        <p className="text-[10px] font-bold text-white/70 uppercase tracking-[2px] mb-1">{label}</p>
+        <h4 className="text-2xl font-black text-white tracking-tighter">{value}</h4>
+      </div>
     </div>
   );
 }

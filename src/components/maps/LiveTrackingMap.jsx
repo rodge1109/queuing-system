@@ -8,20 +8,32 @@ const LiveTrackingMap = ({ riderPos, pickupPos, destPos, status }) => {
   const [driverRoute, setDriverRoute] = useState(null);
 
   useEffect(() => {
-    if (!mapRef.current || leafletMap.current || mapRef.current._leaflet_id) return;
     const L = window.L;
-    if (!L) return;
+    if (!L) {
+      console.error('Leaflet (L) not found on window');
+      return;
+    }
 
-    leafletMap.current = L.map(mapRef.current, { zoomControl: false, scrollWheelZoom: false }).setView([11.0500, 124.0000], 13);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-      subdomains: 'abcd',
-      maxZoom: 20
-    }).addTo(leafletMap.current);
+    try {
+      leafletMap.current = L.map(mapRef.current, { 
+        zoomControl: false, 
+        scrollWheelZoom: true,
+        fadeAnimation: true
+      }).setView([11.0500, 124.0000], 13);
+      
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 20
+      }).addTo(leafletMap.current);
 
-    setTimeout(() => {
-      if (leafletMap.current) leafletMap.current.invalidateSize();
-    }, 300);
+      // Force a resize check
+      setTimeout(() => {
+        if (leafletMap.current) leafletMap.current.invalidateSize();
+      }, 500);
+    } catch (err) {
+      console.error('Error initializing map:', err);
+    }
 
     return () => { if (leafletMap.current) { leafletMap.current.remove(); leafletMap.current = null; } };
   }, []);
@@ -65,14 +77,22 @@ const LiveTrackingMap = ({ riderPos, pickupPos, destPos, status }) => {
 
     const markers = [];
 
-    // Rider Marker
+    // Rider Marker (Pulsing Blue GPS Dot)
     if (riderPos) {
+      const pulsingDotHtml = `
+        <div class="relative flex h-6 w-6 items-center justify-center">
+          <div class="absolute h-full w-full animate-ping rounded-full bg-blue-500 opacity-40"></div>
+          <div class="relative h-4 w-4 rounded-full border-2 border-white bg-blue-600 shadow-lg"></div>
+        </div>
+      `;
       L.marker([riderPos.lat, riderPos.lng], {
-        icon: L.icon({
-          iconUrl: 'https://cdn-icons-png.flaticon.com/512/3063/3063822.png',
-          iconSize: [32, 32], iconAnchor: [16, 16]
+        icon: L.divIcon({
+          html: pulsingDotHtml,
+          className: 'gps-dot-container',
+          iconSize: [24, 24],
+          iconAnchor: [12, 12]
         })
-      }).addTo(leafletMap.current).bindPopup('<b>Driver</b>');
+      }).addTo(leafletMap.current);
       markers.push([riderPos.lat, riderPos.lng]);
     }
 

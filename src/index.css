@@ -33,7 +33,6 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  border-radius: 0 !important; /* Non-negotiable Carbon rule */
 }
 
 /* Exceptions to 0px rule */
@@ -169,6 +168,7 @@ small, .text-xs {
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.2);
 }
+
 @keyframes markerPulse {
   0% { transform: scale(0.5); opacity: 1; }
   100% { transform: scale(1.6); opacity: 0; }
@@ -176,4 +176,13 @@ small, .text-xs {
 
 .animate-marker-pulse {
   animation: markerPulse 2.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+/* Hide scrollbar utility - Aggressive Global */
+*::-webkit-scrollbar {
+  display: none !important;
+}
+* {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
 }

@@ -265,30 +265,30 @@ function CorporateAccountsManagement() {
   return (
     <div className="flex flex-col h-full bg-[#f8f9fa] animate-fadeIn">
       {/* Financial Dashboard Summary */}
-      <div className="p-6 grid grid-cols-1 md:grid-cols-4 gap-4 bg-white border-b border-gray-100">
+      <div className="p-6 grid grid-cols-1 md:grid-cols-4 gap-4 bg-gray-50/50 border-b border-gray-100">
         <SummaryCard 
           label="Total Receivables" 
           value="₱124,500.00" 
-          icon={<TrendingUp className="text-blue-500" />} 
+          icon={<TrendingUp />} 
           trend="+12% from last month"
         />
         <SummaryCard 
           label="Overdue Amount" 
           value="₱18,240.00" 
-          icon={<AlertTriangle className="text-red-500" />} 
+          icon={<AlertTriangle />} 
           trend="8 clients overdue"
           warning
         />
         <SummaryCard 
           label="Collected (MTD)" 
           value="₱82,400.00" 
-          icon={<CheckCircle2 className="text-green-500" />} 
+          icon={<CheckCircle2 />} 
           trend="On track for target"
         />
         <SummaryCard 
           label="Aging Summary" 
           value="31-60 Days" 
-          icon={<History className="text-orange-500" />} 
+          icon={<History />} 
           trend="Avg. collection: 24 days"
         />
       </div>
@@ -613,15 +613,23 @@ function CorporateAccountsManagement() {
 // Sub-components for better organization
 function SummaryCard({ label, value, icon, trend, warning }) {
   return (
-    <div className={`p-4 border border-gray-100 shadow-sm ${warning ? 'bg-red-50/30' : 'bg-white'}`}>
-      <div className="flex justify-between items-start mb-2">
-        <div className="p-2 bg-gray-50 rounded-lg">{icon}</div>
-        <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${warning ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
+    <div className={`p-6 shadow-sm flex flex-col justify-between transition-all hover:scale-[1.02] ${
+      warning 
+        ? 'bg-gradient-to-br from-red-600 to-red-800 text-white border-0' 
+        : 'bg-gradient-to-br from-[#24a148] to-[#1e8a3d] text-white border-0'
+    }`}>
+      <div className="flex justify-between items-start mb-4">
+        <div className="p-2.5 bg-white/20 backdrop-blur-md rounded-xl text-white">
+          {React.cloneElement(icon, { size: 20 })}
+        </div>
+        <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-black/20 text-white uppercase tracking-widest">
           {trend}
         </span>
       </div>
-      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{label}</p>
-      <h4 className="text-xl font-black text-black tracking-tight">{value}</h4>
+      <div>
+        <p className="text-[10px] font-bold text-white/70 uppercase tracking-[2px] mb-1">{label}</p>
+        <h4 className="text-2xl font-black text-white tracking-tighter">{value}</h4>
+      </div>
     </div>
   );
 }

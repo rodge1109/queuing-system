@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Car, ChevronLeft, MapPin, Navigation, Clock, DollarSign, User, Shield, LogOut, RefreshCw, Bell, ChevronRight, Play, CheckCircle2, UserCircle, Briefcase } from 'lucide-react';
+import { Car, ChevronLeft, MapPin, Navigation, Clock, DollarSign, User, Shield, LogOut, RefreshCw, Bell, ChevronRight, Play, CheckCircle2, UserCircle, Briefcase, Menu, X, History, Home, Settings, HelpCircle, LifeBuoy, Percent, Globe, MessageSquare, Phone, PlusCircle } from 'lucide-react';
+import LiveTrackingMap from '../maps/LiveTrackingMap';
 
 const PesoIcon = ({ className = "w-6 h-6" }) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -28,6 +29,18 @@ const RiderPortal = () => {
   const [history, setHistory] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [sosActive, setSosActive] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [currentPos, setCurrentPos] = useState({ lat: 11.0500, lng: 124.0000 });
+  const [sheetState, setSheetState] = useState('medium'); // 'minimized', 'medium', 'expanded'
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatInput, setChatInput] = useState('');
+
+  useEffect(() => {
+    navigator.geolocation.getCurrentPosition((pos) => {
+      setCurrentPos({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+    }, null, { enableHighAccuracy: true });
+  }, []);
 
   useEffect(() => {
     if (rider) {
@@ -102,12 +115,69 @@ const RiderPortal = () => {
 
   useEffect(() => {
     if (rider) {
-      if (activeTab === 'wallet') fetchWallet();
+      fetchWallet();
       if (activeTab === 'history') fetchHistory();
       if (activeTab === 'inbox') fetchInbox();
       if (activeTab === 'jobs') fetchRequests();
     }
-  }, [activeTab, rider]);
+  }, [activeTab, rider, isOnline]);
+
+  useEffect(() => {
+    let interval;
+    if (rider && isOnline && activeTab === 'jobs' && !activeJob) {
+      interval = setInterval(fetchRequests, 30000);
+    }
+    return () => { if (interval) clearInterval(interval); };
+  }, [rider, isOnline, activeTab, activeJob]);
+
+  const todayEarnings = walletData.earnings
+    .filter(e => new Date(e.date).toDateString() === new Date().toDateString() && e.type !== 'topup')
+    .reduce((sum, e) => sum + parseFloat(e.amount), 0);
+  
+  const todayJobs = walletData.earnings
+    .filter(e => new Date(e.date).toDateString() === new Date().toDateString() && e.type !== 'topup')
+    .length;
+
+  const fetchMessages = async () => {
+    if (!activeJob || !isChatOpen) return;
+    try {
+      const res = await fetch(`/api/rider/messages/${activeJob.id}`);
+      const data = await res.json();
+      if (data.success) setChatMessages(data.messages);
+    } catch (e) { }
+  };
+
+  const sendMessage = async (e) => {
+    if (e) e.preventDefault();
+    if (!chatInput.trim() || !activeJob) return;
+    const msg = chatInput;
+    setChatInput('');
+    try {
+      const res = await fetch('/api/rider/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tripId: activeJob.id,
+          senderType: 'rider',
+          senderId: rider.id,
+          message: msg
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setChatMessages(prev => [...prev, data.message]);
+      }
+    } catch (e) { }
+  };
+
+  useEffect(() => {
+    let interval;
+    if (isChatOpen && activeJob) {
+      fetchMessages();
+      interval = setInterval(fetchMessages, 5000);
+    }
+    return () => clearInterval(interval);
+  }, [isChatOpen, activeJob]);
 
   useEffect(() => {
     if (rider && !activeJob) {
@@ -166,6 +236,7 @@ const RiderPortal = () => {
       if (data.success) {
         const job = requests.find(r => r.id === id);
         setActiveJob({ ...job, transport_status: 'accepted' });
+        setSheetState('expanded');
         startTracking();
       }
     } catch (e) { }
@@ -213,6 +284,7 @@ const RiderPortal = () => {
         if (newStatus === 'completed') {
           setActiveJob(null);
           setSosActive(false);
+          setSheetState('medium');
           if (locationPulse) clearInterval(locationPulse);
           fetchRequests();
           if (activeTab === 'wallet') fetchWallet();
@@ -259,7 +331,7 @@ const RiderPortal = () => {
         </div>
 
         <div className="flex-1 px-6 -mt-8 relative z-20">
-          <div className="bg-white rounded-2xl shadow-2xl p-8 border border-gray-100">
+          <div className="bg-white/90 backdrop-blur-md rounded-2xl shadow-2xl p-8 border border-white/20">
             <form onSubmit={login} className="space-y-6">
               <div>
                 <label className="block text-xs font-bold text-gray-400 uppercase mb-2 ml-1">Username</label>
@@ -320,198 +392,59 @@ const RiderPortal = () => {
   }
 
   const renderTabContent = () => {
-    if (activeJob && activeTab === 'jobs') {
-      return (
-        <div className="px-4 space-y-4 pt-6">
-          <div className="bg-white rounded-3xl overflow-hidden shadow-xl border border-[#00B14F]/20">
-            <div className={`p-4 ${sosActive ? 'bg-red-600 animate-pulse' : 'bg-[#00B14F]'} text-white flex justify-between items-center transition-colors`}>
-              <div className="flex items-center gap-2">
-                {sosActive ? <Shield className="w-4 h-4 fill-white" /> : <Navigation className="w-4 h-4 fill-white animate-pulse" />}
-                <span className="text-xs font-black uppercase tracking-widest">{sosActive ? 'EMERGENCY SOS ACTIVE' : 'Ongoing Trip'}</span>
-              </div>
-              <div className="bg-white/20 px-3 py-1 rounded-full">
-                <span className="text-[10px] font-black uppercase tracking-tight">{activeJob.transport_status.replace(/_/g, ' ')}</span>
-              </div>
-            </div>
-            
-            <div className="p-6">
-              <div className="flex gap-4 mb-8">
-                <div className="flex flex-col items-center pt-1">
-                  <div className="w-4 h-4 rounded-full border-4 border-[#00B14F] bg-white z-10" />
-                  <div className="w-0.5 h-12 bg-gray-100 border-dashed border-l-2 my-1" />
-                  <div className="w-4 h-4 rounded-full border-4 border-red-500 bg-white z-10" />
-                </div>
-                <div className="flex flex-col gap-8 flex-1">
-                  <div>
-                    <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Pick up</p>
-                    <p className="text-base font-bold text-gray-900 line-clamp-1">{activeJob.pickup_location}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Drop off</p>
-                    <p className="text-base font-bold text-gray-900 line-clamp-1">{activeJob.destination_location}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-gray-50 rounded-2xl p-4 flex items-center justify-between mb-8">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm"><User className="w-5 h-5 text-gray-400" /></div>
-                  <div>
-                    <p className="text-sm font-bold text-gray-900">{activeJob.full_name}</p>
-                    <p className="text-[10px] font-medium text-gray-400">Standard Booking</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-lg font-black text-[#00B14F]">PHP {activeJob.total_amount}</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-3">
-                {sosActive && (
-                  <div className="mb-2 p-4 bg-red-50 border border-red-200 rounded-2xl flex items-start gap-3">
-                    <Shield className="w-5 h-5 text-red-600 shrink-0" />
-                    <div>
-                      <p className="text-xs font-bold text-red-700 uppercase tracking-tight">Help is on the way</p>
-                      <p className="text-[10px] text-red-600 mt-0.5">The dispatcher has been notified of your location.</p>
-                    </div>
-                  </div>
-                )}
-                {activeJob.transport_status === 'accepted' && <button onClick={() => updateStatus('on_way_to_pickup')} className="w-full bg-gray-900 text-white py-5 rounded-2xl font-black text-sm tracking-widest uppercase shadow-lg shadow-gray-200 active:scale-95 transition-all">Start Journey to Pickup</button>}
-                {activeJob.transport_status === 'on_way_to_pickup' && <button onClick={() => updateStatus('arrived_at_pickup')} className="w-full bg-[#00B14F] text-white py-5 rounded-2xl font-black text-sm tracking-widest uppercase shadow-lg shadow-green-100 active:scale-95 transition-all">I Have Arrived</button>}
-                {activeJob.transport_status === 'arrived_at_pickup' && <button onClick={() => updateStatus('picked_up')} className="w-full bg-[#00B14F] text-white py-5 rounded-2xl font-black text-sm tracking-widest uppercase shadow-lg shadow-green-100 active:scale-95 transition-all">Passenger is Onboard</button>}
-                {activeJob.transport_status === 'picked_up' && <button onClick={() => updateStatus('completed')} className="w-full bg-gray-900 text-white py-5 rounded-2xl font-black text-sm tracking-widest uppercase shadow-lg shadow-gray-100 active:scale-95 transition-all">Confirm Drop-off</button>}
-                {!sosActive && <button onClick={triggerSOS} className="w-full mt-4 flex items-center justify-center gap-2 text-red-600 py-4 rounded-2xl font-black text-[10px] tracking-widest uppercase border-2 border-red-100 active:bg-red-50 transition-all"><Shield className="w-4 h-4" /> Emergency SOS</button>}
-              </div>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
     switch (activeTab) {
-      case 'jobs':
-        return (
-          <div className="px-4">
-            <div className="flex justify-between items-center mb-6 pt-6">
-              <div className="flex items-center gap-2"><Briefcase className="w-5 h-5 text-gray-400" /><h3 className="text-base font-bold text-gray-900">Available Jobs</h3></div>
-              <button onClick={fetchRequests} disabled={!isOnline || loading} className={`p-2 rounded-full bg-white shadow-sm border border-gray-100 ${loading ? 'animate-spin' : ''}`}><RefreshCw className="w-5 h-5 text-[#00B14F]" /></button>
-            </div>
-            {!isOnline ? (
-              <div className="bg-white rounded-3xl p-12 text-center border border-dashed border-gray-300">
-                <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4"><Bell className="w-10 h-10 text-gray-200" /></div>
-                <h4 className="text-lg font-bold text-gray-900 mb-2">You're currently offline</h4>
-                <p className="text-sm text-gray-400 max-w-[200px] mx-auto">Go online to start receiving job requests nearby.</p>
-              </div>
-            ) : (
-              <div className="grid gap-4">
-                {requests.map(req => (
-                  <div key={req.id} className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 relative overflow-hidden group hover:shadow-md transition-all">
-                    <div className="flex justify-between items-start mb-6">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1"><span className="text-[10px] font-black text-gray-300 uppercase tracking-widest">#{req.id}</span><div className="bg-[#00B14F]/10 text-[#00B14F] text-[10px] font-black px-2 py-0.5 rounded-full uppercase">Instant</div></div>
-                        <h4 className="text-2xl font-black text-gray-900">PHP {(parseFloat(req.total_amount) || 0).toFixed(2)}</h4>
-                      </div>
-                      <div className="bg-gray-900 text-white p-3 rounded-2xl"><Car className="w-5 h-5" /></div>
-                    </div>
-                    <div className="space-y-4 mb-8">
-                      <div className="flex items-start gap-3">
-                        <div className="w-2 h-2 rounded-full bg-[#00B14F] mt-1.5 shrink-0 shadow-sm shadow-green-200" />
-                        <div><p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Pickup</p><p className="text-xs text-gray-900 font-bold line-clamp-1">{req.pickup_location}</p></div>
-                      </div>
-                      <div className="flex items-start gap-3">
-                        <div className="w-2 h-2 rounded-full bg-red-500 mt-1.5 shrink-0 shadow-sm shadow-red-200" />
-                        <div><p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Drop off</p><p className="text-xs text-gray-900 font-bold line-clamp-1">{req.destination_location}</p></div>
-                      </div>
-                    </div>
-                    <button onClick={() => acceptJob(req.id)} className="w-full bg-[#00B14F] text-white py-4 rounded-2xl text-sm font-black uppercase tracking-widest shadow-lg shadow-green-50 active:scale-95 transition-all group-hover:bg-[#009e46]">Accept Job</button>
-                  </div>
-                ))}
-                {requests.length === 0 && !loading && (
-                  <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-gray-200">
-                    <div className="relative mb-6"><Navigation className="w-12 h-12 mx-auto text-gray-100" /><div className="absolute inset-0 flex items-center justify-center"><div className="w-12 h-12 border-2 border-[#00B14F]/20 rounded-full animate-ping" /></div></div>
-                    <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">Searching for nearby jobs...</p>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        );
       case 'wallet':
         return (
-          <div className="px-4 pt-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <h3 className="text-xl font-black text-gray-900 mb-6 uppercase tracking-tight italic">Rider Wallet</h3>
-            <div className="bg-gray-900 rounded-3xl p-8 text-white mb-8 relative overflow-hidden shadow-2xl">
-              <div className="absolute -right-8 -top-8 w-32 h-32 bg-white/5 rounded-full blur-3xl" />
-              <div className="absolute -left-8 -bottom-8 w-32 h-32 bg-[#00B14F]/10 rounded-full blur-3xl" />
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Available Balance</p>
-              <div className="flex items-baseline gap-2 mb-6">
-                <span className="text-xl font-bold text-[#00B14F]">PHP</span>
-                <span className="text-4xl font-black tracking-tighter">{walletData.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-              </div>
-              <button className="w-full bg-[#00B14F] text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-green-900/20 active:scale-[0.98] transition-all">Withdraw Earnings</button>
-            </div>
-            <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm mb-8">
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Quick Top-up</p>
-              <div className="flex gap-2">
-                {[50, 100, 500].map(amt => (
-                  <button 
-                    key={amt}
-                    onClick={() => topUp(amt)}
-                    className="flex-1 py-3 bg-gray-50 hover:bg-[#00B14F]/10 hover:text-[#00B14F] text-gray-600 rounded-xl text-xs font-bold transition-all border border-gray-100"
-                  >
-                    +{amt}
-                  </button>
-                ))}
-              </div>
-              <div className="mt-4 flex gap-2">
-                <input 
-                  type="number" 
-                  id="customAmount"
-                  placeholder="Other amount" 
-                  className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 text-xs outline-none focus:border-[#00B14F]"
-                />
-                <button 
-                  onClick={() => {
-                    const val = document.getElementById('customAmount').value;
-                    topUp(parseFloat(val));
-                    document.getElementById('customAmount').value = '';
-                  }}
-                  className="bg-gray-900 text-white px-6 py-3 rounded-xl text-xs font-bold"
-                >
-                  Top Up
-                </button>
+          <div className="px-4 space-y-4 pt-6 pb-32 animate-in fade-in duration-500 bg-white/60 backdrop-blur-xl min-h-screen">
+            <div className="bg-[#00B14F] p-8 rounded-2xl text-white shadow-xl shadow-green-100 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl" />
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80 mb-2">Available Balance</p>
+              <h3 className="text-4xl font-black mb-6 tracking-tighter">PHP {(parseFloat(rider?.balance) || 0).toLocaleString()}</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white/20 backdrop-blur-md p-4 rounded-2xl border border-white/10">
+                  <p className="text-[9px] font-black uppercase tracking-widest opacity-70 mb-1">Today's Earnings</p>
+                  <p className="text-xl font-black">PHP {todayEarnings.toLocaleString()}</p>
+                </div>
+                <div className="bg-white/20 backdrop-blur-md p-4 rounded-2xl border border-white/10">
+                  <p className="text-[9px] font-black uppercase tracking-widest opacity-70 mb-1">Jobs Done</p>
+                  <p className="text-xl font-black">{todayJobs}</p>
+                </div>
               </div>
             </div>
 
-            <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4 ml-2">Transaction History</h4>
-            <div className="space-y-3">
-              {walletData.earnings.map(e => (
-                <div key={e.id} className="bg-white p-4 rounded-2xl border border-gray-100 flex justify-between items-center shadow-sm">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 ${e.type === 'topup' ? 'bg-blue-50 text-blue-600' : 'bg-green-50 text-[#00B14F]'} rounded-xl flex items-center justify-center`}>
-                      {e.type === 'topup' ? <PlusCircle className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+              <div className="flex justify-between items-center mb-6">
+                <h4 className="text-sm font-black uppercase tracking-widest text-gray-900">Recent Transactions</h4>
+              </div>
+              <div className="space-y-4">
+                {walletData.earnings.slice(0, 5).map(e => (
+                  <div key={e.id} className="flex justify-between items-center p-3 hover:bg-gray-50 rounded-2xl transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${e.type === 'topup' ? 'bg-blue-50 text-blue-500' : 'bg-green-50 text-[#00B14F]'}`}>
+                        {e.type === 'topup' ? <PlusCircle className="w-5 h-5" /> : <PesoIcon className="w-5 h-5" />}
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-gray-900">{e.description}</p>
+                        <p className="text-[9px] font-medium text-gray-400">{new Date(e.date).toLocaleDateString()}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-xs font-bold text-gray-900">{e.description || `Transaction #${e.id}`}</p>
-                      <p className="text-[10px] text-gray-400">{new Date(e.date).toLocaleDateString()} at {new Date(e.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-                    </div>
+                    <p className={`text-sm font-black ${e.type === 'topup' ? 'text-blue-600' : 'text-[#00B14F]'}`}>
+                      {e.type === 'topup' ? '+' : ''}PHP {parseFloat(e.amount).toLocaleString()}
+                    </p>
                   </div>
-                  <p className={`text-sm font-black ${e.type === 'topup' ? 'text-blue-600' : 'text-gray-900'}`}>
-                    {e.type === 'topup' ? '+' : ''}PHP {parseFloat(e.amount).toFixed(2)}
-                  </p>
-                </div>
-              ))}
-              {walletData.earnings.length === 0 && <p className="text-center py-10 text-xs text-gray-400 italic">No earnings found for today.</p>}
+                ))}
+                {walletData.earnings.length === 0 && <p className="text-center py-10 text-xs text-gray-400 italic">No transactions yet.</p>}
+              </div>
             </div>
           </div>
         );
       case 'history':
         return (
-          <div className="px-4 pt-6">
+          <div className="px-4 pt-6 pb-32 bg-white/60 backdrop-blur-xl min-h-screen">
             <h3 className="text-xl font-black text-gray-900 mb-6 uppercase tracking-tight italic">Trip History</h3>
             <div className="space-y-4">
               {history.map(trip => (
-                <div key={trip.id} className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
+                <div key={trip.id} className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
                   <div className="flex justify-between items-center mb-4">
                     <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest">#{trip.id} • {new Date(trip.updated_at).toLocaleDateString()}</span>
                     <span className="text-xs font-black text-[#00B14F]">PHP {trip.total_amount}</span>
@@ -536,11 +469,11 @@ const RiderPortal = () => {
         );
       case 'inbox':
         return (
-          <div className="px-4 pt-6">
-            <h3 className="text-xl font-black text-gray-900 mb-6 uppercase tracking-tight italic">Driver Inbox</h3>
+          <div className="px-4 pt-6 pb-32 bg-white/60 backdrop-blur-xl min-h-screen">
+            <h3 className="text-xl font-black text-gray-900 mb-6 uppercase tracking-tight italic">Inbox</h3>
             <div className="space-y-3">
               {notifications.map(n => (
-                <div key={n.id} className={`p-5 rounded-3xl border ${n.is_read ? 'bg-white border-gray-100' : 'bg-green-50 border-green-100'} transition-all`}>
+                <div key={n.id} className={`p-5 rounded-2xl border ${n.is_read ? 'bg-white border-gray-100' : 'bg-green-50 border-green-100'} transition-all`}>
                   <div className="flex justify-between items-start mb-2">
                     <h4 className="text-sm font-black text-gray-900 uppercase tracking-tight">{n.title}</h4>
                     <span className="text-[9px] font-bold text-gray-400">{new Date(n.created_at).toLocaleDateString()}</span>
@@ -558,55 +491,367 @@ const RiderPortal = () => {
     }
   };
 
+  const renderBottomSheet = () => {
+    if (activeTab !== 'jobs') return null;
+
+    return (
+      <div 
+        className={`fixed left-0 right-0 bottom-0 z-[70] transition-all duration-500 ease-in-out ${
+          sheetState === 'minimized' ? 'translate-y-[calc(100%-80px)]' : 
+          sheetState === 'medium' ? 'translate-y-[calc(100%-340px)]' : 'translate-y-0'
+        }`}
+      >
+        {/* Handle */}
+        <div 
+          onClick={() => setSheetState(sheetState === 'expanded' ? 'medium' : 'expanded')}
+          className="bg-white/70 backdrop-blur-2xl rounded-t-2xl shadow-[0_-10px_40px_rgba(0,0,0,0.1)] border-t border-white/40 p-4 cursor-pointer"
+        >
+          <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-4" />
+          
+          {activeJob ? (
+            <div className="flex items-center justify-between px-2">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 ${sosActive ? 'bg-red-100' : 'bg-[#00B14F]/10'} rounded-xl flex items-center justify-center`}>
+                  <Navigation className={`w-5 h-5 ${sosActive ? 'text-red-600' : 'text-[#00B14F]'} animate-pulse`} />
+                </div>
+                <div>
+                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Ongoing Trip • {activeJob.transport_status.replace(/_/g, ' ')}</p>
+                  <p className="text-sm font-bold text-gray-900 truncate max-w-[180px]">{activeJob.destination_location}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={(e) => { e.stopPropagation(); setIsChatOpen(true); }}
+                  className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center text-blue-500 relative"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border-2 border-white" />
+                </button>
+                {(activeJob.contact_number || activeJob.phone) && (
+                  <a href={`tel:${activeJob.contact_number || activeJob.phone}`} onClick={e => e.stopPropagation()} className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center text-[#00B14F]">
+                    <Phone className="w-4 h-4" />
+                  </a>
+                )}
+                <ChevronRight className={`w-5 h-5 text-gray-300 transition-transform ${sheetState === 'expanded' ? 'rotate-[-90deg]' : 'rotate-90'}`} />
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between px-2">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
+                  <Briefcase className="w-5 h-5 text-blue-500" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-gray-900">Available Jobs</h3>
+                  <p className="text-[10px] font-medium text-gray-400">{requests.length} jobs nearby</p>
+                </div>
+              </div>
+              <button onClick={(e) => { e.stopPropagation(); fetchRequests(); }} className="p-2 text-[#00B14F] hover:bg-green-50 rounded-full transition-colors">
+                <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Content Area */}
+        <div className="bg-white/70 backdrop-blur-2xl h-[85vh] overflow-y-auto no-scrollbar px-6 pb-32 border-t border-white/20">
+          {activeJob ? (
+            <div className="py-6 space-y-6">
+              <div className="flex gap-4">
+                <div className="flex flex-col items-center pt-1">
+                  <div className="w-4 h-4 rounded-full border-4 border-[#00B14F] bg-white z-10" />
+                  <div className="w-0.5 h-16 bg-gray-100 border-dashed border-l-2 my-1" />
+                  <div className="w-4 h-4 rounded-full border-4 border-red-500 bg-white z-10" />
+                </div>
+                <div className="flex flex-col gap-10 flex-1">
+                  <div>
+                    <p className="text-[10px] font-black text-gray-400 uppercase mb-1 tracking-widest">Pick up</p>
+                    <p className="text-sm font-bold text-gray-900 leading-tight">{activeJob.pickup_location}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black text-gray-400 uppercase mb-1 tracking-widest">Drop off</p>
+                    <p className="text-sm font-bold text-gray-900 leading-tight">{activeJob.destination_location}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white/40 backdrop-blur-md rounded-2xl p-6 flex items-center justify-between border border-white/40">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-sm text-gray-400 border border-gray-100"><User className="w-7 h-7" /></div>
+                  <div>
+                    <p className="text-base font-black text-gray-900 leading-none mb-2">{activeJob.full_name}</p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-black text-[#00B14F] uppercase tracking-widest">Standard Booking</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button 
+                    onClick={() => setIsChatOpen(true)}
+                    className="w-12 h-12 bg-blue-500 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-blue-100 active:scale-90 transition-all"
+                  >
+                    <MessageSquare className="w-5 h-5" />
+                  </button>
+                  {(activeJob.contact_number || activeJob.phone) && (
+                    <a 
+                      href={`tel:${activeJob.contact_number || activeJob.phone}`}
+                      className="w-12 h-12 bg-[#00B14F] text-white rounded-2xl flex items-center justify-center shadow-lg shadow-green-100 active:scale-90 transition-all"
+                    >
+                      <Phone className="w-5 h-5" />
+                    </a>
+                  )}
+                  <div className="text-right">
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Fare</p>
+                    <p className="text-xl font-black text-[#00B14F] tracking-tighter">PHP {activeJob.total_amount}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 pt-4">
+                {activeJob.transport_status === 'accepted' && <button onClick={() => updateStatus('on_way_to_pickup')} className="w-full bg-gray-900 text-white py-5 rounded-2xl font-black text-xs tracking-widest uppercase shadow-lg shadow-gray-200 active:scale-95 transition-all">Start Journey to Pickup</button>}
+                {activeJob.transport_status === 'on_way_to_pickup' && <button onClick={() => updateStatus('arrived_at_pickup')} className="w-full bg-[#00B14F] text-white py-5 rounded-2xl font-black text-xs tracking-widest uppercase shadow-lg shadow-green-100 active:scale-95 transition-all">I Have Arrived</button>}
+                {activeJob.transport_status === 'arrived_at_pickup' && <button onClick={() => updateStatus('picked_up')} className="w-full bg-[#00B14F] text-white py-5 rounded-2xl font-black text-xs tracking-widest uppercase shadow-lg shadow-green-100 active:scale-95 transition-all">Passenger is Onboard</button>}
+                {activeJob.transport_status === 'picked_up' && <button onClick={() => updateStatus('completed')} className="w-full bg-gray-900 text-white py-5 rounded-2xl font-black text-xs tracking-widest uppercase shadow-lg shadow-gray-100 active:scale-95 transition-all">Confirm Drop-off</button>}
+                {!sosActive && <button onClick={triggerSOS} className="w-full mt-2 flex items-center justify-center gap-2 text-red-600 py-4 rounded-2xl font-black text-[10px] tracking-widest uppercase border-2 border-red-50 active:bg-red-50 transition-all"><Shield className="w-4 h-4" /> Emergency SOS</button>}
+              </div>
+            </div>
+          ) : (
+            <div className="py-6">
+              {!isOnline ? (
+                <div className="text-center py-20 bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
+                  <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm"><Bell className="w-10 h-10 text-gray-200" /></div>
+                  <h4 className="text-lg font-bold text-gray-900 mb-2">You're currently offline</h4>
+                  <p className="text-sm text-gray-400 max-w-[220px] mx-auto">Go online using the toggle at the top to start receiving jobs.</p>
+                </div>
+              ) : requests.length === 0 ? (
+                <div className="text-center py-20">
+                  <div className="w-24 h-24 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-6 animate-pulse">
+                    <Navigation className="w-10 h-10 text-[#00B14F]" />
+                  </div>
+                  <h4 className="text-lg font-bold text-gray-900 mb-1">Searching for nearby jobs...</h4>
+                  <p className="text-xs text-gray-400">We'll notify you as soon as someone books a ride.</p>
+                </div>
+              ) : (
+                <div className="grid gap-4">
+                  {requests.map(req => (
+                    <div key={req.id} className="bg-white/40 backdrop-blur-md rounded-2xl p-6 shadow-sm border border-white/40 hover:bg-white/60 transition-all active:scale-[0.98]">
+                      <div className="flex justify-between items-start mb-6">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest">#{req.id}</span>
+                            <div className="bg-[#00B14F]/10 text-[#00B14F] text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter">Instant</div>
+                          </div>
+                          <h4 className="text-2xl font-black text-gray-900 tracking-tighter">PHP {parseFloat(req.total_amount).toFixed(2)}</h4>
+                        </div>
+                        <button onClick={() => acceptJob(req.id)} className="bg-gray-900 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-gray-200 hover:bg-[#00B14F] hover:shadow-green-100 transition-all">Accept</button>
+                      </div>
+                      <div className="flex items-center gap-3 text-gray-500 mb-4 bg-gray-50 p-3 rounded-2xl">
+                        <MapPin className="w-4 h-4 text-red-500" />
+                        <p className="text-xs font-bold truncate">{req.pickup_location}</p>
+                      </div>
+                      <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-gray-400 px-1">
+                        <div className="flex items-center gap-1.5"><Car className="w-3.5 h-3.5" /> <span>{req.service_type}</span></div>
+                        <div className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> <span>Now</span></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div className="min-h-screen bg-[#F7F9FA] pb-32">
-      <header className="bg-white px-4 pt-12 pb-6 sticky top-0 z-50 shadow-sm">
-        <div className="flex justify-between items-center mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-[#00B14F]/10 rounded-full flex items-center justify-center"><User className="text-[#00B14F] w-6 h-6" /></div>
-            <div>
-              <h2 className="text-lg font-bold text-gray-900 leading-tight">{rider.name}</h2>
-              <div className="flex items-center gap-1"><Shield className="w-3 h-3 text-[#00B14F]" fill="#00B14F" /><span className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Verified Driver</span></div>
+    <div className="min-h-screen relative overflow-hidden bg-white">
+      {/* Fixed Background Map */}
+      <div className="fixed inset-0 z-0">
+        <LiveTrackingMap 
+          riderPos={currentPos}
+          pickupPos={activeJob ? { lat: activeJob.pickup_lat || 11.05, lng: activeJob.pickup_lng || 124.00 } : null}
+          destPos={activeJob ? { lat: activeJob.dest_lat || 11.06, lng: activeJob.dest_lng || 124.01 } : null}
+          status={activeJob?.transport_status}
+        />
+        <div className="absolute inset-0 bg-white/10 pointer-events-none" />
+      </div>
+
+      <div className="relative z-10">
+        <header className="bg-white/80 backdrop-blur-lg px-4 pt-4 pb-4 sticky top-0 z-50 shadow-sm border-b border-white/20">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={() => setIsDrawerOpen(true)}
+                className="p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <Menu className="w-6 h-6" />
+              </button>
+              <div className="w-10 h-10 bg-[#00B14F]/10 rounded-full flex items-center justify-center"><User className="text-[#00B14F] w-5 h-5" /></div>
+              <div>
+                <h2 className="text-base font-bold text-gray-900 leading-tight">{rider.name}</h2>
+                <div className="flex items-center gap-1"><Shield className="w-3 h-3 text-[#00B14F]" fill="#00B14F" /><span className="text-[9px] font-bold text-gray-400 uppercase tracking-tight">Verified</span></div>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex flex-col items-end gap-1">
+                <span className={`text-[8px] font-black uppercase tracking-widest ${isOnline ? 'text-[#00B14F]' : 'text-gray-400'}`}>
+                  {isOnline ? 'Online' : 'Offline'}
+                </span>
+                <button 
+                  onClick={() => setIsOnline(!isOnline)}
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-all duration-300 focus:outline-none ${isOnline ? 'bg-[#00B14F]' : 'bg-gray-300'}`}
+                >
+                  <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-sm transition-transform duration-300 ${isOnline ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                </button>
+              </div>
             </div>
           </div>
-          <button onClick={() => { setRider(null); if (locationPulse) clearInterval(locationPulse); }} className="p-2 text-gray-400 hover:text-red-500 transition-colors"><LogOut className="w-6 h-6" /></button>
-        </div>
-        {!activeJob && (
-          <div className="bg-gray-50 p-1.5 rounded-2xl flex items-center gap-1 border border-gray-100">
-            <button onClick={() => setIsOnline(true)} className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all ${isOnline ? 'bg-[#00B14F] text-white shadow-md shadow-green-100' : 'text-gray-400'}`}>Online</button>
-            <button onClick={() => setIsOnline(false)} className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all ${!isOnline ? 'bg-gray-800 text-white shadow-md' : 'text-gray-400'}`}>Offline</button>
+        </header>
+
+        {renderTabContent()}
+        {renderBottomSheet()}
+
+        {/* Chat Window Overlay */}
+        {isChatOpen && activeJob && (
+          <div className="fixed inset-0 z-[120] bg-black/40 backdrop-blur-sm flex flex-col justify-end animate-in fade-in duration-300">
+            <div className="bg-white rounded-t-2xl h-[80vh] flex flex-col shadow-2xl animate-in slide-in-from-bottom-10 duration-500">
+              <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-2xl">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm text-blue-500"><User className="w-6 h-6" /></div>
+                  <div>
+                    <h4 className="text-base font-black text-gray-900 tracking-tight">{activeJob.full_name}</h4>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Passenger • Trip #{activeJob.id}</p>
+                  </div>
+                </div>
+                <button onClick={() => setIsChatOpen(false)} className="p-3 bg-white hover:bg-gray-100 rounded-full shadow-sm transition-all active:scale-90"><X className="w-6 h-6 text-gray-900" /></button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto no-scrollbar p-6 space-y-4 scrollbar-hide">
+                {chatMessages.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center opacity-20 grayscale">
+                    <MessageSquare className="w-16 h-16 mb-4" />
+                    <p className="text-xs font-black uppercase tracking-widest">No messages yet</p>
+                  </div>
+                ) : (
+                  chatMessages.map(msg => (
+                    <div key={msg.id} className={`flex ${msg.sender_type === 'rider' ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`max-w-[80%] p-4 rounded-2xl text-sm font-medium ${
+                        msg.sender_type === 'rider' 
+                          ? 'bg-blue-600 text-white rounded-tr-none shadow-lg shadow-blue-100' 
+                          : 'bg-gray-100 text-gray-900 rounded-tl-none border border-gray-200'
+                      }`}>
+                        {msg.message}
+                        <p className={`text-[8px] mt-1.5 font-bold uppercase opacity-60 ${msg.sender_type === 'rider' ? 'text-right' : 'text-left'}`}>
+                          {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <div className="p-6 border-t border-gray-100 bg-gray-50/50">
+                <form onSubmit={sendMessage} className="flex gap-3">
+                  <input 
+                    type="text" 
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    placeholder="Type a message..."
+                    className="flex-1 bg-white border border-gray-200 rounded-2xl px-6 py-4 text-sm font-medium focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all shadow-sm"
+                  />
+                  <button 
+                    type="submit"
+                    className="w-14 h-14 bg-blue-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-blue-200 active:scale-90 transition-all"
+                  >
+                    <Play className="w-5 h-5 fill-white" />
+                  </button>
+                </form>
+              </div>
+            </div>
           </div>
         )}
-      </header>
 
-      {!activeJob && activeTab === 'jobs' && (
-        <div className="px-4 -mt-3 mb-6 relative z-10">
-          <div className="bg-white rounded-2xl p-6 shadow-md border border-gray-100 grid grid-cols-2 gap-4">
-            <div className="border-r border-gray-100"><p className="text-[10px] font-bold text-gray-400 uppercase mb-1">Today's Earnings</p><div className="flex items-baseline gap-1"><span className="text-sm font-bold text-[#00B14F]">PHP</span><span className="text-2xl font-black text-gray-900 tracking-tight">1,240.00</span></div></div>
-            <div className="pl-2"><p className="text-[10px] font-bold text-gray-400 uppercase mb-1">Jobs Done</p><div className="flex items-center gap-2"><span className="text-2xl font-black text-gray-900">8</span><div className="bg-blue-50 text-blue-600 text-[10px] font-bold px-2 py-0.5 rounded-full">GOOD</div></div></div>
+        <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-white/20 px-6 py-1.5 flex justify-between items-center z-[80] shadow-[0_-10px_30px_rgba(0,0,0,0.05)]">
+          <button onClick={() => { setActiveTab('jobs'); setSheetState('medium'); }} className={`flex flex-col items-center gap-1 transition-all ${activeTab === 'jobs' ? 'opacity-100' : 'opacity-20 hover:opacity-50'}`}>
+            <div className={`p-2 rounded-xl ${activeTab === 'jobs' ? 'bg-[#00B14F]/10' : ''}`}><Navigation className={`w-6 h-6 ${activeTab === 'jobs' ? 'text-[#00B14F]' : 'text-gray-900'}`} /></div>
+            <span className={`text-[10px] font-black uppercase tracking-tighter ${activeTab === 'jobs' ? 'text-[#00B14F]' : 'text-gray-900'}`}>Jobs</span>
+          </button>
+          <button onClick={() => setActiveTab('wallet')} className={`flex flex-col items-center gap-1 transition-all ${activeTab === 'wallet' ? 'opacity-100' : 'opacity-20 hover:opacity-50'}`}>
+            <div className={`p-2 rounded-xl ${activeTab === 'wallet' ? 'bg-[#00B14F]/10' : ''}`}><PesoIcon className={`w-6 h-6 ${activeTab === 'wallet' ? 'text-[#00B14F]' : 'text-gray-900'}`} /></div>
+            <span className={`text-[10px] font-black uppercase tracking-tighter ${activeTab === 'wallet' ? 'text-[#00B14F]' : 'text-gray-900'}`}>Wallet</span>
+          </button>
+          <button onClick={() => setActiveTab('history')} className={`flex flex-col items-center gap-1 transition-all ${activeTab === 'history' ? 'opacity-100' : 'opacity-20 hover:opacity-50'}`}>
+            <div className={`p-2 rounded-xl ${activeTab === 'history' ? 'bg-[#00B14F]/10' : ''}`}><History className={`w-6 h-6 ${activeTab === 'history' ? 'text-[#00B14F]' : 'text-gray-900'}`} /></div>
+            <span className={`text-[10px] font-black uppercase tracking-tighter ${activeTab === 'history' ? 'text-[#00B14F]' : 'text-gray-900'}`}>History</span>
+          </button>
+          <button onClick={() => setActiveTab('inbox')} className={`flex flex-col items-center gap-1 transition-all ${activeTab === 'inbox' ? 'opacity-100' : 'opacity-20 hover:opacity-50'}`}>
+            <div className={`p-2 rounded-xl ${activeTab === 'inbox' ? 'bg-[#00B14F]/10' : ''}`}><Bell className={`w-6 h-6 ${activeTab === 'inbox' ? 'text-[#00B14F]' : 'text-gray-900'}`} /></div>
+            <span className={`text-[10px] font-black uppercase tracking-tighter ${activeTab === 'inbox' ? 'text-[#00B14F]' : 'text-gray-900'}`}>Inbox</span>
+          </button>
+        </div>
+
+        {/* Side Drawer Overlay */}
+        {isDrawerOpen && (
+          <div 
+            className="fixed inset-0 bg-black/50 z-[90] backdrop-blur-sm transition-opacity duration-300"
+            onClick={() => setIsDrawerOpen(false)}
+          />
+        )}
+
+        {/* Side Drawer Content */}
+        <div className={`fixed top-0 left-0 bottom-0 w-[280px] bg-white z-[100] shadow-2xl transform transition-transform duration-300 ease-in-out ${isDrawerOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+          <div className="p-6 bg-[#00B14F] text-white">
+            <div className="flex justify-between items-start mb-6">
+              <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-lg">
+                <UserCircle className="w-10 h-10 text-[#00B14F]" />
+              </div>
+              <button onClick={() => setIsDrawerOpen(false)} className="p-1 hover:bg-white/20 rounded-full transition-colors">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <h3 className="text-xl font-black">{rider.name}</h3>
+            <p className="text-white/80 text-xs font-bold uppercase tracking-widest mt-1">Diamond Member</p>
+          </div>
+
+          <div className="py-4 overflow-y-auto no-scrollbar max-h-[calc(100vh-160px)] scrollbar-hide">
+            <div className="px-6 py-2">
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Menu</p>
+              <div className="space-y-0.5">
+                {[
+                  { icon: Globe, label: 'City' },
+                  { icon: History, label: 'Request History' },
+                  { icon: MapPin, label: 'My Addresses' },
+                  { icon: Bell, label: 'Notifications' },
+                  { icon: Shield, label: 'Safety' },
+                  { icon: Settings, label: 'Settings' },
+                  { icon: HelpCircle, label: 'Help' },
+                  { icon: LifeBuoy, label: 'Support' }
+                ].map((item, idx) => (
+                  <button 
+                    key={idx}
+                    className="w-full flex items-center gap-3 py-2 px-2 hover:bg-gray-50 rounded-xl transition-all group"
+                    onClick={() => setIsDrawerOpen(false)}
+                  >
+                    <div className="w-10 h-10 bg-gray-50 group-hover:bg-[#00B14F]/10 rounded-full flex items-center justify-center transition-colors">
+                      <item.icon className="w-5 h-5 text-gray-400 group-hover:text-[#00B14F]" />
+                    </div>
+                    <span className="text-sm font-bold text-gray-700 group-hover:text-gray-900">{item.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="absolute bottom-0 left-0 right-0 p-6 border-t border-gray-100">
+            <button 
+              onClick={() => { setRider(null); if (locationPulse) clearInterval(locationPulse); }}
+              className="w-full flex items-center justify-center gap-2 py-4 bg-red-50 text-red-600 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-red-100 transition-colors"
+            >
+              <LogOut className="w-4 h-4" /> Sign Out
+            </button>
           </div>
         </div>
-      )}
-
-      {renderTabContent()}
-
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-6 py-4 flex justify-between items-center z-50 rounded-t-3xl shadow-[0_-10px_30px_rgba(0,0,0,0.03)]">
-        <button onClick={() => setActiveTab('jobs')} className={`flex flex-col items-center gap-1 transition-all ${activeTab === 'jobs' ? 'opacity-100' : 'opacity-20 hover:opacity-50'}`}>
-          <div className={`p-2 rounded-xl ${activeTab === 'jobs' ? 'bg-[#00B14F]/10' : ''}`}><Navigation className={`w-6 h-6 ${activeTab === 'jobs' ? 'text-[#00B14F]' : 'text-gray-900'}`} /></div>
-          <span className={`text-[10px] font-black uppercase tracking-tighter ${activeTab === 'jobs' ? 'text-[#00B14F]' : 'text-gray-900'}`}>Jobs</span>
-        </button>
-        <button onClick={() => setActiveTab('wallet')} className={`flex flex-col items-center gap-1 transition-all ${activeTab === 'wallet' ? 'opacity-100' : 'opacity-20 hover:opacity-50'}`}>
-          <div className={`p-2 rounded-xl ${activeTab === 'wallet' ? 'bg-[#00B14F]/10' : ''}`}><PesoIcon className={`w-6 h-6 ${activeTab === 'wallet' ? 'text-[#00B14F]' : 'text-gray-900'}`} /></div>
-          <span className={`text-[10px] font-black uppercase tracking-tighter ${activeTab === 'wallet' ? 'text-[#00B14F]' : 'text-gray-900'}`}>Wallet</span>
-        </button>
-        <button onClick={() => setActiveTab('history')} className={`flex flex-col items-center gap-1 transition-all ${activeTab === 'history' ? 'opacity-100' : 'opacity-20 hover:opacity-50'}`}>
-          <div className={`p-2 rounded-xl ${activeTab === 'history' ? 'bg-[#00B14F]/10' : ''}`}><Clock className={`w-6 h-6 ${activeTab === 'history' ? 'text-[#00B14F]' : 'text-gray-900'}`} /></div>
-          <span className={`text-[10px] font-black uppercase tracking-tighter ${activeTab === 'history' ? 'text-[#00B14F]' : 'text-gray-900'}`}>History</span>
-        </button>
-        <button onClick={() => setActiveTab('inbox')} className={`flex flex-col items-center gap-1 transition-all ${activeTab === 'inbox' ? 'opacity-100' : 'opacity-20 hover:opacity-50'}`}>
-          <div className={`p-2 rounded-xl ${activeTab === 'inbox' ? 'bg-[#00B14F]/10' : ''}`}><Bell className={`w-6 h-6 ${activeTab === 'inbox' ? 'text-[#00B14F]' : 'text-gray-900'}`} /></div>
-          <span className={`text-[10px] font-black uppercase tracking-tighter ${activeTab === 'inbox' ? 'text-[#00B14F]' : 'text-gray-900'}`}>Inbox</span>
-        </button>
       </div>
     </div>
   );

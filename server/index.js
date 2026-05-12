@@ -3198,6 +3198,40 @@ app.post('/api/rider/sos', async (req, res) => {
 });
 
 // Rider Wallet & Earnings
+app.get('/api/rider/messages/:tripId', async (req, res) => {
+  try {
+    const { tripId } = req.params;
+    const { rows } = await pool.query(
+      'SELECT * FROM trip_messages WHERE trip_id = $1 ORDER BY created_at ASC',
+      [tripId]
+    );
+    res.json({ success: true, messages: rows });
+  } catch (error) {
+    res.status(500).json({ success: false });
+  }
+});
+
+app.post('/api/rider/messages', async (req, res) => {
+  try {
+    const { tripId, senderType, senderId, message } = req.body;
+    const { rows } = await pool.query(
+      'INSERT INTO trip_messages (trip_id, sender_type, sender_id, message) VALUES ($1, $2, $3, $4) RETURNING *',
+      [tripId, senderType, senderId, message]
+    );
+
+    // Broadcast message via WebSocket
+    wsBroadcast({
+      type: 'chat_message',
+      message: rows[0]
+    });
+
+    res.json({ success: true, message: rows[0] });
+  } catch (error) {
+    res.status(500).json({ success: false });
+  }
+});
+
+// Rider Wallet & Earnings
 app.get('/api/rider/wallet/:riderId', async (req, res) => {
   try {
     const { riderId } = req.params;
@@ -3686,7 +3720,7 @@ const initClinicSettings = async () => {
   } catch (e) {}
 
   const defaults = [
-    ['clinic_name',                'HealthCare Clinic'],
+    ['clinic_name',                'King\'s Tourist and Transport Services'],
     ['clinic_address',             'Cantecson, Gairan, Bogo City, Cebu'],
     ['clinic_phone',               '+63 912 345 6789'],
     ['sms_confirmation',           'Hi {name}, your appointment at {clinic_name} is confirmed for {date} at {time}. Ref#{ref}'],
@@ -3713,6 +3747,9 @@ const initClinicSettings = async () => {
       [key, value]
     );
   }
+
+  // One-time migration: Replace "HealthCare Clinic" if it was seeded previously
+  await pool.query(`UPDATE clinic_settings SET value = 'King''s Tourist and Transport Services' WHERE key = 'clinic_name' AND value = 'HealthCare Clinic'`);
 };
 
 /* ==========================================================================
@@ -4154,6 +4191,20 @@ initClinicSettings()
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+
+    // Trip Chat Messages table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS trip_messages (
+        id SERIAL PRIMARY KEY,
+        trip_id INTEGER,
+        sender_type VARCHAR(20), -- 'rider' or 'passenger'
+        sender_id INTEGER,
+        message TEXT,
+        is_read BOOLEAN DEFAULT false,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     console.log('Clinic settings loaded.');
     server.listen(PORT, () => {
       console.log(`Server running on http://localhost:${PORT}`);

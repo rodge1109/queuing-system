@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   ShoppingCart, Search, Settings, Check, ChevronRight, ChevronLeft, 
   MapPin, Clock, Phone, Mail, Star, Store, CreditCard, Lock, ArrowRight, User, Calendar, Users
@@ -40,6 +40,17 @@ function AppointmentForm() {
   const [isLoadingStaff, setIsLoadingStaff] = useState(false);
   const [activeCategory, setActiveCategory] = useState('All');
   const [isLoadingServices, setIsLoadingServices] = useState(false);
+  const formTopRef = useRef(null);
+
+  // Auto-scroll to top of form when step changes
+  useEffect(() => {
+    if (formTopRef.current) {
+      // Small delay to ensure DOM has updated
+      setTimeout(() => {
+        formTopRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 50);
+    }
+  }, [step]);
 
   useEffect(() => {
     const fetchStaffAndServices = async () => {
@@ -328,7 +339,7 @@ function AppointmentForm() {
   }
 
   return (
-    <div className="bg-white border border-[#e0e0e0] shadow-sm overflow-hidden flex flex-col min-h-[700px]">
+    <div ref={formTopRef} className="bg-white border border-[#e0e0e0] shadow-sm overflow-hidden flex flex-col min-h-[700px] scroll-mt-24">
       {/* Horizontal Stepper Top */}
       <div className="w-full bg-[#f4f4f4] border-b border-[#e0e0e0] p-8 md:p-12">
         <div className="max-w-4xl mx-auto relative">

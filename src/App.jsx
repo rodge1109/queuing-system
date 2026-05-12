@@ -528,7 +528,7 @@ export default function RestaurantApp() {
           border-color: #047857 !important;
         }
       `}</style>
-      <div className={`min-h-screen bg-white ${['admin', 'rider'].includes(currentPage) ? 'p-0 flex flex-col' : 'pb-16 md:pb-0 pt-[100px]'}`}>
+      <div className={`min-h-screen ${currentPage === 'rider' ? 'bg-transparent' : 'bg-white'} ${['admin', 'rider'].includes(currentPage) ? 'p-0 flex flex-col' : 'pb-16 md:pb-0 pt-[100px]'}`}>
         {!['admin', 'rider'].includes(currentPage) && (
           <Header
             currentPage={currentPage}
@@ -2530,7 +2530,7 @@ function AdminDashboard({ setCurrentPage }) {
             <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 print:bg-white print:p-0">
               <div className="bg-white rounded-0 p-8 w-full max-w-md print:rounded-none print:shadow-none">
                 <div className="text-center mb-6">
-                  <h2 className="text-2xl font-bold text-blue-900">HealthCare Clinic</h2>
+                  <h2 className="text-2xl font-bold text-[#10b981]">King's Tourist and Transport Services</h2>
                   <p className="text-stone-600 text-sm">Cantecson, Gairan, Bogo City, Cebu</p>
                 </div>
                 <div className="border-t border-b border-stone-200 py-4 mb-4">
