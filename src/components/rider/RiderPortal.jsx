@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Car, ChevronLeft, MapPin, Navigation, Clock, DollarSign, User, Shield, LogOut, RefreshCw, Bell, ChevronRight, Play, CheckCircle2, UserCircle, Briefcase, Menu, X, History, Home, Settings, HelpCircle, LifeBuoy, Percent, Globe, MessageSquare, Phone, PlusCircle } from 'lucide-react';
 import LiveTrackingMap from '../maps/LiveTrackingMap';
 
@@ -125,10 +125,19 @@ const RiderPortal = () => {
   useEffect(() => {
     let interval;
     if (rider && isOnline && activeTab === 'jobs' && !activeJob) {
-      interval = setInterval(fetchRequests, 30000);
+      interval = setInterval(fetchRequests, 4000);
     }
     return () => { if (interval) clearInterval(interval); };
   }, [rider, isOnline, activeTab, activeJob]);
+
+  const prevReqsLength = useRef(0);
+  useEffect(() => {
+    if (requests.length > prevReqsLength.current && !activeJob) {
+      setActiveTab('jobs');
+      setSheetState('expanded');
+    }
+    prevReqsLength.current = requests.length;
+  }, [requests.length, activeJob]);
 
   const todayEarnings = walletData.earnings
     .filter(e => new Date(e.date).toDateString() === new Date().toDateString() && e.type !== 'topup')
@@ -238,8 +247,13 @@ const RiderPortal = () => {
         setActiveJob({ ...job, transport_status: 'accepted' });
         setSheetState('expanded');
         startTracking();
+      } else {
+        alert(data.message || 'Could not accept job. It may have been taken already.');
+        fetchRequests(); // Refresh the list
       }
-    } catch (e) { }
+    } catch (e) {
+      alert('Connection error. Please try again.');
+    }
   };
 
   const triggerSOS = async () => {
@@ -498,7 +512,7 @@ const RiderPortal = () => {
       <div 
         className={`fixed left-0 right-0 bottom-0 z-[70] transition-all duration-500 ease-in-out ${
           sheetState === 'minimized' ? 'translate-y-[calc(100%-80px)]' : 
-          sheetState === 'medium' ? 'translate-y-[calc(100%-340px)]' : 'translate-y-0'
+          sheetState === 'medium' ? 'translate-y-[calc(100%-290px)]' : 'translate-y-0'
         }`}
       >
         {/* Handle */}
@@ -554,7 +568,7 @@ const RiderPortal = () => {
         </div>
 
         {/* Content Area */}
-        <div className="bg-white/70 backdrop-blur-2xl h-[85vh] overflow-y-auto no-scrollbar px-6 pb-32 border-t border-white/20">
+        <div className="bg-white/70 backdrop-blur-2xl h-[60vh] overflow-y-auto no-scrollbar px-6 pb-32 border-t border-white/20">
           {activeJob ? (
             <div className="py-6 space-y-6">
               <div className="flex gap-4">
@@ -773,7 +787,7 @@ const RiderPortal = () => {
         )}
 
         <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-white/20 px-6 py-1.5 flex justify-between items-center z-[80] shadow-[0_-10px_30px_rgba(0,0,0,0.05)]">
-          <button onClick={() => { setActiveTab('jobs'); setSheetState('medium'); }} className={`flex flex-col items-center gap-1 transition-all ${activeTab === 'jobs' ? 'opacity-100' : 'opacity-20 hover:opacity-50'}`}>
+          <button onClick={() => { setActiveTab('jobs'); setSheetState('expanded'); }} className={`flex flex-col items-center gap-1 transition-all ${activeTab === 'jobs' ? 'opacity-100' : 'opacity-20 hover:opacity-50'}`}>
             <div className={`p-2 rounded-xl ${activeTab === 'jobs' ? 'bg-[#00B14F]/10' : ''}`}><Navigation className={`w-6 h-6 ${activeTab === 'jobs' ? 'text-[#00B14F]' : 'text-gray-900'}`} /></div>
             <span className={`text-[10px] font-black uppercase tracking-tighter ${activeTab === 'jobs' ? 'text-[#00B14F]' : 'text-gray-900'}`}>Jobs</span>
           </button>

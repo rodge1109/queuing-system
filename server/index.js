@@ -779,10 +779,16 @@ app.get('/api/appointments/search', async (req, res) => {
 app.get('/api/appointments/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await pool.query(
-      'SELECT * FROM appointments WHERE id = $1',
-      [id]
-    );
+    const result = await pool.query(`
+      SELECT a.*, 
+             r.current_lat as rider_lat, 
+             r.current_lng as rider_lng, 
+             r.name as rider_name, 
+             r.plate_number
+      FROM appointments a
+      LEFT JOIN riders r ON a.rider_id = r.id
+      WHERE a.id = $1
+    `, [id]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({
@@ -3095,13 +3101,24 @@ app.get('/api/rider/requests', async (req, res) => {
 app.post('/api/rider/accept', async (req, res) => {
   try {
     const { appointmentId, riderId } = req.body;
-    await pool.query(
-      "UPDATE appointments SET rider_id = $1, transport_status = 'accepted', status = 'confirmed' WHERE id = $2",
+    
+    // Atomically check if unassigned and update in one go to prevent race conditions
+    const result = await pool.query(
+      "UPDATE appointments SET rider_id = $1, transport_status = 'accepted', status = 'confirmed' WHERE id = $2 AND (rider_id IS NULL OR transport_status = 'unassigned') RETURNING *",
       [riderId, appointmentId]
     );
-    res.json({ success: true, message: 'Request accepted' });
+
+    if (result.rowCount === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Too late! This job has already been accepted by another driver.' 
+      });
+    }
+
+    res.json({ success: true, message: 'Request accepted', job: result.rows[0] });
   } catch (error) {
-    res.status(500).json({ success: false });
+    console.error('Accept job error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 

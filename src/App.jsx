@@ -23,6 +23,7 @@ import QueueTellerPage from './components/queue/QueueTellerPage';
 import SurveyPage from './components/queue/SurveyPage';
 import RidersManagement from './components/admin/RidersManagement';
 import RideScheduling from './components/admin/RideScheduling';
+import PassengerBookingMobile from './components/ride/PassengerBookingMobile';
 
 
 
@@ -278,6 +279,7 @@ export default function RestaurantApp() {
       case 'queue-display': return <QueueDisplayPage />;
       case 'queue-teller': return <QueueTellerPage setCurrentPage={setCurrentPage} />;
       case 'survey': return <SurveyPage setCurrentPage={setCurrentPage} />;
+      case 'booking-mobile': return <PassengerBookingMobile setCurrentPage={setCurrentPage} />;
       default: return <HomePage setCurrentPage={setCurrentPage} />;
     }
   };
@@ -528,8 +530,8 @@ export default function RestaurantApp() {
           border-color: #047857 !important;
         }
       `}</style>
-      <div className={`min-h-screen ${currentPage === 'rider' ? 'bg-transparent' : 'bg-white'} ${['admin', 'rider'].includes(currentPage) ? 'p-0 flex flex-col' : 'pb-16 md:pb-0 pt-[100px]'}`}>
-        {!['admin', 'rider'].includes(currentPage) && (
+      <div className={`min-h-screen ${currentPage === 'rider' ? 'bg-transparent' : 'bg-white'} ${['admin', 'rider', 'booking-mobile'].includes(currentPage) ? 'p-0 flex flex-col' : 'pb-16 md:pb-0 pt-[100px]'}`}>
+        {!['admin', 'rider', 'booking-mobile'].includes(currentPage) && (
           <Header
             currentPage={currentPage}
             setCurrentPage={setCurrentPage}
@@ -555,7 +557,7 @@ export default function RestaurantApp() {
         )}
 
         {/* Mobile Bottom Navigation - Hide on Admin and Rider */}
-        {!['admin', 'rider'].includes(currentPage) && (
+        {!['admin', 'rider', 'booking-mobile'].includes(currentPage) && (
           <nav className="fixed bottom-0 left-0 right-0 bg-[#F5F3F5] border-t border-[#F5F3F5] md:hidden z-50 pb-safe">
             <div className="flex justify-around items-center py-2">
               <div className="relative">
@@ -625,15 +627,22 @@ export default function RestaurantApp() {
             </div>
           </nav>
         )}
-        {/* Rider Portal Access Link */}
-        <div className="bg-[#1c1917] border-t border-[#333] p-4 text-center mt-auto">
-          <button
-            onClick={() => setCurrentPage('rider')}
-            className="text-[10px] font-black text-[#666] tracking-widest uppercase hover:text-[#E4FE7B] transition-colors"
-          >
-            Switch to Rider Mode
-          </button>
-        </div>
+        {!['admin', 'rider', 'booking-mobile'].includes(currentPage) && (
+          <div className="bg-[#1c1917] border-t border-[#333] p-4 text-center mt-auto flex flex-col gap-2">
+            <button
+              onClick={() => setCurrentPage('rider')}
+              className="text-[10px] font-black text-[#666] tracking-widest uppercase hover:text-[#E4FE7B] transition-colors"
+            >
+              Switch to Rider Mode
+            </button>
+            <button
+              onClick={() => setCurrentPage('booking-mobile')}
+              className="text-[10px] font-black text-[#888] tracking-widest uppercase hover:text-blue-400 transition-colors"
+            >
+              Switch to Mobile Booking
+            </button>
+          </div>
+        )}
       </div>
     </CartContext.Provider>
   );

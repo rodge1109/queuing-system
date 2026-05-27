@@ -22,6 +22,11 @@ const PassengerTracking = ({ appointmentId, token, onClose }) => {
   const mapRef = useRef(null);
   const leafletMap = useRef(null);
   const ws = useRef(null);
+  const tripRef = useRef(null);
+  const [isMinimized, setIsMinimized] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [ratingSubmitted, setRatingSubmitted] = useState(false);
 
   useEffect(() => {
     const fetchTrip = async () => {
@@ -30,6 +35,10 @@ const PassengerTracking = ({ appointmentId, token, onClose }) => {
         const data = await res.json();
         if (data.success) {
           setTrip(data.appointment);
+          tripRef.current = data.appointment;
+          if (data.appointment.rider_lat && data.appointment.rider_lng) {
+            setDriverPos({ lat: parseFloat(data.appointment.rider_lat), lng: parseFloat(data.appointment.rider_lng) });
+          }
         }
       } catch (err) {
         console.error('Failed to fetch trip:', err);
@@ -51,7 +60,7 @@ const PassengerTracking = ({ appointmentId, token, onClose }) => {
     ws.current.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        if (data.type === 'location_update' && data.appointmentId === parseInt(appointmentId)) {
+        if (data.type === 'location_update' && tripRef.current && data.riderId === tripRef.current.rider_id) {
           setDriverPos({ lat: data.lat, lng: data.lng });
         }
       } catch (err) {}
@@ -152,40 +161,138 @@ const PassengerTracking = ({ appointmentId, token, onClose }) => {
   const isCompleted = trip.transport_status === 'completed';
 
   return (
-    <div className="max-w-md mx-auto bg-white min-h-screen font-['DM_Sans',_sans-serif] flex flex-col">
+    <div className="max-w-md mx-auto min-h-screen font-['DM_Sans',_sans-serif] flex flex-col relative bg-transparent overflow-hidden pointer-events-none">
+      {/* Map Area */}
+      <div className="fixed inset-0 z-0">
+        <div ref={mapRef} className="absolute inset-0" />
+      </div>
+
       {/* Status Header */}
-      <div className="p-4 bg-white border-b border-gray-50 sticky top-0 z-20">
+      <div className="p-4 bg-white/90 backdrop-blur-md shadow-sm relative z-20 pointer-events-auto border-b border-gray-100">
           <div className="flex items-center gap-4">
-            <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-full transition-colors">
-              <X size={18} className="text-gray-400" />
+            <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-full transition-colors bg-white">
+              <X size={18} className="text-gray-600" />
             </button>
             <div className="flex items-center gap-2">
               <div className={`w-2 h-2 rounded-full ${trip.transport_status === 'sos' ? 'bg-red-500 animate-pulse' : 'bg-[#00B14F]'}`}></div>
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+              <span className="text-[10px] font-bold text-gray-900 uppercase tracking-widest">
                 {trip.transport_status.replace(/_/g, ' ')}
               </span>
             </div>
           </div>
-          <span className="text-[10px] font-bold text-gray-400">ID: #{trip.id}</span>
       </div>
 
-      {/* Map Area */}
-      <div className="h-[300px] bg-gray-100 relative">
-        <div ref={mapRef} className="absolute inset-0 z-0" />
-        
-        <div className="absolute bottom-4 left-4 right-4 z-10">
-          <div className="bg-white/90 backdrop-blur-sm p-3 rounded-xl border border-white shadow-lg flex items-center gap-3">
-            <Shield size={16} className="text-[#00B14F]" />
-            <span className="text-[10px] font-bold text-gray-800 uppercase tracking-tight">Your trip is protected by King's Safety Insurance</span>
-          </div>
+      <div className="relative z-10 px-4 pt-4 pointer-events-none mt-4">
+        <div className="bg-white/90 backdrop-blur-sm p-3 rounded-xl border border-white shadow-lg flex items-center gap-3">
+          <Shield size={16} className="text-[#00B14F]" />
+          <span className="text-[10px] font-bold text-gray-800 uppercase tracking-tight">Your trip is protected by King's Safety Insurance</span>
         </div>
       </div>
 
       {/* Bottom Content Area */}
-      <div className="flex-1 p-4 -mt-4 bg-white rounded-t-3xl border-t border-gray-100 shadow-2xl z-10">
-        <div className="w-8 h-1 bg-gray-100 rounded-full mx-auto mb-6"></div>
+      <div 
+        className="fixed bottom-0 left-0 right-0 w-full z-30 bg-white/95 backdrop-blur-2xl rounded-t-[32px] shadow-[0_-20px_50px_rgba(0,0,0,0.15)] border-t border-white/40 pointer-events-auto flex flex-col"
+      >
+        {/* Drag Handle Area */}
+        <div 
+          className="pt-6 pb-4 px-6 flex justify-center cursor-pointer"
+          onClick={() => setIsMinimized(!isMinimized)}
+        >
+          <div className="w-16 h-1.5 bg-gray-300 rounded-full"></div>
+        </div>
 
-        {!isMatched ? (
+        {/* Content Wrapper */}
+        <div className={`transition-all duration-500 ease-in-out overflow-hidden ${isMinimized ? 'max-h-0 opacity-0' : 'max-h-[800px] opacity-100'}`}>
+          <div className="px-6 pb-6">
+
+        {isCompleted ? (
+          /* Completed Screen */
+          <div className="text-center py-6">
+            <div className="w-16 h-16 bg-[#E1F5EE] text-[#00B14F] rounded-full flex items-center justify-center mx-auto mb-4">
+              <Check size={32} />
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 mb-1">Trip Completed</h2>
+            <p className="text-gray-500 text-sm mb-6">You've arrived at your destination.</p>
+            
+            <div className="bg-gray-50 p-4 rounded-xl mb-6 text-left">
+              <div className="flex items-center gap-3 mb-4 pb-4 border-b border-gray-200">
+                <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center border border-gray-100 shadow-sm">
+                  <User size={20} className="text-gray-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-gray-900">{trip.rider_name || 'Your Driver'}</p>
+                  <p className="text-[10px] text-gray-400 font-medium">{trip.plate_number || 'ABC 1234'}</p>
+                </div>
+              </div>
+              <div className="flex justify-between text-sm mb-2">
+                <span className="text-gray-500">Total Fare</span>
+                <span className="font-bold text-gray-900">₱{trip.total_amount}</span>
+              </div>
+              <div className="flex justify-between text-xs text-gray-400">
+                <span>Paid via Cash</span>
+                <span>{new Date(trip.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+              </div>
+            </div>
+
+            {!ratingSubmitted ? (
+              <div className="mb-6">
+                <p className="text-sm font-bold text-gray-900 mb-3">Rate your experience</p>
+                <div className="flex justify-center gap-2 mb-4">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      onClick={() => setRating(star)}
+                      onMouseEnter={() => setHoverRating(star)}
+                      onMouseLeave={() => setHoverRating(0)}
+                      className="p-1 transition-transform hover:scale-110 active:scale-95"
+                    >
+                      <Star 
+                        size={32} 
+                        className={`transition-colors duration-200 ${
+                          (hoverRating || rating) >= star 
+                            ? 'text-amber-400 fill-amber-400' 
+                            : 'text-gray-200 fill-transparent'
+                        }`} 
+                      />
+                    </button>
+                  ))}
+                </div>
+                {rating > 0 && (
+                  <button 
+                    onClick={() => {
+                      setRatingSubmitted(true);
+                      // In a real app, you would send the rating to the backend here
+                    }}
+                    className="w-full py-4 bg-[#00B14F] text-white rounded-2xl font-bold shadow-lg shadow-green-100 active:scale-95 transition-all animate-in fade-in duration-300"
+                  >
+                    Submit Rating
+                  </button>
+                )}
+                {rating === 0 && (
+                  <button 
+                    onClick={onClose}
+                    className="w-full py-4 bg-gray-100 text-gray-500 rounded-2xl font-bold hover:bg-gray-200 active:scale-95 transition-all"
+                  >
+                    Skip
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="mb-6 animate-in zoom-in duration-300">
+                <div className="bg-amber-50 p-4 rounded-xl text-amber-600 mb-4">
+                  <Star size={24} className="mx-auto mb-2 fill-amber-500 text-amber-500" />
+                  <p className="text-sm font-bold">Thanks for your feedback!</p>
+                </div>
+                <button 
+                  onClick={onClose}
+                  className="w-full py-4 bg-gray-900 text-white rounded-2xl font-bold shadow-lg active:scale-95 transition-all"
+                >
+                  Back to Home
+                </button>
+              </div>
+            )}
+          </div>
+        ) : !isMatched ? (
           /* Searching Screen */
           <div className="text-center py-8">
             <div className="relative w-20 h-20 mx-auto mb-6">
@@ -198,32 +305,8 @@ const PassengerTracking = ({ appointmentId, token, onClose }) => {
             <h2 className="text-xl font-bold text-gray-900 mb-2">Finding your driver</h2>
             <p className="text-gray-500 text-sm">We're connecting you with the nearest available rider.</p>
           </div>
-        ) : isCompleted ? (
-          /* Completed Screen */
-          <div className="text-center py-8">
-            <div className="w-16 h-16 bg-[#E1F5EE] text-[#00B14F] rounded-full flex items-center justify-center mx-auto mb-4">
-              <Check size={32} />
-            </div>
-            <h2 className="text-xl font-bold text-gray-900 mb-1">Trip Completed</h2>
-            <p className="text-gray-500 text-sm mb-6">You've arrived at your destination.</p>
-            <div className="bg-gray-50 p-4 rounded-xl mb-6">
-              <div className="flex justify-between text-sm mb-2">
-                <span className="text-gray-500">Total Fare</span>
-                <span className="font-bold text-gray-900">₱{trip.total_amount}</span>
-              </div>
-              <div className="flex justify-between text-xs text-gray-400">
-                <span>Paid via Cash</span>
-                <span>{new Date(trip.updated_at).toLocaleTimeString()}</span>
-              </div>
-            </div>
-            <button 
-              onClick={onClose}
-              className="w-full py-4 bg-[#00B14F] text-white rounded-2xl font-bold hover:bg-[#009241] transition-all"
-            >
-              Back to Home
-            </button>
-          </div>
         ) : (
+
           /* Active Trip Screen (Matched or On Trip) */
           <>
             <div className="bg-[#E1F5EE] rounded-2xl p-4 flex justify-between items-center mb-6">
@@ -286,6 +369,8 @@ const PassengerTracking = ({ appointmentId, token, onClose }) => {
             </div>
           </>
         )}
+          </div>
+        </div>
       </div>
 
       <style>{`
