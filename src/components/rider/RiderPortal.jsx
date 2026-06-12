@@ -96,20 +96,37 @@ const RiderPortal = () => {
 
   const startTracking = () => {
     if (locationPulse) clearInterval(locationPulse);
+    let mockOffset = 0; // For demo: simulate driving movement
     const interval = setInterval(() => {
       if (!rider) return;
-      navigator.geolocation.getCurrentPosition((pos) => {
-        fetch('/api/rider/update-location', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            riderId: rider.id,
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude
-          })
-        });
-      }, null, { enableHighAccuracy: true });
-    }, 5000);
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          mockOffset += 0.00015; // move approx 15 meters
+          fetch('/api/rider/update-location', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              riderId: rider.id,
+              lat: pos.coords.latitude + mockOffset,
+              lng: pos.coords.longitude + mockOffset
+            })
+          });
+        },
+        (err) => {
+          mockOffset += 0.00015;
+          fetch('/api/rider/update-location', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              riderId: rider.id,
+              lat: 11.0500 + mockOffset,
+              lng: 124.0000 + mockOffset
+            })
+          });
+        },
+        { enableHighAccuracy: true }
+      );
+    }, 4000); // update every 4 seconds
     setLocationPulse(interval);
   };
 

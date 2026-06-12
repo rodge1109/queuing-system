@@ -343,6 +343,25 @@ function AddRiderForm({ rider, onCancel, onSave }) {
     status: "offline"
   });
   const [isSaving, setIsSaving] = useState(false);
+  const [services, setServices] = useState([]);
+
+  useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        const res = await fetch('/api/booking-services');
+        const data = await res.json();
+        if (data.success) {
+          const transport = data.services.filter(s => 
+            (s.category || '').trim().toUpperCase() === 'TRANSPORT'
+          );
+          setServices(transport);
+        }
+      } catch (err) {
+        console.error('Failed to fetch services:', err);
+      }
+    };
+    fetchServices();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -458,10 +477,18 @@ function AddRiderForm({ rider, onCancel, onSave }) {
                 value={form.vehicle_type} onChange={e => setForm({...form, vehicle_type: e.target.value})}
               >
                 <option value="">Select Type</option>
-                <option value="Motorcycle">Motorcycle</option>
-                <option value="Car">Car (Sedan/SUV)</option>
-                <option value="Luxury Van">Luxury White Van</option>
-                <option value="Truck">Logistics Truck</option>
+                {services.length > 0 ? (
+                  services.map(s => (
+                    <option key={s.id} value={s.name}>{s.name}</option>
+                  ))
+                ) : (
+                  <>
+                    <option value="Motorcycle">Motorcycle</option>
+                    <option value="Car">Car (Sedan/SUV)</option>
+                    <option value="Luxury Van">Luxury White Van</option>
+                    <option value="Truck">Logistics Truck</option>
+                  </>
+                )}
               </select>
             </div>
             <div>

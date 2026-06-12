@@ -1,7 +1,7 @@
 
 import React from 'react';
 
-const TransportMapBase = ({ onLocationSelect, mapAction }) => {
+const TransportMapBase = ({ onLocationSelect, mapAction, className }) => {
   const mapRef = React.useRef(null);
   const leafletMap = React.useRef(null);
   const pickupMarker = React.useRef(null);
@@ -33,7 +33,7 @@ const TransportMapBase = ({ onLocationSelect, mapAction }) => {
 
   const distanceMarker = React.useRef(null);
 
-  const updateRoute = async () => {
+  const updateRoute = async (preventPan = false) => {
     if (!pickupMarker.current || !destMarker.current) return;
     const p1 = pickupMarker.current.getLatLng();
     const p2 = destMarker.current.getLatLng();
@@ -77,7 +77,9 @@ const TransportMapBase = ({ onLocationSelect, mapAction }) => {
           }).addTo(leafletMap.current);
         }
 
-        leafletMap.current.fitBounds(L.latLngBounds(p1, p2), { padding: [80, 80] });
+        if (!preventPan) {
+          leafletMap.current.fitBounds(L.latLngBounds(p1, p2), { padding: [80, 80] });
+        }
         onLocationSelect(null, null, dist);
       } else {
         // Fallback to straight line if OSRM fails
@@ -98,7 +100,10 @@ const TransportMapBase = ({ onLocationSelect, mapAction }) => {
     }
 
     async function handleGeocodeAction(action) {
-      const coords = await forwardGeocode(action.address);
+      let coords = action.coords;
+      if (!coords && action.address) {
+        coords = await forwardGeocode(action.address);
+      }
       if (!coords) return;
       const { lat, lng } = coords;
       const L = window.L;
@@ -117,7 +122,7 @@ const TransportMapBase = ({ onLocationSelect, mapAction }) => {
           const pos = pickupMarker.current.getLatLng();
           const address = await reverseGeocode(pos.lat, pos.lng);
           onLocationSelect({ address, coords: { lat: pos.lat, lng: pos.lng } }, null);
-          updateRoute();
+          updateRoute(true);
         });
       } else {
         if (destMarker.current) destMarker.current.setLatLng([lat, lng]);
@@ -133,11 +138,11 @@ const TransportMapBase = ({ onLocationSelect, mapAction }) => {
           const pos = destMarker.current.getLatLng();
           const address = await reverseGeocode(pos.lat, pos.lng);
           onLocationSelect(null, { address, coords: { lat: pos.lat, lng: pos.lng } });
-          updateRoute();
+          updateRoute(true);
         });
       }
       leafletMap.current.setView([lat, lng], 15);
-      updateRoute();
+      updateRoute(false);
     }
   }, [mapAction]);
 
@@ -173,7 +178,7 @@ const TransportMapBase = ({ onLocationSelect, mapAction }) => {
           const pos = pickupMarker.current.getLatLng();
           const adr = await reverseGeocode(pos.lat, pos.lng);
           onLocationSelect({ address: adr, coords: { lat: pos.lat, lng: pos.lng } }, null);
-          updateRoute();
+          updateRoute(true);
         });
         onLocationSelect({ address, coords: { lat, lng } }, null);
       } else if (!destMarker.current) {
@@ -188,11 +193,11 @@ const TransportMapBase = ({ onLocationSelect, mapAction }) => {
           const pos = destMarker.current.getLatLng();
           const adr = await reverseGeocode(pos.lat, pos.lng);
           onLocationSelect(null, { address: adr, coords: { lat: pos.lat, lng: pos.lng } });
-          updateRoute();
+          updateRoute(true);
         });
         onLocationSelect(null, { address, coords: { lat, lng } });
       }
-      updateRoute();
+      updateRoute(true);
     });
 
     return () => {
@@ -203,7 +208,7 @@ const TransportMapBase = ({ onLocationSelect, mapAction }) => {
     };
   }, []);
 
-  return <div ref={mapRef} className="h-96 md:h-[450px] w-full border border-[#e0e0e0] z-0" />;
+  return <div ref={mapRef} className={className || "h-96 md:h-[450px] w-full border border-[#e0e0e0] z-0"} />;
 };
 
 const TransportMap = React.memo(TransportMapBase);

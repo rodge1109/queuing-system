@@ -59,7 +59,12 @@ const RideBooking = ({
         (error) => {
           console.error('Geolocation error:', error);
           setIsDetectingLocation(false);
-          alert('Could not detect location. Please select on map.');
+          alert('Could not detect exact location (browser requires HTTPS or permissions). Using a mock location for testing.');
+          const fallbackLat = 11.0500;
+          const fallbackLng = 124.0000;
+          setPickupCoords({ lat: fallbackLat, lng: fallbackLng });
+          setPickup(`Current (${fallbackLat.toFixed(3)}, ${fallbackLng.toFixed(3)}) [Mock]`);
+          setActiveField('destination');
         }
       );
     } else {

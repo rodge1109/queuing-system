@@ -8,10 +8,11 @@ import {
 } from 'lucide-react';
 import LiveTrackingMap from '../maps/LiveTrackingMap';
 import PassengerTracking from './PassengerTracking';
+import TransportMap from '../maps/TransportMap';
 
 const PassengerBookingMobile = () => {
   const [currentPos, setCurrentPos] = useState({ lat: 11.0500, lng: 124.0000 });
-  const [pickup, setPickup] = useState("Suba Organic Ecofarm");
+  const [pickup, setPickup] = useState("");
   const [destination, setDestination] = useState("");
   const [sheetState, setSheetState] = useState('medium');
   const [selectedVehicle, setSelectedVehicle] = useState(null);
@@ -19,26 +20,67 @@ const PassengerBookingMobile = () => {
   const [destinationSelected, setDestinationSelected] = useState(false);
   const [bookingResult, setBookingResult] = useState(null);
   const [bookingLoading, setBookingLoading] = useState(false);
-  const [showMapPicker, setShowMapPicker] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState([]);
+  const [isMapSearching, setIsMapSearching] = useState(false);
+  const [mapAction, setMapAction] = useState(null);
 
   const handleUseCurrentLocation = () => {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition((pos) => {
-      const { latitude, longitude } = pos.coords;
-      setCurrentPos({ lat: latitude, lng: longitude });
-      // Reverse geocode placeholder – you can replace with a real API
-      const placeholderAddress = `Current (${latitude.toFixed(3)}, ${longitude.toFixed(3)})`;
-      setPickup(placeholderAddress);
-    });
-  }; 
+    console.log('Use current location clicked');
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser");
+      return;
+    }
+
+    const reverseGeocode = async (lat, lng, fallbackName) => {
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`);
+        const data = await res.json();
+        const addressName = data.display_name ? data.display_name.split(',').slice(0, 2).join(',') : fallbackName;
+        setPickup(addressName);
+        setMapAction({ type: 'pickup', coords: { lat, lng }, address: addressName });
+      } catch (err) {
+        console.error("Reverse geocoding error:", err);
+        setPickup(fallbackName);
+        setMapAction({ type: 'pickup', coords: { lat, lng }, address: fallbackName });
+      }
+    };
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        setCurrentPos({ lat: latitude, lng: longitude });
+        setPickup("Locating...");
+        reverseGeocode(latitude, longitude, `Current (${latitude.toFixed(3)}, ${longitude.toFixed(3)})`);
+      },
+      (err) => {
+        console.error("Error getting location:", err);
+        // Fallback to a realistic location without [Mock]
+        const fallbackLat = 11.0503;
+        const fallbackLng = 124.0049;
+        setCurrentPos({ lat: fallbackLat, lng: fallbackLng });
+        setPickup("Bogo City Hall, Cebu");
+        setMapAction({ type: 'pickup', coords: { lat: fallbackLat, lng: fallbackLng }, address: "Bogo City Hall, Cebu" });
+      },
+      { enableHighAccuracy: true }
+    );
+  };
+
+  // Auto‑fetch current location when the component mounts
+  useEffect(() => {
+    handleUseCurrentLocation();
+  }, []);
+
 
 
   const [formData, setFormData] = useState({
     fullName: '',
     phoneNumber: '',
-    email: ''
+    email: '',
+    paymentMethod: 'Cash',
+    corporateAccountId: ''
   });
+  const [corporateValid, setCorporateValid] = useState(null); // null, 'loading', 'valid', 'invalid'
 
   useEffect(() => {
     navigator.geolocation.getCurrentPosition((pos) => {
@@ -46,12 +88,54 @@ const PassengerBookingMobile = () => {
     }, null, { enableHighAccuracy: true });
   }, []);
 
-  const vehicles = [
-    { id: '4-seater', name: '4-seater', capacity: 4, img: '/assets/images/services/green_car.png', price: '85.00', desc: 'Affordable fares' },
-    { id: '6-seater', name: '6-seater', capacity: 6, img: '/assets/images/services/large_sedan.png', price: '120.00', desc: 'For large groups' },
-    { id: 'taxi', name: 'Taxi', capacity: 4, img: '/assets/images/services/green_car.png', price: 'Varies', desc: 'Official city taxi' },
-    { id: 'luxury', name: 'Luxury Van', capacity: 12, img: '/assets/images/services/van.png', price: '250.00', desc: 'Premium travel' }
-  ];
+  const [vehicles, setVehicles] = useState([]);
+  const [isLoadingVehicles, setIsLoadingVehicles] = useState(true);
+
+  useEffect(() => {
+    const fetchVehicles = async () => {
+      try {
+        const res = await fetch('/api/booking-services');
+        const data = await res.json();
+        if (data.success) {
+          const transportServices = data.services.filter(s => (s.category || '').trim().toUpperCase() === 'TRANSPORT');
+          const mappedVehicles = transportServices.map(s => {
+            const isVan = s.name.toLowerCase().includes('van');
+            const isMotorcycle = s.name.toLowerCase().includes('motor');
+            
+            let vehicleImg = '/assets/images/services/green_car.png';
+            if (s.icon && (s.icon.startsWith('http') || s.icon.startsWith('/uploads') || s.icon.startsWith('/assets'))) {
+              vehicleImg = s.icon;
+            } else if (isVan) {
+              vehicleImg = '/assets/images/services/van.png';
+            }
+
+            return {
+              id: s.id.toString(),
+              name: s.name,
+              capacity: isVan ? 12 : isMotorcycle ? 1 : 4,
+              img: vehicleImg,
+              price: s.base_fare || s.price || '0.00',
+              desc: s.duration || 'Standard travel',
+              isEmojiIcon: s.icon && !s.icon.startsWith('http') && !s.icon.startsWith('/') ? s.icon : null
+            };
+          });
+          setVehicles(mappedVehicles);
+          if (mappedVehicles.length > 0) {
+            setSelectedVehicle(mappedVehicles[0].id);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch vehicles:', err);
+        // Fallback
+        setVehicles([
+          { id: '4-seater', name: '4-seater', capacity: 4, img: '/assets/images/services/green_car.png', price: '85.00', desc: 'Affordable fares' }
+        ]);
+      } finally {
+        setIsLoadingVehicles(false);
+      }
+    };
+    fetchVehicles();
+  }, []);
 
   const recentDestinations = [
     { name: "Mactan-Cebu International Airport", code: "CEB", icon: History, lat: 10.3075, lng: 123.9794 },
@@ -60,9 +144,72 @@ const PassengerBookingMobile = () => {
     { name: "SM Seaside", code: "SMS", icon: History, lat: 10.2818, lng: 123.8821 }
   ];
 
+  const allPlaces = [
+    ...recentDestinations,
+    { name: "Cebu IT Park", code: "ITP", icon: MapPin, lat: 10.3294, lng: 123.9056 },
+    { name: "Magellan's Cross", code: "MC", icon: MapPin, lat: 10.2936, lng: 123.9019 },
+    { name: "Fuente Osmeña Circle", code: "FOC", icon: MapPin, lat: 10.3115, lng: 123.8966 },
+    { name: "Bogo City Hall", code: "BCH", icon: MapPin, lat: 11.0503, lng: 124.0049 },
+    { name: "Mandaue City", code: "MAN", icon: MapPin, lat: 10.3340, lng: 123.9350 }
+  ];
+
+  useEffect(() => {
+    if (!destination || destination.trim().length === 0) {
+      setSearchResults([]);
+      return;
+    }
+    const term = destination.toLowerCase();
+    const staticFiltered = allPlaces.filter(d => d.name.toLowerCase().includes(term));
+    
+    if (destination.trim().length < 3) {
+      setSearchResults(staticFiltered);
+      return;
+    }
+
+    setSearchResults(staticFiltered);
+    setIsMapSearching(true);
+
+    const timeoutId = setTimeout(async () => {
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(destination)}&limit=5&addressdetails=1`);
+        const data = await res.json();
+        
+        const dynamicResults = data.map(item => ({
+          name: item.display_name.split(',')[0],
+          code: item.display_name,
+          icon: MapPin,
+          lat: parseFloat(item.lat),
+          lng: parseFloat(item.lon)
+        }));
+        
+        const combined = [...staticFiltered];
+        dynamicResults.forEach(dyn => {
+          if (!combined.find(s => s.name === dyn.name)) {
+            combined.push(dyn);
+          }
+        });
+        
+        setSearchResults(combined);
+      } catch (err) {
+        console.error("Map search error:", err);
+      } finally {
+        setIsMapSearching(false);
+      }
+    }, 800);
+
+    return () => clearTimeout(timeoutId);
+  }, [destination]);
+
+
+
   const handleConfirmBooking = async () => {
     if (!formData.fullName || !formData.phoneNumber || !formData.email) {
       alert("Please fill in all details");
+      return;
+    }
+
+    if (formData.paymentMethod === 'Corporate' && corporateValid !== 'valid') {
+      alert("Please enter and validate a valid Corporate Account Code.");
       return;
     }
 
@@ -73,7 +220,7 @@ const PassengerBookingMobile = () => {
         fullName: formData.fullName,
         phoneNumber: formData.phoneNumber,
         email: formData.email,
-        serviceType: selectedVehicle === 'luxury' ? 'Luxury Van' : 'Sedan (Economy)',
+        serviceType: vehicles.find(v => v.id === selectedVehicle)?.name || 'Sedan (Economy)',
         preferredDate: now.toISOString().split('T')[0],
         preferredTime: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
         pickupLocation: pickup,
@@ -83,8 +230,8 @@ const PassengerBookingMobile = () => {
         destLat: currentPos.lat + 0.05,
         destLng: currentPos.lng + 0.05,
         totalAmount: vehicles.find(v => v.id === selectedVehicle)?.price || 0,
-        paymentMethod: 'cash',
-        notes: `Mobile Booking - ${selectedVehicle}`
+        paymentMethod: formData.paymentMethod,
+        notes: `Mobile Booking - ${vehicles.find(v => v.id === selectedVehicle)?.name || selectedVehicle}${formData.paymentMethod === 'Corporate' ? ' [Corp: ' + formData.corporateAccountId + ']' : ''}`
       };
 
       const res = await fetch('/api/appointments', {
@@ -96,7 +243,7 @@ const PassengerBookingMobile = () => {
       
       if (data.success) {
         setBookingResult(data.appointment.id);
-        setStep('success');
+        setStep('tracking');
       } else {
         alert(data.message || "Booking failed");
       }
@@ -107,23 +254,7 @@ const PassengerBookingMobile = () => {
     }
   };
 
-  if (step === 'success') {
-    return (
-      <div className="min-h-screen bg-white flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-700">
-        <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mb-8 animate-in zoom-in duration-500">
-          <Check className="w-12 h-12 text-green-600" />
-        </div>
-        <h2 className="text-3xl font-semibold text-gray-900 mb-4 tracking-tight uppercase">Booking Confirmed!</h2>
-        <p className="text-gray-500 font-medium mb-8">Your ride is being assigned to a driver. Reference ID: <span className="text-blue-600 font-medium">#{bookingResult}</span></p>
-        <button 
-          onClick={() => setStep('tracking')}
-          className="w-full max-w-xs bg-gray-900 text-white py-4 rounded-2xl font-semibold uppercase tracking-widest shadow-xl active:scale-95 transition-all"
-        >
-          Track My Ride
-        </button>
-      </div>
-    );
-  }
+
 
   if (step === 'tracking') {
     return <PassengerTracking appointmentId={bookingResult} onClose={() => { setStep('selection'); setDestinationSelected(false); }} />;
@@ -180,6 +311,77 @@ const PassengerBookingMobile = () => {
             </div>
           </div>
 
+          <div className="space-y-1.5 pt-4 border-t border-gray-100">
+            <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-[0.2em] ml-2">Payment Method</label>
+            <div className="grid grid-cols-2 gap-4">
+              <button 
+                onClick={() => { setFormData({...formData, paymentMethod: 'Cash', corporateAccountId: ''}); setCorporateValid(null); }}
+                className={`p-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition-all ${formData.paymentMethod === 'Cash' ? 'border-blue-500 bg-blue-50/50' : 'border-gray-100 bg-gray-50'}`}
+              >
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${formData.paymentMethod === 'Cash' ? 'bg-blue-100 text-blue-600' : 'bg-gray-200 text-gray-500'}`}>
+                  <CreditCard className="w-5 h-5" />
+                </div>
+                <span className={`text-xs font-bold ${formData.paymentMethod === 'Cash' ? 'text-blue-700' : 'text-gray-500'}`}>Cash</span>
+              </button>
+              <button 
+                onClick={() => setFormData({...formData, paymentMethod: 'Corporate'})}
+                className={`p-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition-all ${formData.paymentMethod === 'Corporate' ? 'border-blue-500 bg-blue-50/50' : 'border-gray-100 bg-gray-50'}`}
+              >
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${formData.paymentMethod === 'Corporate' ? 'bg-blue-100 text-blue-600' : 'bg-gray-200 text-gray-500'}`}>
+                  <Shield className="w-5 h-5" />
+                </div>
+                <span className={`text-xs font-bold ${formData.paymentMethod === 'Corporate' ? 'text-blue-700' : 'text-gray-500'}`}>Corporate</span>
+              </button>
+            </div>
+          </div>
+
+          {formData.paymentMethod === 'Corporate' && (
+            <div className="space-y-1.5 animate-in slide-in-from-top-2 duration-300">
+              <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-[0.2em] ml-2">Corporate Account Code</label>
+              <div className={`bg-gray-50 rounded-2xl p-4 flex items-center gap-4 border transition-all ${
+                corporateValid === 'valid' ? 'border-green-500' : corporateValid === 'invalid' ? 'border-red-500' : 'border-gray-100 focus-within:border-blue-500'
+              }`}>
+                <Shield className={`w-5 h-5 ${corporateValid === 'valid' ? 'text-green-500' : corporateValid === 'invalid' ? 'text-red-500' : 'text-gray-400'}`} />
+                <input 
+                  type="text" 
+                  placeholder="e.g. CORP-1001"
+                  className="bg-transparent border-none outline-none text-base font-medium text-gray-900 w-full placeholder:text-gray-300 uppercase"
+                  value={formData.corporateAccountId}
+                  onChange={(e) => {
+                    setFormData({...formData, corporateAccountId: e.target.value.toUpperCase()});
+                    setCorporateValid(null);
+                  }}
+                />
+                <button
+                  onClick={async () => {
+                    if (!formData.corporateAccountId) return;
+                    setCorporateValid('loading');
+                    try {
+                      const res = await fetch(`/api/corporate-accounts/validate/${formData.corporateAccountId}`);
+                      const data = await res.json();
+                      if (data.valid) {
+                        setCorporateValid('valid');
+                      } else {
+                        setCorporateValid('invalid');
+                        alert(data.message || 'Invalid Account Code');
+                      }
+                    } catch (err) {
+                      setCorporateValid('invalid');
+                    }
+                  }}
+                  className="px-3 py-1.5 bg-blue-600 text-white text-[10px] font-bold uppercase tracking-widest rounded-lg active:scale-95"
+                >
+                  {corporateValid === 'loading' ? 'Checking...' : 'Validate'}
+                </button>
+              </div>
+              {corporateValid === 'valid' && (
+                <p className="text-xs text-green-600 font-medium ml-2 flex items-center gap-1">
+                  <Check className="w-3 h-3" /> Valid corporate account.
+                </p>
+              )}
+            </div>
+          )}
+
           <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100 mt-8">
             <div className="flex justify-between items-center mb-2">
               <p className="text-xs font-medium text-gray-500 uppercase tracking-widest">Estimated Fare</p>
@@ -202,18 +404,44 @@ const PassengerBookingMobile = () => {
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-white font-sans text-gray-900">
-      {/* 1. Full Screen Background Map */}
+      {/* 1. Full Screen Interactive Background Map */}
       <div className="fixed inset-0 z-0">
-        <LiveTrackingMap 
-          riderPos={currentPos} 
-          status={destinationSelected ? "tracking" : "booking"}
+        <TransportMap 
+          className="w-full h-full"
+          mapAction={mapAction}
+          onLocationSelect={(pick, dest, dist) => {
+            if (pick && pick.address && (!mapAction || mapAction.type === 'pickup')) {
+              setPickup(pick.address);
+              setCurrentPos({ lat: pick.coords.lat, lng: pick.coords.lng });
+            }
+            if (dest && dest.address && (!mapAction || mapAction.type === 'dest')) {
+              setDestination(dest.address);
+            }
+          }}
         />
         <div className="absolute inset-0 bg-white/5 pointer-events-none" />
       </div>
 
+      {/* Floating Confirm Button when picking on map */}
+      {sheetState === 'minimized' && !destinationSelected && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-20 animate-in slide-in-from-bottom-10">
+          <button 
+            onClick={() => {
+              setSheetState('medium');
+              if (mapAction?.type === 'dest' && destination) {
+                setDestinationSelected(true);
+              }
+            }}
+            className="px-6 py-3 bg-[#00B14F] text-white rounded-full font-bold shadow-lg shadow-green-200 flex items-center gap-2 active:scale-95 transition-all pointer-events-auto"
+          >
+            <Check className="w-5 h-5" /> Confirm Location
+          </button>
+        </div>
+      )}
+
       {/* 2. Floating Header Area (MATCHES PHOTO) */}
       {!destinationSelected ? (
-        <div className="relative z-10 p-4 pt-12 flex flex-col gap-4 pointer-events-none">
+        <div className="relative z-10 p-4 pt-12 flex flex-col gap-4">
           <div className="flex justify-between items-start">
             <button className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg pointer-events-auto active:scale-95 transition-all">
               <Menu className="w-6 h-6 text-gray-700" />
@@ -229,28 +457,17 @@ const PassengerBookingMobile = () => {
             </div>
             <div className="flex-1">
               <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest leading-none mb-1">Pickup point</p>
-              <p className="text-sm font-medium text-gray-900 truncate">{pickup}</p>
+              <p className="text-sm font-medium text-gray-900 line-clamp-2 leading-tight">{pickup}</p>
             </div>
             <div className="flex flex-col gap-2 items-end">
-              <button onClick={handleUseCurrentLocation} className="text-xs text-[#00B14F] hover:underline">Use current location</button>
-              <button onClick={() => setShowMapPicker(true)} className="text-xs text-[#00B14F] hover:underline">Pick on map</button>
+              <button onClick={handleUseCurrentLocation} className="text-xs text-[#00B14F] hover:underline pointer-events-auto">Use current location</button>
+              <button onClick={() => {
+                setMapAction({ type: 'pickup', address: pickup, coords: currentPos });
+                setSheetState('minimized');
+              }} className="text-xs text-[#00B14F] hover:underline pointer-events-auto">Pick on map</button>
             </div>
             <ChevronRight className="w-4 h-4 text-gray-300" />
           </div>
-          {showMapPicker && (
-            <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-40">
-              <div className="bg-white rounded-xl p-6 w-[90%] max-w-md shadow-lg">
-                <h3 className="text-lg font-bold mb-4">Select Pickup Location</h3>
-                <p className="text-sm text-gray-600 mb-4">Tap the map to set your pickup point (placeholder).</p>
-                {/* Placeholder map – replace with a real map component if desired */}
-                <div className="h-64 bg-gray-100 flex items-center justify-center mb-4">
-                  <span className="text-gray-500">Map component goes here</span>
-                </div>
-                <button onClick={() => setShowMapPicker(false)} className="w-full py-2 bg-[#00B14F] text-white rounded-lg">Close</button>
-              </div>
-            </div>
-          )}
-
         </div>
       ) : (
         <div className="relative z-10 p-4 pt-12 flex flex-col gap-4 pointer-events-none">
@@ -262,8 +479,8 @@ const PassengerBookingMobile = () => {
                 <User className="w-4 h-4 text-gray-900" />
               </div>
               <div className="flex-1">
-                <p className="text-sm font-semibold text-gray-900 truncate">{pickup}</p>
-                <p className="text-[10px] font-medium text-gray-400 uppercase">Entrance</p>
+                <p className="text-sm font-semibold text-gray-900 line-clamp-2 leading-tight">{pickup}</p>
+                <p className="text-[10px] font-medium text-gray-400 uppercase mt-0.5">Entrance</p>
               </div>
             </div>
             {/* Divider Line */}
@@ -274,8 +491,8 @@ const PassengerBookingMobile = () => {
                 <Flag className="w-4 h-4 text-gray-900" />
               </div>
               <div className="flex-1">
-                <p className="text-sm font-semibold text-gray-900 truncate">{destination}</p>
-                <div className="flex items-center gap-2">
+                <p className="text-sm font-semibold text-gray-900 line-clamp-2 leading-tight">{destination}</p>
+                <div className="flex items-center gap-2 mt-0.5">
                   <p className="text-[10px] font-medium text-gray-400 uppercase tracking-tighter">~3 hr, 13 min</p>
                 </div>
               </div>
@@ -329,11 +546,15 @@ const PassengerBookingMobile = () => {
                   }`}
                 >
                   <div className="relative w-[150px] h-20 flex items-center justify-center">
-                    <img 
-                      src={v.img} 
-                      alt={v.name}
-                      className={`w-full h-full object-contain ${selectedVehicle === v.id ? 'brightness-100' : 'mix-blend-multiply opacity-80'}`} 
-                    />
+                    {v.isEmojiIcon ? (
+                      <span className="text-4xl">{v.isEmojiIcon}</span>
+                    ) : (
+                      <img 
+                        src={v.img} 
+                        alt={v.name}
+                        className={`w-full h-full object-contain ${selectedVehicle === v.id ? 'brightness-100' : 'mix-blend-multiply opacity-80'}`} 
+                      />
+                    )}
                   </div>
                   <div className="text-center">
                     <p className={`text-[11px] font-bold leading-none mb-1 uppercase tracking-tighter text-gray-900`}>{v.name}</p>
@@ -359,12 +580,19 @@ const PassengerBookingMobile = () => {
           </div>
         </div>
       ) : (
-        <div className="fixed left-0 right-0 bottom-0 z-30 animate-in slide-in-from-bottom-20 duration-500">
-          <div className="bg-white/95 backdrop-blur-2xl rounded-t-3xl shadow-[0_-20px_50px_rgba(0,0,0,0.15)] border-t border-white/40 p-6">
-            <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6" />
+        <div 
+          className={`fixed left-0 right-0 bottom-0 z-30 transition-all duration-500 ease-in-out ${
+            sheetState === 'minimized' ? 'translate-y-[calc(100%-40px)]' : 'translate-y-0'
+          }`}
+        >
+          <div className="bg-white/95 backdrop-blur-2xl rounded-t-3xl shadow-[0_-20px_50px_rgba(0,0,0,0.15)] border-t border-white/40 p-6 pt-4 h-[50vh] flex flex-col">
+            <div 
+              className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6 cursor-pointer hover:bg-gray-300 active:bg-gray-400 transition-colors shrink-0" 
+              onClick={() => setSheetState(sheetState === 'minimized' ? 'expanded' : 'minimized')}
+            />
 
             {/* Promo Bar */}
-            <button className="w-full bg-gray-50 border border-gray-100 p-4 rounded-2xl flex items-center justify-between mb-6 active:scale-95 transition-all">
+            <button className="w-full bg-gray-50 border border-gray-100 p-4 rounded-2xl flex items-center justify-between mb-4 active:scale-95 transition-all shrink-0">
               <div className="flex items-center gap-3">
                 <Ticket className="w-5 h-5 text-gray-400" />
                 <span className="text-sm font-medium text-gray-600 italic">Got promo code? Use it here</span>
@@ -373,8 +601,12 @@ const PassengerBookingMobile = () => {
             </button>
 
             {/* Vertical Vehicle List (MATCHES PHOTO) */}
-            <div className="space-y-3 mb-8">
-              {vehicles.map((v) => (
+            <div className="flex-1 overflow-y-auto space-y-3 mb-4 pr-2 scrollbar-hide">
+              {isLoadingVehicles ? (
+                <div className="flex justify-center p-4">
+                  <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                </div>
+              ) : vehicles.map((v) => (
                 <button
                   key={v.id}
                   onClick={() => setSelectedVehicle(v.id)}
@@ -385,11 +617,15 @@ const PassengerBookingMobile = () => {
                   }`}
                 >
                   <div className="w-[150px] h-24 flex items-center justify-center overflow-hidden">
-                    <img 
-                      src={v.img} 
-                      alt={v.name}
-                      className={`w-[140px] h-20 object-contain ${selectedVehicle === v.id ? 'brightness-100' : 'mix-blend-multiply opacity-80'}`} 
-                    />
+                    {v.isEmojiIcon ? (
+                      <span className="text-5xl">{v.isEmojiIcon}</span>
+                    ) : (
+                      <img 
+                        src={v.img} 
+                        alt={v.name}
+                        className={`w-[140px] h-20 object-contain ${selectedVehicle === v.id ? 'brightness-100' : 'mix-blend-multiply opacity-80'}`} 
+                      />
+                    )}
                   </div>
                   <div className="flex-1 text-left">
                     <div className="flex items-center gap-2">
@@ -405,14 +641,16 @@ const PassengerBookingMobile = () => {
                     <p className="text-[11px] font-medium text-gray-400 uppercase tracking-tighter italic">{v.desc}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-lg font-semibold tracking-tight text-gray-900">₱{v.price}</p>
+                    <p className="text-lg font-semibold tracking-tight text-gray-900">
+                      {String(v.price).includes('₱') || String(v.price).includes('PHP') ? v.price : `₱${v.price}`}
+                    </p>
                   </div>
                 </button>
               ))}
             </div>
 
             {/* Final Action Bar (MATCHES PHOTO) */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 shrink-0 pb-2">
               <button className="w-14 h-14 bg-gray-50 border border-gray-100 rounded-2xl flex items-center justify-center shadow-sm active:scale-90 transition-all">
                 <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
                   <CreditCard className="w-4 h-4 text-white" />
@@ -477,8 +715,12 @@ const PassengerBookingMobile = () => {
                 </button>
               )}
               <div className="w-[1px] h-8 bg-gray-100 mx-1" />
-              <button className="p-3">
-                <div className="w-8 h-8 bg-gray-100 rounded-xl flex items-center justify-center">
+              <button className="p-3" onClick={() => {
+                setMapAction({ type: 'dest', address: destination || 'Cebu City', coords: currentPos });
+                setIsSearching(false);
+                setSheetState('minimized');
+              }}>
+                <div className="w-8 h-8 bg-gray-100 rounded-xl flex items-center justify-center hover:bg-gray-200 transition-colors">
                   <MapPin className="w-4 h-4 text-blue-500" />
                 </div>
               </button>
@@ -517,10 +759,50 @@ const PassengerBookingMobile = () => {
                   ))}
                 </div>
               </div>
+            ) : searchResults.length > 0 ? (
+              <div className="space-y-6">
+                <h4 className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 px-1">Suggested Matches</h4>
+                <div className="grid gap-2">
+                  {searchResults.map((dest, idx) => {
+                    const IconComponent = dest.icon || MapPin;
+                    return (
+                      <button 
+                        key={idx}
+                        className="flex items-center gap-4 p-4 hover:bg-gray-50 rounded-2xl transition-all group"
+                        onClick={() => {
+                          setDestination(dest.name);
+                          setIsSearching(false);
+                          setDestinationSelected(true);
+                        }}
+                      >
+                        <div className="w-10 h-10 bg-gray-100 group-hover:bg-[#E1F5EE] rounded-full flex items-center justify-center transition-colors flex-shrink-0">
+                          <IconComponent className="w-5 h-5 text-gray-400 group-hover:text-[#00B14F]" />
+                        </div>
+                        <div className="text-left flex-1 overflow-hidden">
+                          <p className="text-sm font-medium text-gray-900 group-hover:text-[#00B14F] transition-colors truncate">{dest.name}</p>
+                          <p className="text-[10px] text-gray-400 font-medium tracking-wide truncate w-full">{dest.code}</p>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-gray-200 group-hover:text-green-200 flex-shrink-0" />
+                      </button>
+                    );
+                  })}
+                  {isMapSearching && (
+                    <div className="flex justify-center p-4">
+                      <div className="w-5 h-5 border-2 border-[#00B14F] border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                  )}
+                </div>
+              </div>
             ) : (
               <div className="h-full flex flex-col items-center justify-center opacity-40 py-20 grayscale">
                 <Search className="w-12 h-12 mb-4 text-gray-300" />
                 <p className="text-sm font-medium text-gray-400 uppercase tracking-widest italic">No results found</p>
+                <button 
+                  onClick={() => { setIsSearching(false); setDestinationSelected(true); }}
+                  className="mt-4 px-6 py-2 bg-gray-900 text-white rounded-full text-xs font-bold"
+                >
+                  Use "{destination}" anyway
+                </button>
               </div>
             )}
           </div>

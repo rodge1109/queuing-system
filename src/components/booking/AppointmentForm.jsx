@@ -412,7 +412,7 @@ function AppointmentForm() {
             <p className="text-gray-500 mb-12 text-sm">Select the clinical or transport service you require.</p>
             
             <div className="flex gap-4 mb-8 overflow-x-auto pb-4 scrollbar-hide">
-              {['All', 'Clinical', 'Transport', 'Home Care'].map(cat => (
+              {['All', ...new Set(liveServices.filter(s => s.is_active !== false).map(s => s.category).filter(Boolean))].map(cat => (
                 <button
                   key={cat}
                   onClick={() => setActiveCategory(cat)}
@@ -426,7 +426,7 @@ function AppointmentForm() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {isLoadingServices ? (
                 <div className="col-span-full py-20 text-center text-gray-400 italic">Loading services...</div>
-              ) : liveServices.filter(s => activeCategory === 'All' || s.category === activeCategory).map(service => (
+              ) : liveServices.filter(s => s.is_active !== false && (activeCategory === 'All' || s.category === activeCategory)).map(service => (
                 <button
                   key={service.id}
                   onClick={() => { setSelectedService(service); setStep('staff'); }}
@@ -439,9 +439,9 @@ function AppointmentForm() {
                   {/* Service Icon/Photo Container */}
                   <div className="h-48 w-full bg-gray-50 flex items-center justify-center relative overflow-hidden">
                     <div className="absolute inset-0 bg-gradient-to-br from-white/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                    <div className="w-[104px] h-[104px] bg-white rounded-full force-circle shadow-lg border border-gray-100 flex items-center justify-center text-5xl transform group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 ease-out z-10">
+                    <div className="w-32 h-32 flex items-center justify-center text-5xl transform group-hover:scale-110 group-hover:-translate-y-2 transition-all duration-500 ease-out z-10 drop-shadow-xl">
                       {service.icon && (service.icon.startsWith('http') || service.icon.startsWith('/uploads')) ? (
-                        <img src={service.icon} alt={service.name} className="w-full h-full object-contain rounded-full force-circle" />
+                        <img src={service.icon} alt={service.name} className="w-full h-full object-contain" />
                       ) : (
                         service.icon || '🏥'
                       )}

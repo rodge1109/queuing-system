@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 
-const LiveTrackingMap = ({ riderPos, pickupPos, destPos, status }) => {
+const LiveTrackingMap = ({ riderPos, pickupPos, destPos, status, pickMode = false, onPick }) => {
   const mapRef = React.useRef(null);
   const leafletMap = React.useRef(null);
   const [mainRoute, setMainRoute] = useState(null);

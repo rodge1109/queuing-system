@@ -4122,7 +4122,7 @@ function HomePage({ setCurrentPage }) {
             {/* Footer Bottom */}
             <div className="border-t border-[#393939] mt-16 pt-8 text-center">
               <p className="text-[#6f6f6f] text-xs uppercase tracking-widest leading-loose">
-                2026 Roger Tonacao. ServiceBox | All rights reserved. |
+                2026 Roger Tonacao|0927 623 0491| All rights reserved. |
                 <button onClick={() => setCurrentPage('my-appointment')} className="hover:text-[#0f62fe] transition-all ml-1">My Appointment</button> |
                 <button onClick={() => setCurrentPage('admin')} className="hover:text-[#0f62fe] transition-all ml-1">Admin</button>
               </p>
@@ -9161,7 +9161,7 @@ function GeneralSettings() {
       <div className="grid grid-cols-2 gap-6">
         <div className="col-span-2">
           <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">System Name</label>
-          <input type="text" defaultValue="ServiceBox Enterprise" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:border-[#0f62fe]" />
+          <input type="text" defaultValue="Kings's Tourist and Transport Services " className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:border-[#0f62fe]" />
         </div>
         <div className="col-span-2">
           <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Company Name</label>

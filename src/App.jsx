@@ -699,7 +699,7 @@ function AdminDashboard({ setCurrentPage }) {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   // Admin section tabs
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState('appointments');
   useEffect(() => {
     const validTabs = ['appointments', 'queue', 'calendar', 'reports', 'feedback', 'settings', 'specialists', 'services', 'riders', 'trips'];
     const requestedTab = localStorage.getItem('adminActiveTab');
@@ -737,6 +737,7 @@ function AdminDashboard({ setCurrentPage }) {
   const [calendarMonth, setCalendarMonth] = useState(new Date().getMonth() + 1);
   const [calendarYear, setCalendarYear] = useState(new Date().getFullYear());
   const [calendarData, setCalendarData] = useState({ appointments: [], blockedDates: [] });
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState(null);
 
   // Reports state
   const [reportStats, setReportStats] = useState(null);
@@ -754,7 +755,8 @@ function AdminDashboard({ setCurrentPage }) {
     icon: '',
     category: '',
     base_fare: 50,
-    per_km_rate: 15
+    per_km_rate: 15,
+    is_active: true
   });
   const [editingService, setEditingService] = useState(null);
   const [isAddingService, setIsAddingService] = useState(false);
@@ -777,6 +779,8 @@ function AdminDashboard({ setCurrentPage }) {
   };
   const [reportStartDate, setReportStartDate] = useState('');
   const [reportEndDate, setReportEndDate] = useState('');
+  const [reportTrips, setReportTrips] = useState([]);
+  const [reportTripsLoading, setReportTripsLoading] = useState(false);
 
   // Settings state
   const [blockedDates, setBlockedDates] = useState([]);
@@ -1151,8 +1155,18 @@ function AdminDashboard({ setCurrentPage }) {
       if (data.success) {
         setReportStats(data.stats);
       }
+
+      // Fetch detailed trips for preview table
+      setReportTripsLoading(true);
+      const tripsResponse = await fetch(`/api/reports/trips?${params}`);
+      const tripsData = await tripsResponse.json();
+      if (tripsData.success) {
+        setReportTrips(tripsData.trips);
+      }
     } catch (error) {
       console.error('Error fetching reports:', error);
+    } finally {
+      setReportTripsLoading(false);
     }
   };
 
@@ -1686,6 +1700,18 @@ function AdminDashboard({ setCurrentPage }) {
                           </div>
                         </div>
                       ) : null}
+                      <div className="flex items-center gap-2 mb-4">
+                        <input
+                          type="checkbox"
+                          id="is_active_toggle"
+                          checked={newService.is_active !== false}
+                          onChange={(e) => setNewService({ ...newService, is_active: e.target.checked })}
+                          className="w-4 h-4 text-[#10b981] rounded border-gray-300 focus:ring-[#10b981]"
+                        />
+                        <label htmlFor="is_active_toggle" className="text-[10px] font-bold text-[#525252] uppercase tracking-widest cursor-pointer">
+                          Display on booking page
+                        </label>
+                      </div>
                       <button
                         disabled={!newService.name || isAddingService || (newService.category === 'NEW_CATEGORY' && !newService.customCategory)}
                         onClick={async () => {
@@ -1717,7 +1743,7 @@ function AdminDashboard({ setCurrentPage }) {
                                 setBookingServices([...bookingServices, data.service]);
                                 alert('Service added successfully!');
                               }
-                              setNewService({ name: '', duration: '30m', price: 'PHP 0.00', icon: '', category: payload.category, base_fare: 50, per_km_rate: 15 });
+                              setNewService({ name: '', duration: '30m', price: 'PHP 0.00', icon: '', category: payload.category, base_fare: 50, per_km_rate: 15, is_active: true });
                             } else {
                               alert(data.message || 'Failed to save service');
                             }
@@ -1745,7 +1771,7 @@ function AdminDashboard({ setCurrentPage }) {
                       <div className="w-20">Actions</div>
                     </div>
                     {bookingServices.map(s => (
-                      <div key={s.id} className="bg-white p-4 border-b border-[#e0e0e0] flex items-center gap-4 group hover:bg-gray-50">
+                      <div key={s.id} className={`bg-white p-4 border-b border-[#e0e0e0] flex items-center gap-4 group hover:bg-gray-50 ${s.is_active === false ? 'opacity-50' : ''}`}>
                         <div className="w-12 text-[#10b981]">
                           <ServiceIconRender iconName={s.icon} className="w-6 h-6" />
                         </div>
@@ -1772,7 +1798,8 @@ function AdminDashboard({ setCurrentPage }) {
                                 ...s,
                                 customCategory: '',
                                 base_fare: s.base_fare || 50,
-                                per_km_rate: s.per_km_rate || 15
+                                per_km_rate: s.per_km_rate || 15,
+                                is_active: s.is_active !== false
                               });
                             }}
                             className="text-[#10b981] text-[10px] uppercase font-bold tracking-widest hover:underline text-left"
@@ -2092,11 +2119,11 @@ function AdminDashboard({ setCurrentPage }) {
 
                           {/* Status */}
                           <span className={`inline-flex items-center px-2 py-0.5 text-[9px] font-black uppercase tracking-widest w-fit border ${apt.status === 'confirmed' ? 'bg-[#f0fdf4] text-[#24a148] border-[#24a148]/30' :
-                              apt.status === 'completed' ? 'bg-[#161616] text-white border-[#161616]' :
-                                apt.status === 'cancelled' ? 'bg-red-50 text-red-600 border-red-200' :
-                                  apt.status === 'pending' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
-                                    apt.status === 'queued' ? 'bg-blue-50 text-blue-600 border-blue-200' :
-                                      'bg-gray-50 text-gray-500 border-gray-200'
+                            apt.status === 'completed' ? 'bg-[#161616] text-white border-[#161616]' :
+                              apt.status === 'cancelled' ? 'bg-red-50 text-red-600 border-red-200' :
+                                apt.status === 'pending' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                                  apt.status === 'queued' ? 'bg-blue-50 text-blue-600 border-blue-200' :
+                                    'bg-gray-50 text-gray-500 border-gray-200'
                             }`}>
                             {apt.status}
                           </span>
@@ -2164,40 +2191,64 @@ function AdminDashboard({ setCurrentPage }) {
 
             {/* ==================== CALENDAR TAB ==================== */}
             {activeTab === 'calendar' && (
-              <div className="bg-white border border-[#e0e0e0] shadow-sm overflow-hidden">
+              <div className="bg-white border border-[#e0e0e0] shadow-sm overflow-hidden flex flex-col min-h-[600px]">
 
                 {/* Calendar Header */}
-                <div className="bg-[#161616] px-8 py-5 flex items-center justify-between border-b-2 border-[#24a148]">
+                <div className="bg-[#161616] px-8 py-5 flex items-center justify-between">
                   <div>
-                    <h2 className="text-xl font-black text-white uppercase tracking-tight">Calendar View</h2>
-                    <p className="text-[10px] text-[#24a148] font-bold uppercase tracking-widest mt-0.5">Appointment Schedule</p>
+                    {selectedCalendarDate ? (
+                      <>
+                        <h2 className="text-xl font-black text-white uppercase tracking-tight">
+                          {new Date(selectedCalendarDate).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+                        </h2>
+                        <p className="text-[10px] text-[#24a148] font-bold uppercase tracking-widest mt-0.5">Daily Schedule Planner</p>
+                      </>
+                    ) : (
+                      <>
+                        <h2 className="text-xl font-black text-white uppercase tracking-tight">Calendar View</h2>
+                        <p className="text-[10px] text-[#24a148] font-bold uppercase tracking-widest mt-0.5">Appointment Schedule</p>
+                      </>
+                    )}
                   </div>
                   <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => {
-                        if (calendarMonth === 1) { setCalendarMonth(12); setCalendarYear(calendarYear - 1); }
-                        else setCalendarMonth(calendarMonth - 1);
-                      }}
-                      className="w-9 h-9 flex items-center justify-center bg-white/10 hover:bg-[#24a148] text-white transition-all"
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                    </button>
-                    <span className="text-white font-black text-base uppercase tracking-widest min-w-[180px] text-center">
-                      {new Date(calendarYear, calendarMonth - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-                    </span>
-                    <button
-                      onClick={() => {
-                        if (calendarMonth === 12) { setCalendarMonth(1); setCalendarYear(calendarYear + 1); }
-                        else setCalendarMonth(calendarMonth + 1);
-                      }}
-                      className="w-9 h-9 flex items-center justify-center bg-white/10 hover:bg-[#24a148] text-white transition-all"
-                    >
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
+                    {selectedCalendarDate ? (
+                      <button
+                        onClick={() => setSelectedCalendarDate(null)}
+                        className="px-4 py-2 bg-[#24a148] text-white text-[10px] font-black uppercase tracking-widest hover:bg-[#1f893d] transition-all flex items-center gap-2 border border-transparent hover:border-white/20"
+                      >
+                        <ChevronLeft className="w-4 h-4" /> Back to Month View
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => {
+                            if (calendarMonth === 1) { setCalendarMonth(12); setCalendarYear(calendarYear - 1); }
+                            else setCalendarMonth(calendarMonth - 1);
+                          }}
+                          className="w-9 h-9 flex items-center justify-center bg-white/10 hover:bg-[#24a148] text-white transition-all"
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </button>
+                        <span className="text-white font-black text-base uppercase tracking-widest min-w-[180px] text-center">
+                          {new Date(calendarYear, calendarMonth - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                        </span>
+                        <button
+                          onClick={() => {
+                            if (calendarMonth === 12) { setCalendarMonth(1); setCalendarYear(calendarYear + 1); }
+                            else setCalendarMonth(calendarMonth + 1);
+                          }}
+                          className="w-9 h-9 flex items-center justify-center bg-white/10 hover:bg-[#24a148] text-white transition-all"
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
 
-                {/* Legend */}
+                {!selectedCalendarDate ? (
+                  <>
+                    {/* Legend */}
                 <div className="px-6 py-3 bg-[#f9fafb] border-b border-[#e0e0e0] flex flex-wrap gap-4 items-center">
                   {[
                     { color: 'bg-[#24a148]', label: 'Confirmed' },
@@ -2257,7 +2308,8 @@ function AdminDashboard({ setCurrentPage }) {
                       days.push(
                         <div
                           key={day}
-                          className={`min-h-[110px] border-b border-r border-[#e0e0e0] p-2 relative transition-all group
+                          onClick={() => setSelectedCalendarDate(dateStr)}
+                          className={`min-h-[110px] border-b border-r border-[#e0e0e0] p-2 relative transition-all group cursor-pointer
                             ${isBlocked ? 'bg-red-50' :
                               isToday ? 'bg-[#f0fdf4]' :
                                 isWeekend ? 'bg-[#fafafa]' : 'bg-white'}
@@ -2337,6 +2389,104 @@ function AdminDashboard({ setCurrentPage }) {
                     return days;
                   })()}
                 </div>
+              </>
+            ) : (
+              <div className="overflow-y-auto bg-white flex-1 flex flex-col">
+                {(() => {
+                  let dayApts = calendarData.appointments?.filter(a => (a.preferred_date || '').slice(0, 10) === selectedCalendarDate) || [];
+                  if (dayApts.length === 0) {
+                    return (
+                      <div className="flex flex-col items-center justify-center flex-1 min-h-[300px] opacity-50">
+                        <Calendar className="w-16 h-16 mb-4 text-gray-300" />
+                        <p className="text-center text-gray-500 uppercase font-black tracking-widest text-xs">No schedule for this date</p>
+                      </div>
+                    );
+                  }
+                  
+                  // Sort chronologically by time
+                  dayApts = dayApts.sort((a, b) => {
+                    const timeA = new Date(`2000/01/01 ${a.preferred_time}`).getTime();
+                    const timeB = new Date(`2000/01/01 ${b.preferred_time}`).getTime();
+                    return (timeA || 0) - (timeB || 0);
+                  });
+
+                  return (
+                    <div className="w-full overflow-x-auto">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead>
+                          <tr className="bg-[#f4f4f4] border-b border-[#e0e0e0]">
+                            <th className="px-4 py-2.5 font-bold uppercase tracking-widest text-gray-500 text-[9px]">Trip ID</th>
+                            <th className="px-4 py-2.5 font-bold uppercase tracking-widest text-gray-500 text-[9px]">Passenger</th>
+                            <th className="px-4 py-2.5 font-bold uppercase tracking-widest text-gray-500 text-[9px]">Driver / Vehicle</th>
+                            <th className="px-4 py-2.5 font-bold uppercase tracking-widest text-gray-500 text-[9px]">Route (Pickup &rarr; Drop)</th>
+                            <th className="px-4 py-2.5 font-bold uppercase tracking-widest text-gray-500 text-[9px]">Fare</th>
+                            <th className="px-4 py-2.5 font-bold uppercase tracking-widest text-gray-500 text-[9px]">Status</th>
+                            <th className="px-4 py-2.5 font-bold uppercase tracking-widest text-gray-500 text-[9px]">Schedule</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {dayApts.map((apt) => {
+                            const isAssigned = !!apt.rider_id && apt.transport_status !== 'unassigned';
+                            return (
+                              <tr key={apt.id} className="border-b border-gray-100 hover:bg-gray-50/50 transition-all duration-200">
+                                <td className="px-4 py-2 font-mono font-bold text-gray-900">
+                                  #{apt.id}
+                                </td>
+                                <td className="px-4 py-2">
+                                  <div className="font-bold text-gray-900">{apt.full_name || 'Unknown Passenger'}</div>
+                                  <div className="text-[10px] text-gray-400">{apt.phone_number || 'No Phone'}</div>
+                                </td>
+                                <td className="px-4 py-2">
+                                  {isAssigned && apt.rider_name ? (
+                                    <>
+                                      <div className="font-bold text-gray-900">{apt.rider_name}</div>
+                                      <div className="text-[10px] text-gray-400">
+                                        {apt.vehicle_type || 'Vehicle'} • {apt.plate_number || 'No Plate'}
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <span className="text-red-500 font-semibold uppercase text-[10px] bg-red-50 px-2 py-0.5 border border-red-100 rounded-sm">Unassigned</span>
+                                  )}
+                                </td>
+                                <td className="px-4 py-2 max-w-[240px]">
+                                  <div className="text-gray-900 truncate" title={apt.pickup_location}>
+                                    <span className="text-green-600 font-bold mr-1">P:</span>{apt.pickup_location || 'Not specified'}
+                                  </div>
+                                  <div className="text-gray-500 truncate mt-0.5" title={apt.destination_location}>
+                                    <span className="text-blue-500 font-bold mr-1">D:</span>{apt.destination_location || 'Not specified'}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-2 font-mono font-bold text-gray-900">
+                                  PHP {parseFloat(apt.total_amount || 0).toFixed(2)}
+                                </td>
+                                <td className="px-4 py-2">
+                                  <span className={`px-2.5 py-1 text-[9px] font-semibold uppercase tracking-wider rounded-sm ${
+                                    apt.transport_status === 'completed' || apt.status === 'completed' ? 'bg-green-50 text-green-700 border border-green-200' :
+                                    apt.transport_status === 'cancelled' || apt.status === 'cancelled' ? 'bg-red-50 text-red-700 border border-red-200' :
+                                    apt.transport_status === 'sos' ? 'bg-red-600 text-white font-bold animate-pulse' :
+                                    (!isAssigned && (apt.status === 'pending' || apt.transport_status === 'unassigned')) ? 'bg-yellow-50 text-yellow-700 border border-yellow-200 animate-pulse' :
+                                    'bg-blue-50 text-blue-700 border border-blue-200'
+                                  }`}>
+                                    {apt.status === 'cancelled' ? 'cancelled' : 
+                                     apt.status === 'completed' ? 'completed' : 
+                                     (apt.transport_status !== 'unassigned' && apt.transport_status) ? apt.transport_status : 
+                                     apt.status || 'unassigned'}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-2 text-gray-500 font-medium whitespace-nowrap">
+                                  <div className="font-semibold text-gray-900">{apt.preferred_date ? new Date(apt.preferred_date).toLocaleDateString() : 'N/A'}</div>
+                                  <div className="text-[10px] text-gray-400">{apt.preferred_time || 'N/A'}</div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
               </div>
             )}
 
@@ -2431,6 +2581,96 @@ function AdminDashboard({ setCurrentPage }) {
                           </div>
                         ))}
                       </div>
+                    </div>
+
+                    {/* Trip Reports and Preview Grid */}
+                    <div className="bg-white rounded-0 p-6 border border-[#e0e0e0] shadow-sm">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-800">Trip Report Summary</h3>
+                          <p className="text-xs text-gray-500">Summary list of trips, active driver dispatches, and fares.</p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            const params = new URLSearchParams();
+                            if (reportStartDate) params.append('startDate', reportStartDate);
+                            if (reportEndDate) params.append('endDate', reportEndDate);
+                            window.open(`/api/export/trips?${params}`, '_blank');
+                          }}
+                          className="px-6 py-3 bg-[#161616] text-white text-[10px] font-bold uppercase tracking-widest hover:bg-black transition-all flex items-center gap-2"
+                        >
+                          <Download size={14} /> Export Trip CSV
+                        </button>
+                      </div>
+
+                      {reportTripsLoading ? (
+                        <div className="py-12 text-center text-gray-400 text-sm uppercase">Loading trip details...</div>
+                      ) : reportTrips.length === 0 ? (
+                        <div className="py-12 text-center text-gray-400 text-xs uppercase italic bg-[#f4f4f4]">
+                          No trips found for the selected dates.
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left border-collapse text-xs">
+                            <thead>
+                              <tr className="bg-[#f4f4f4] border-b border-[#e0e0e0]">
+                                <th className="px-4 py-3 font-bold uppercase tracking-widest text-gray-500 text-[10px]">Trip ID</th>
+                                <th className="px-4 py-3 font-bold uppercase tracking-widest text-gray-500 text-[10px]">Passenger</th>
+                                <th className="px-4 py-3 font-bold uppercase tracking-widest text-gray-500 text-[10px]">Driver / Vehicle</th>
+                                <th className="px-4 py-3 font-bold uppercase tracking-widest text-gray-500 text-[10px]">Route (Pickup &rarr; Drop)</th>
+                                <th className="px-4 py-3 font-bold uppercase tracking-widest text-gray-500 text-[10px]">Fare</th>
+                                <th className="px-4 py-3 font-bold uppercase tracking-widest text-gray-500 text-[10px]">Status</th>
+                                <th className="px-4 py-3 font-bold uppercase tracking-widest text-gray-500 text-[10px]">Date</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {reportTrips.map(trip => (
+                                <tr key={trip.id} className="border-b border-gray-100 hover:bg-gray-50/50">
+                                  <td className="px-4 py-4 font-mono font-bold text-gray-900">#{trip.id}</td>
+                                  <td className="px-4 py-4">
+                                    <div className="font-bold text-gray-900">{trip.full_name}</div>
+                                    <div className="text-[10px] text-gray-400">{trip.phone_number}</div>
+                                  </td>
+                                  <td className="px-4 py-4">
+                                    {trip.rider_name ? (
+                                      <>
+                                        <div className="font-bold text-gray-900">{trip.rider_name}</div>
+                                        <div className="text-[10px] text-gray-400">{trip.vehicle_type} • {trip.plate_number}</div>
+                                      </>
+                                    ) : (
+                                      <span className="text-red-500 font-semibold uppercase text-[10px]">Unassigned</span>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-4">
+                                    <div className="text-gray-900 truncate max-w-[200px]" title={trip.pickup_location}>
+                                      <span className="text-green-600 font-bold">P:</span> {trip.pickup_location}
+                                    </div>
+                                    <div className="text-gray-500 truncate max-w-[200px] mt-0.5" title={trip.destination_location}>
+                                      <span className="text-blue-500 font-bold">D:</span> {trip.destination_location}
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-4 font-mono font-bold text-gray-900">
+                                    PHP {parseFloat(trip.total_amount || 0).toFixed(2)}
+                                  </td>
+                                  <td className="px-4 py-4">
+                                    <span className={`px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider ${
+                                      trip.transport_status === 'completed' ? 'bg-green-50 text-green-700 border border-green-200' :
+                                      trip.transport_status === 'cancelled' ? 'bg-red-50 text-red-700 border border-red-200' :
+                                      trip.transport_status === 'sos' ? 'bg-red-600 text-white font-bold animate-pulse' :
+                                      'bg-blue-50 text-blue-700 border border-blue-200'
+                                    }`}>
+                                      {trip.transport_status}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-4 text-gray-500 font-medium whitespace-nowrap">
+                                    {trip.preferred_date ? new Date(trip.preferred_date).toLocaleDateString() : 'N/A'}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
                     </div>
                   </>
                 )}
@@ -3008,7 +3248,7 @@ function HomePage({ setCurrentPage }) {
             {/* Footer Bottom */}
             <div className="border-t border-[#393939] mt-16 pt-8 text-center">
               <p className="text-[#6f6f6f] text-xs uppercase tracking-widest leading-loose">
-                2026 Roger Tonacao. ServiceBox | All rights reserved. |
+                2026 Roger Tonacao |0927 623 0491 | All rights reserved. |
                 <button onClick={() => setCurrentPage('my-appointment')} className="hover:text-[#10b981] transition-all ml-1">My Appointment</button> |
                 <button onClick={() => setCurrentPage('admin')} className="hover:text-[#10b981] transition-all ml-1">Admin</button>
               </p>
@@ -3097,7 +3337,7 @@ function MenuPage({ selectedCategory, setSelectedCategory, searchQuery, menuData
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
-            {services.map((service, index) => (
+            {services.filter(s => s.is_active !== false).map((service, index) => (
               <div
                 key={service.id}
                 className="group relative bg-white border border-gray-100 hover:border-[#10b981] transition-all duration-500 hover:shadow-[0_20px_50px_rgba(0,0,0,0.1)] flex flex-col"
@@ -4966,8 +5206,43 @@ function TripMonitoring({ trips, stats, riders, incidents, onRefresh }) {
   const [viewMode, setViewMode] = useState('all'); // all, ongoing, completed, sos
   const [searchQuery, setSearchQuery] = useState('');
   const [focusId, setFocusId] = useState(null);
+  const [displayedTrip, setDisplayedTrip] = useState(null); // keeps content alive during slide-out
+  const [isForcing, setIsForcing] = useState(false);
 
   const selectedTrip = trips.find(t => t.id === selectedTripId);
+
+  // Sync displayedTrip: update immediately on open, delay clear by 500ms on close
+  React.useEffect(() => {
+    if (selectedTrip) {
+      setDisplayedTrip(selectedTrip);
+    } else {
+      const timer = setTimeout(() => setDisplayedTrip(null), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedTrip]);
+
+  const handleForceComplete = async (trip) => {
+    if (!window.confirm(`Force complete Trip #${trip.id} for ${trip.full_name}? This will mark the trip as completed and credit the driver's wallet.`)) return;
+    setIsForcing(true);
+    try {
+      const res = await fetch('/api/rider/update-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ appointmentId: trip.id, status: 'completed' })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSelectedTripId(null);
+        if (onRefresh) onRefresh();
+      } else {
+        alert('Failed to force complete the trip. Please try again.');
+      }
+    } catch (e) {
+      alert('Network error. Could not force complete the trip.');
+    } finally {
+      setIsForcing(false);
+    }
+  };
 
   const filteredTrips = trips.filter(t => {
     // Stage 1: Status Filtering
@@ -4976,7 +5251,7 @@ function TripMonitoring({ trips, stats, riders, incidents, onRefresh }) {
     else if (viewMode === 'ongoing') statusMatch = ['accepted', 'on_way_to_pickup', 'en_route', 'arrived_at_pickup', 'picked_up'].includes(t.transport_status);
     else if (viewMode === 'completed') statusMatch = t.transport_status === 'completed';
     else if (viewMode === 'sos') statusMatch = t.transport_status === 'sos';
-    
+
     if (!statusMatch) return false;
 
     // Stage 2: Smart Search Filtering (Rider, Passenger, Plate)
@@ -5003,7 +5278,7 @@ function TripMonitoring({ trips, stats, riders, incidents, onRefresh }) {
           <div className="pl-3 text-gray-400">
             <Search size={16} />
           </div>
-          <input 
+          <input
             type="text"
             placeholder="Search Rider, Passenger or Plate No..."
             value={searchQuery}
@@ -5011,7 +5286,7 @@ function TripMonitoring({ trips, stats, riders, incidents, onRefresh }) {
             className="flex-1 bg-transparent border-none outline-none text-sm font-medium text-gray-900 placeholder:text-gray-400 py-2"
           />
           {searchQuery && (
-            <button 
+            <button
               onClick={() => setSearchQuery('')}
               className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
             >
@@ -5019,7 +5294,7 @@ function TripMonitoring({ trips, stats, riders, incidents, onRefresh }) {
             </button>
           )}
           <div className="h-6 w-[1px] bg-gray-300/30 mx-1"></div>
-          <button 
+          <button
             onClick={() => {
               const first = filteredTrips[0];
               if (first) setFocusId(first.id + '_' + Date.now());
@@ -5065,13 +5340,13 @@ function TripMonitoring({ trips, stats, riders, incidents, onRefresh }) {
       {/* OVERLAY LAYER 2: Sidebar Trip List (Draggable) */}
       <DraggableGlassPanel initialX={5} initialY={100} width="320px" height="calc(100% - 120px)">
         <div className="h-full bg-white/10 backdrop-blur-3xl border border-white/30 shadow-[0_8px_32px_0_rgba(31,38,135,0.2)] flex flex-col overflow-hidden">
-          <div className="p-4 border-b border-[#002d9c] flex justify-between items-center bg-[#10b981] text-white drag-handle shadow-md">
+          <div className="p-4 flex justify-between items-center bg-black text-white drag-handle">
             <div className="flex gap-1 pointer-events-auto">
               {['all', 'ongoing', 'sos'].map(m => (
                 <button
                   key={m}
                   onClick={() => setViewMode(m)}
-                  className={`px-3 py-1 text-[9px] font-bold uppercase tracking-widest border transition-all ${viewMode === m ? 'bg-white text-[#10b981] border-white' : 'bg-transparent text-white/80 border-white/30 hover:bg-white/20 hover:text-white'}`}
+                  className={`px-3 py-1 text-[9px] font-bold uppercase tracking-widest transition-all ${viewMode === m ? 'bg-white text-black' : 'bg-transparent text-white/70 hover:bg-white/20 hover:text-white'}`}
                 >
                   {m}
                 </button>
@@ -5112,12 +5387,21 @@ function TripMonitoring({ trips, stats, riders, incidents, onRefresh }) {
         </div>
       </DraggableGlassPanel>
 
-      {/* OVERLAY LAYER 3: Trip Details (Draggable) */}
-      {selectedTrip && (
-        <DraggableGlassPanel initialX={window.innerWidth - 260 - 440} initialY={160} width="400px" height="calc(100% - 176px)">
-          <TripDetailOverlay trip={selectedTrip} onClose={() => setSelectedTripId(null)} />
-        </DraggableGlassPanel>
-      )}
+      {/* OVERLAY LAYER 3: Trip Details — Slide-in from right, slide-out on close */}
+      <div
+        className={`absolute top-0 right-0 h-full w-[400px] z-30 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+          selectedTrip ? 'translate-x-0' : 'translate-x-full'
+        }`}
+      >
+        {displayedTrip && (
+          <TripDetailOverlay
+            trip={displayedTrip}
+            onClose={() => setSelectedTripId(null)}
+            onForceComplete={handleForceComplete}
+            isForcing={isForcing}
+          />
+        )}
+      </div>
 
       {/* Legenda (Bottom Left) */}
       <div className="absolute bottom-8 left-96 ml-4 z-10 bg-white/60 backdrop-blur-sm p-3 border border-white/20 shadow-lg flex items-center gap-4 text-[9px] font-bold uppercase tracking-wider text-gray-600">
@@ -5251,12 +5535,12 @@ function MonitoringMap({ trips, selectedTrip, focusId }) {
       trips.forEach(trip => {
         try {
           const tripId = Number(trip.id);
-          
+
           // Priority Logic: 
           // 1. If actually MOVING with passenger (en_route, picked_up, sos), follow RIDER GPS.
           // 2. If awaiting pickup (accepted, on_way), anchor to PICKUP POINT for clarity.
           const isActuallyMoving = ['en_route', 'picked_up', 'sos'].includes(trip.transport_status);
-          
+
           let lat = Number(isActuallyMoving ? (trip.rider_lat || trip.current_lat || trip.pickup_lat) : trip.pickup_lat);
           let lng = Number(isActuallyMoving ? (trip.rider_lng || trip.current_lng || trip.pickup_lng) : trip.pickup_lng);
 
@@ -5276,14 +5560,14 @@ function MonitoringMap({ trips, selectedTrip, focusId }) {
 
           if (markersRef.current.has(tripId)) {
             const marker = markersRef.current.get(tripId);
-            
+
             // Check if we need to RE-CREATE the icon because zoom state changed
             const currentHtml = marker.options.icon.options.html;
             const needsRefresh = (isZoomedOut && currentHtml.includes('Ultra-Minimalist Badge')) || (!isZoomedOut && !currentHtml.includes('Ultra-Minimalist Badge'));
-            
+
             if (!needsRefresh) {
               marker.setLatLng([lat, lng]);
-              
+
               // Update rotation
               const dLat = Number(trip.dest_lat || trip.pickup_lat);
               const dLng = Number(trip.dest_lng || trip.pickup_lng);
@@ -5300,7 +5584,7 @@ function MonitoringMap({ trips, selectedTrip, focusId }) {
               markersRef.current.delete(tripId);
             }
           }
-          
+
           // Custom Icon based on status and vehicle type
           let iconHtml = '';
           const vType = (trip.vehicle_type || 'car').toLowerCase();
@@ -5435,9 +5719,9 @@ function MonitoringMap({ trips, selectedTrip, focusId }) {
                 iconSize: [80, 60],
                 iconAnchor: [40, 55]
               });
-              const dMarker = window.L.marker([dLat, dLng], { 
-                icon: destIcon, 
-                zIndexOffset: 5000 
+              const dMarker = window.L.marker([dLat, dLng], {
+                icon: destIcon,
+                zIndexOffset: 5000
               }).addTo(leafletMap.current);
               destMarkersRef.current.set(tripId, dMarker);
             }
@@ -5451,7 +5735,7 @@ function MonitoringMap({ trips, selectedTrip, focusId }) {
           if (showRoute) {
             const startLat = lat;
             const startLng = lng;
-            
+
             // The route should always point to the final destination now 
             // because the car stays at pickup during the initial phase.
             const endLat = Number(trip.dest_lat);
@@ -5460,7 +5744,7 @@ function MonitoringMap({ trips, selectedTrip, focusId }) {
             // Only draw if we have a valid target coordinate that is different from start
             if (!isNaN(startLat) && !isNaN(startLng) && !isNaN(endLat) && !isNaN(endLng) && (Math.abs(startLat - endLat) > 0.0001 || Math.abs(startLng - endLng) > 0.0001)) {
               const routeId = `${tripId}_${startLat.toFixed(4)}_${startLng.toFixed(4)}_${endLat.toFixed(4)}_${endLng.toFixed(4)}`;
-              
+
               if (!polylinesRef.current.has(tripId) || polylinesRef.current.get(tripId).routeId !== routeId) {
                 fetch(`https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${endLng},${endLat}?overview=full&geometries=geojson`)
                   .then(r => r.json())
@@ -5556,83 +5840,105 @@ function MonitoringMap({ trips, selectedTrip, focusId }) {
     </div>
   );
 }
-function TripDetailOverlay({ trip, onClose }) {
+function TripDetailOverlay({ trip, onClose, onForceComplete, isForcing }) {
   return (
-    <div className="h-full bg-[#161616]/40 backdrop-blur-[40px] border border-white/20 shadow-2xl flex flex-col overflow-hidden pointer-events-auto">
-      <div className="p-4 border-b border-white/10 flex justify-between items-center bg-[#161616]/60 text-white">
-        <h3 className="text-[10px] font-bold uppercase tracking-widest text-[#10b981]">Trip Intelligence</h3>
-        <button onClick={onClose} className="p-1 hover:bg-white/10 rounded-full transition-colors"><X className="w-5 h-5" /></button>
+    <div className="h-full bg-white shadow-2xl flex flex-col overflow-hidden pointer-events-auto border-l border-gray-100">
+      {/* Green Header Bar */}
+      <div className="px-6 py-4 flex justify-between items-center bg-black border-b border-gray-100">
+        <h3 className="text-[10px] font-bold uppercase tracking-widest text-white">Trip Intelligence</h3>
+        <button onClick={onClose} className="p-1 text-white hover:bg-black/10 transition-colors rounded-none"><X className="w-4 h-4" /></button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
+      <div className="flex-1 overflow-y-auto py-6 space-y-8 custom-scrollbar bg-white">
         {/* Passenger Info */}
-        <section className="space-y-4">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-[#10b981] text-white flex items-center justify-center font-bold text-xl">
-              {trip.full_name?.charAt(0)}
-            </div>
-            <div>
-              <h4 className="text-lg font-bold text-[#161616]">{trip.full_name}</h4>
-              <p className="text-xs text-gray-500">{trip.email}</p>
-            </div>
+        <section>
+          <div className="bg-black px-6 py-2 mb-6">
+            <h4 className="text-[10px] font-bold text-white uppercase tracking-widest">Passenger Info</h4>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="p-3 bg-white/40 border border-white/20">
-              <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mb-1">Status</p>
-              <TripStatusBadge status={trip.transport_status} />
+          <div className="px-6 space-y-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-black text-white flex items-center justify-center font-bold text-lg">
+                {trip.full_name?.charAt(0)}
+              </div>
+              <div>
+                <h4 className="text-xl font-bold text-black tracking-tight">{trip.full_name}</h4>
+                <p className="text-xs font-medium text-gray-500">{trip.email}</p>
+              </div>
             </div>
-            <div className="p-3 bg-white/40 border border-white/20">
-              <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mb-1">Contact</p>
-              <p className="text-xs font-bold text-gray-800">{trip.phone_number}</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="border border-gray-200 p-4">
+                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2">Status</p>
+                <TripStatusBadge status={trip.transport_status} />
+              </div>
+              <div className="border border-gray-200 p-4">
+                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Contact</p>
+                <p className="text-sm font-bold text-black mt-2">{trip.phone_number || 'N/A'}</p>
+              </div>
             </div>
           </div>
         </section>
 
         {/* Route Details */}
-        <section className="space-y-4">
-          <h4 className="text-[10px] font-bold text-[#525252] uppercase tracking-widest border-b border-white/20 pb-2">Active Route</h4>
-          <div className="space-y-4 border-l-2 border-gray-100 ml-2 pl-4">
-            <div className="relative">
-              <div className="absolute -left-[21px] top-0 w-2 h-2 rounded-full border-2 border-[#10b981] bg-white"></div>
-              <p className="text-[9px] font-bold text-gray-400 uppercase">Pickup Location</p>
-              <p className="text-xs text-gray-700">{trip.pickup_location}</p>
-            </div>
-            <div className="relative">
-              <div className="absolute -left-[21px] bottom-0 w-2 h-2 bg-[#da1e28]"></div>
-              <p className="text-[9px] font-bold text-gray-400 uppercase">Destination</p>
-              <p className="text-xs text-gray-700">{trip.destination_location}</p>
+        <section>
+          <div className="bg-black px-6 py-2 mb-6">
+            <h4 className="text-[10px] font-bold text-white uppercase tracking-widest">Active Route</h4>
+          </div>
+          <div className="px-6">
+            <div className="space-y-6 border-l-2 border-black ml-2 pl-6 py-1">
+              <div className="relative">
+                <div className="absolute -left-[29px] top-1 w-3 h-3 rounded-full border-[3px] border-black bg-white"></div>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Pickup Location</p>
+                <p className="text-sm font-bold text-black">{trip.pickup_location}</p>
+              </div>
+              <div className="relative">
+                <div className="absolute -left-[29px] bottom-1 w-3 h-3 border-[3px] border-[#10b981] bg-white"></div>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Destination</p>
+                <p className="text-sm font-bold text-black">{trip.destination_location}</p>
+              </div>
             </div>
           </div>
         </section>
 
         {/* Vehicle & Rider */}
-        <section className="p-4 bg-[#161616] text-white space-y-4">
-          <div className="flex justify-between items-start">
-            <div>
-              <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Assigned Driver</h4>
-              <p className="text-sm font-bold mt-1 text-blue-400">{trip.rider_name || 'PENDING ASSIGNMENT'}</p>
-            </div>
-            <Car className="text-gray-600" size={20} />
+        <section>
+          <div className="bg-black px-6 py-2">
+            <h4 className="text-[10px] font-bold text-white uppercase tracking-widest">Assigned Driver</h4>
           </div>
-          {trip.rider_name && (
-            <div className="grid grid-cols-2 gap-4 border-t border-white/10 pt-4">
+          <div className="px-6 py-6 bg-white">
+            <div className="flex justify-between items-start mb-6">
               <div>
-                <p className="text-[8px] font-bold uppercase text-gray-500">Vehicle</p>
-                <p className="text-[10px]">{trip.vehicle_type}</p>
+                <p className="text-base font-bold text-black">{trip.rider_name || 'PENDING ASSIGNMENT'}</p>
               </div>
-              <div>
-                <p className="text-[8px] font-bold uppercase text-gray-500">Plate</p>
-                <p className="text-[10px]">{trip.plate_number}</p>
-              </div>
+              <Car className="text-black" size={20} />
             </div>
-          )}
+            {trip.rider_name && (
+              <div className="grid grid-cols-2 gap-4 border-t border-gray-200 pt-4">
+                <div>
+                  <p className="text-[9px] font-bold uppercase text-gray-400 tracking-widest mb-1">Vehicle</p>
+                  <p className="text-xs font-bold text-black">{trip.vehicle_type}</p>
+                </div>
+                <div>
+                  <p className="text-[9px] font-bold uppercase text-gray-400 tracking-widest mb-1">Plate</p>
+                  <p className="text-xs font-bold text-black">{trip.plate_number}</p>
+                </div>
+              </div>
+            )}
+          </div>
         </section>
       </div>
 
-      <div className="p-6 border-t border-white/20 bg-white/40">
-        <div className="grid grid-cols-2 gap-3">
-          <button className="py-3 px-4 border border-[#10b981] text-[#10b981] text-[9px] font-bold uppercase tracking-widest hover:bg-[#10b981] hover:text-white transition-all">Force Complete</button>
-          <button className={`py-3 px-4 text-white text-[9px] font-bold uppercase tracking-widest transition-all ${trip.transport_status === 'sos' ? 'bg-[#da1e28] hover:bg-red-700' : 'bg-gray-800 hover:bg-black'}`}>
+      <div className="p-6 border-t border-gray-100 bg-white">
+        <div className="grid grid-cols-2 gap-4">
+          <button
+            onClick={() => onForceComplete(trip)}
+            disabled={isForcing || trip.transport_status === 'completed'}
+            className="py-4 px-4 rounded-full bg-gradient-to-r from-green-400 to-[#10b981] text-white text-[10px] font-bold uppercase tracking-widest hover:opacity-90 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            {isForcing ? (
+              <><span className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />Completing...</>
+            ) : trip.transport_status === 'completed' ? 'Completed' : 'Force Complete'}
+          </button>
+          <button className="py-4 px-4 rounded-full bg-gradient-to-r from-[#10b981] to-green-600 text-white text-[10px] font-bold uppercase tracking-widest hover:opacity-90 transition-all shadow-md">
             {trip.transport_status === 'sos' ? 'SOS RESPONSE' : 'SECURITY ALERT'}
           </button>
         </div>
@@ -5713,7 +6019,7 @@ function DispatchMap({ trips, riders, selectedBooking }) {
       trips.forEach(trip => {
         const id = `trip-${trip.id}`;
         currentIds.add(id);
-        
+
         const isActuallyMoving = ['en_route', 'picked_up', 'sos'].includes(trip.transport_status);
         const lat = parseFloat(isActuallyMoving ? (trip.rider_lat || trip.current_lat || trip.pickup_lat) : trip.pickup_lat);
         const lng = parseFloat(isActuallyMoving ? (trip.rider_lng || trip.current_lng || trip.pickup_lng) : trip.pickup_lng);
@@ -5722,7 +6028,7 @@ function DispatchMap({ trips, riders, selectedBooking }) {
         if (markersRef.current.has(id)) {
           const m = markersRef.current.get(id);
           m.setLatLng([lat, lng]);
-          
+
           // Rotation
           const dLat = parseFloat(trip.dest_lat);
           const dLng = parseFloat(trip.dest_lng);
@@ -5798,7 +6104,7 @@ function DispatchMap({ trips, riders, selectedBooking }) {
                   const line = window.L.polyline(coords, { color: '#24a148', weight: 3, opacity: 0.4 }).addTo(leafletMap.current);
                   polylinesRef.current.set(trip.id, { line, routeId });
                 }
-              }).catch(() => {});
+              }).catch(() => { });
           }
         }
       });
@@ -7597,7 +7903,7 @@ function EmailTemplateSettings() {
 
   const handleTestEmail = async () => {
     if (!settings.email_smtp_user) return alert('Please enter an SMTP user/email first');
-    
+
     setIsSaving(true);
     try {
       const res = await fetch('/api/admin/test-email', {
@@ -7652,7 +7958,7 @@ function EmailTemplateSettings() {
               </div>
               <div>
                 <label className="block text-[10px] text-gray-400 uppercase mb-1">Encryption</label>
-                <select 
+                <select
                   value={settings.email_smtp_port === '465' ? 'SSL' : 'TLS / STARTTLS'}
                   onChange={e => setSettings({ ...settings, email_smtp_port: e.target.value === 'SSL' ? '465' : '587' })}
                   className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:border-[#10b981] outline-none"

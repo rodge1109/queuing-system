@@ -906,9 +906,16 @@ app.put('/api/corporate-accounts/:id', async (req, res) => {
 // Delete corporate account
 app.delete('/api/corporate-accounts/:id', async (req, res) => {
   try {
+    // Remove references to prevent foreign key constraint violations
+    await pool.query('UPDATE appointments SET corporate_account_id = NULL WHERE corporate_account_id = $1', [req.params.id]).catch(() => {});
+    await pool.query('DELETE FROM corporate_payments WHERE account_id = $1', [req.params.id]).catch(() => {});
+    await pool.query('DELETE FROM corporate_invoices WHERE account_id = $1', [req.params.id]).catch(() => {});
+    await pool.query('DELETE FROM corporate_ledger WHERE account_id = $1', [req.params.id]).catch(() => {});
+    
     await pool.query('DELETE FROM corporate_accounts WHERE id = $1', [req.params.id]);
     res.json({ success: true });
   } catch (error) {
+    console.error('Delete corporate account error:', error);
     res.status(500).json({ success: false, message: 'Failed to delete corporate account' });
   }
 });
@@ -1962,6 +1969,133 @@ app.get('/api/export/appointments', async (req, res) => {
   }
 });
 
+// Get trips list for reports preview
+app.get('/api/reports/trips', async (req, res) => {
+  try {
+    const { startDate, endDate, status } = req.query;
+    let sql = `
+      SELECT a.*, r.name as rider_name, r.plate_number, r.vehicle_type 
+      FROM appointments a
+      LEFT JOIN riders r ON a.rider_id = r.id
+      JOIN booking_services s ON a.service_type = s.name
+      WHERE s.category ILIKE 'TRANSPORT'
+    `;
+    const params = [];
+    let paramIndex = 1;
+
+    if (startDate) {
+      sql += ` AND a.preferred_date >= $${paramIndex}`;
+      params.push(startDate);
+      paramIndex++;
+    }
+
+    if (endDate) {
+      sql += ` AND a.preferred_date <= $${paramIndex}`;
+      params.push(endDate);
+      paramIndex++;
+    }
+
+    if (status && status !== 'all') {
+      sql += ` AND a.transport_status = $${paramIndex}`;
+      params.push(status);
+    }
+
+    sql += ' ORDER BY a.preferred_date DESC, a.preferred_time DESC';
+
+    const { rows } = await pool.query(sql, params);
+    res.json({ success: true, trips: rows });
+  } catch (error) {
+    console.error('Fetch report trips error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch report trips' });
+  }
+});
+
+// Export trips report to CSV
+app.get('/api/export/trips', async (req, res) => {
+  try {
+    const { startDate, endDate, status } = req.query;
+
+    let sql = `
+      SELECT a.*, r.name as rider_name, r.plate_number, r.vehicle_type 
+      FROM appointments a
+      LEFT JOIN riders r ON a.rider_id = r.id
+      JOIN booking_services s ON a.service_type = s.name
+      WHERE s.category ILIKE 'TRANSPORT'
+    `;
+    const params = [];
+    let paramIndex = 1;
+
+    if (startDate) {
+      sql += ` AND a.preferred_date >= $${paramIndex}`;
+      params.push(startDate);
+      paramIndex++;
+    }
+
+    if (endDate) {
+      sql += ` AND a.preferred_date <= $${paramIndex}`;
+      params.push(endDate);
+      paramIndex++;
+    }
+
+    if (status && status !== 'all') {
+      sql += ` AND a.transport_status = $${paramIndex}`;
+      params.push(status);
+    }
+
+    sql += ' ORDER BY a.preferred_date DESC, a.preferred_time DESC';
+
+    const result = await pool.query(sql, params);
+
+    // Convert to CSV
+    const headers = [
+      'Trip ID',
+      'Passenger Name',
+      'Passenger Phone',
+      'Pickup Location',
+      'Destination Location',
+      'Preferred Date',
+      'Preferred Time',
+      'Driver Name',
+      'Driver Plate',
+      'Vehicle Type',
+      'Fare Amount',
+      'Trip Status',
+      'Overall Status',
+      'Created At'
+    ];
+    const csvRows = [headers.join(',')];
+
+    result.rows.forEach(row => {
+      const values = [
+        row.id,
+        `"${(row.full_name || '').replace(/"/g, '""')}"`,
+        row.phone_number || '',
+        `"${(row.pickup_location || '').replace(/"/g, '""')}"`,
+        `"${(row.destination_location || '').replace(/"/g, '""')}"`,
+        row.preferred_date || '',
+        row.preferred_time || '',
+        `"${(row.rider_name || 'Unassigned').replace(/"/g, '""')}"`,
+        row.plate_number || '',
+        row.vehicle_type || '',
+        row.total_amount || 0,
+        row.transport_status || '',
+        row.status || '',
+        row.created_at || ''
+      ];
+      csvRows.push(values.join(','));
+    });
+
+    const csv = csvRows.join('\n');
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename=trips_report_${new Date().toISOString().split('T')[0]}.csv`);
+    res.send(csv);
+  } catch (error) {
+    console.error('Trip export error:', error);
+    res.status(500).json({ success: false, message: 'Failed to export trip data' });
+  }
+});
+
 // ==================== CALENDAR DATA ====================
 
 // Get appointments for calendar view
@@ -1974,13 +2108,15 @@ app.get('/api/calendar', async (req, res) => {
     const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
     const appointments = await pool.query(
-      `SELECT id, full_name, service_type,
-              TO_CHAR(preferred_date AT TIME ZONE 'Asia/Manila', 'YYYY-MM-DD') AS preferred_date,
-              preferred_time, status
-       FROM appointments
-       WHERE preferred_date AT TIME ZONE 'Asia/Manila' >= $1::date
-         AND preferred_date AT TIME ZONE 'Asia/Manila' <= ($2::date + interval '1 day' - interval '1 second')
-       ORDER BY preferred_date, preferred_time`,
+      `SELECT a.id, a.full_name, a.phone_number, a.service_type,
+              TO_CHAR(a.preferred_date AT TIME ZONE 'Asia/Manila', 'YYYY-MM-DD') AS preferred_date,
+              a.preferred_time, a.status, a.transport_status, a.pickup_location, a.destination_location, a.total_amount,
+              a.rider_id, r.name as rider_name, r.vehicle_type, r.plate_number
+       FROM appointments a
+       LEFT JOIN riders r ON a.rider_id = r.id
+       WHERE a.preferred_date AT TIME ZONE 'Asia/Manila' >= $1::date
+         AND a.preferred_date AT TIME ZONE 'Asia/Manila' <= ($2::date + interval '1 day' - interval '1 second')
+       ORDER BY a.preferred_date, a.preferred_time`,
       [startDate, endDate]
     );
 
@@ -2760,6 +2896,25 @@ app.get('/api/corporate-accounts', async (req, res) => {
   }
 });
 
+app.get('/api/corporate-accounts/validate/:accountNumber', async (req, res) => {
+  try {
+    const { accountNumber } = req.params;
+    const { rows } = await pool.query('SELECT id, company_name, status, credit_limit, balance FROM corporate_accounts WHERE account_number = $1', [accountNumber]);
+    if (rows.length > 0) {
+      const account = rows[0];
+      if (account.status !== 'active') {
+        return res.json({ valid: false, message: 'Account is inactive or suspended.' });
+      }
+      res.json({ valid: true, account });
+    } else {
+      res.json({ valid: false, message: 'Corporate account not found.' });
+    }
+  } catch (error) {
+    console.error('Validation error:', error);
+    res.status(500).json({ valid: false, message: 'Server error during validation.' });
+  }
+});
+
 app.post('/api/corporate-accounts', async (req, res) => {
   try {
     const { account_number, company_name, contact_person, contact_email, contact_phone, credit_limit } = req.body;
@@ -2967,17 +3122,18 @@ app.get('/api/booking-categories', async (_req, res) => {
 
 app.post('/api/booking-services', async (req, res) => {
   try {
-    const { name, duration, price, icon, category, base_fare, per_km_rate } = req.body || {};
+    const { name, duration, price, icon, category, base_fare, per_km_rate, is_active } = req.body || {};
     
-    const query = 'INSERT INTO booking_services (name, duration, price, icon, category, base_fare, per_km_rate) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *';
+    const query = 'INSERT INTO booking_services (name, duration, price, icon, category, base_fare, per_km_rate, is_active) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *';
     const values = [
       String(name || 'Unnamed Service'),
       String(duration || '30m'),
       String(price || 'PHP 0.00'),
-      String(icon || 'ðŸš—'),
+      String(icon || '🚗'),
       String(category || 'Transport'),
       parseFloat(String(base_fare).replace(/[^0-9.]/g, '')) || 0,
-      parseFloat(String(per_km_rate).replace(/[^0-9.]/g, '')) || 0
+      parseFloat(String(per_km_rate).replace(/[^0-9.]/g, '')) || 0,
+      is_active !== undefined ? is_active : true
     ];
 
     const { rows } = await pool.query(query, values);
@@ -2992,13 +3148,13 @@ app.post('/api/booking-services', async (req, res) => {
 app.put('/api/booking-services/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, duration, price, icon, category, base_fare, per_km_rate } = req.body;
+    const { name, duration, price, icon, category, base_fare, per_km_rate, is_active } = req.body;
     
     const query = `
       UPDATE booking_services 
-      SET name = $1, duration = $2, price = $3, icon = $4, category = $5, base_fare = $6, per_km_rate = $7, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $8 RETURNING *`;
-    const values = [name, duration, price, icon, category, base_fare, per_km_rate, id];
+      SET name = $1, duration = $2, price = $3, icon = $4, category = $5, base_fare = $6, per_km_rate = $7, is_active = $8, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $9 RETURNING *`;
+    const values = [name, duration, price, icon, category, base_fare, per_km_rate, is_active !== undefined ? is_active : true, id];
     
     const { rows } = await pool.query(query, values);
     if (rows.length === 0) {
@@ -3409,6 +3565,7 @@ app.get('/api/admin/trips', async (req, res) => {
       query += ` AND a.transport_status = $${params.length}`;
     }
 
+    query += ` AND a.transport_status != 'completed' AND a.status != 'completed'`;
     query += ' ORDER BY a.created_at DESC';
     const { rows } = await pool.query(query, params);
     res.json({ success: true, trips: rows });
@@ -3626,6 +3783,7 @@ const initClinicSettings = async () => {
   await pool.query(`ALTER TABLE booking_services ADD COLUMN IF NOT EXISTS base_fare DECIMAL(10, 2) DEFAULT 0`);
   await pool.query(`ALTER TABLE booking_services ADD COLUMN IF NOT EXISTS per_km_rate DECIMAL(10, 2) DEFAULT 0`);
   await pool.query(`ALTER TABLE booking_services ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`);
+  await pool.query(`ALTER TABLE booking_services ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true`);
 
   // Rider Tracking Table
   await pool.query(`

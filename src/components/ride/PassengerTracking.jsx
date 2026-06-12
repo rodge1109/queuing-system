@@ -52,15 +52,37 @@ const PassengerTracking = ({ appointmentId, token, onClose }) => {
     return () => clearInterval(interval);
   }, [appointmentId]);
 
+  const handleCancelRequest = async () => {
+    if (window.confirm("Are you sure you want to cancel this ride request?")) {
+      try {
+        const res = await fetch(`/api/appointments/${appointmentId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'cancelled' })
+        });
+        const data = await res.json();
+        if (data.success) {
+          onClose();
+        } else {
+          alert(data.message || 'Failed to cancel request');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Error cancelling request');
+      }
+    }
+  };
+
   // WebSocket for Live Location
   useEffect(() => {
-    const wsUrl = `ws://${window.location.hostname}:5000/ws/staff-chat`;
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws/staff-chat`;
     ws.current = new WebSocket(wsUrl);
 
     ws.current.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        if (data.type === 'location_update' && tripRef.current && data.riderId === tripRef.current.rider_id) {
+        if (data.type === 'location_update' && tripRef.current && String(data.riderId) === String(tripRef.current.rider_id)) {
           setDriverPos({ lat: data.lat, lng: data.lng });
         }
       } catch (err) {}
@@ -89,51 +111,60 @@ const PassengerTracking = ({ appointmentId, token, onClose }) => {
         leafletMap.current = null;
       }
     };
-  }, [trip]);
+  }, [trip?.id]);
+
+  const pickupMarkerRef = useRef(null);
+  const destMarkerRef = useRef(null);
+  const driverMarkerRef = useRef(null);
 
   // Update Markers on Map
   useEffect(() => {
     const L = window.L;
     if (!leafletMap.current || !L || !trip) return;
 
-    // Clear existing
-    leafletMap.current.eachLayer((layer) => {
-      if (layer instanceof L.Marker || layer instanceof L.Polyline) {
-        leafletMap.current.removeLayer(layer);
-      }
-    });
-
     // Pickup Marker
-    L.marker([trip.pickup_lat, trip.pickup_lng], {
-      icon: L.icon({
-        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-        iconSize: [20, 32], iconAnchor: [10, 32]
-      })
-    }).addTo(leafletMap.current);
-
-    // Destination Marker
-    if (trip.dest_lat) {
-      L.marker([trip.dest_lat, trip.dest_lng], {
+    if (!pickupMarkerRef.current) {
+      pickupMarkerRef.current = L.marker([trip.pickup_lat, trip.pickup_lng], {
         icon: L.icon({
-          iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+          iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
           iconSize: [20, 32], iconAnchor: [10, 32]
         })
       }).addTo(leafletMap.current);
+    } else {
+      pickupMarkerRef.current.setLatLng([trip.pickup_lat, trip.pickup_lng]);
+    }
+
+    // Destination Marker
+    if (trip.dest_lat) {
+      if (!destMarkerRef.current) {
+        destMarkerRef.current = L.marker([trip.dest_lat, trip.dest_lng], {
+          icon: L.icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+            iconSize: [20, 32], iconAnchor: [10, 32]
+          })
+        }).addTo(leafletMap.current);
+      } else {
+        destMarkerRef.current.setLatLng([trip.dest_lat, trip.dest_lng]);
+      }
     }
 
     // Driver Marker
     if (driverPos) {
-      L.marker([driverPos.lat, driverPos.lng], {
-        icon: L.icon({
-          iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-gold.png',
-          iconSize: [25, 41], iconAnchor: [12, 41]
-        })
-      }).addTo(leafletMap.current).bindPopup('<b>Driver</b>').openPopup();
-
-      // Pan to driver if they move
-      leafletMap.current.panTo([driverPos.lat, driverPos.lng]);
+      const isFirstDriverPos = !driverMarkerRef.current;
+      if (isFirstDriverPos) {
+        driverMarkerRef.current = L.marker([driverPos.lat, driverPos.lng], {
+          icon: L.icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-gold.png',
+            iconSize: [25, 41], iconAnchor: [12, 41]
+          })
+        }).addTo(leafletMap.current).bindPopup('<b>Driver</b>').openPopup();
+        leafletMap.current.panTo([driverPos.lat, driverPos.lng]); // Initial pan
+      } else {
+        driverMarkerRef.current.setLatLng([driverPos.lat, driverPos.lng]);
+        // Optional: you can pan conditionally if they move out of bounds, but for now we won't force pan on every tiny update
+      }
     }
-  }, [trip, driverPos]);
+  }, [trip?.pickup_lat, trip?.pickup_lng, trip?.dest_lat, trip?.dest_lng, driverPos?.lat, driverPos?.lng]);
 
   if (isLoading) {
     return (
@@ -303,7 +334,13 @@ const PassengerTracking = ({ appointmentId, token, onClose }) => {
               </div>
             </div>
             <h2 className="text-xl font-bold text-gray-900 mb-2">Finding your driver</h2>
-            <p className="text-gray-500 text-sm">We're connecting you with the nearest available rider.</p>
+            <p className="text-gray-500 text-sm mb-6">We're connecting you with the nearest available rider.</p>
+            <button 
+              onClick={handleCancelRequest}
+              className="px-6 py-4 bg-red-50 text-red-600 rounded-2xl font-bold w-full active:scale-95 transition-all"
+            >
+              Cancel Request
+            </button>
           </div>
         ) : (
 
