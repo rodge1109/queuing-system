@@ -14,13 +14,12 @@ import {
   Car,
   X
 } from 'lucide-react';
+import LiveTrackingMap from '../maps/LiveTrackingMap';
 
 const PassengerTracking = ({ appointmentId, token, onClose }) => {
   const [trip, setTrip] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [driverPos, setDriverPos] = useState(null);
-  const mapRef = useRef(null);
-  const leafletMap = useRef(null);
   const ws = useRef(null);
   const tripRef = useRef(null);
   const [isMinimized, setIsMinimized] = useState(false);
@@ -90,82 +89,6 @@ const PassengerTracking = ({ appointmentId, token, onClose }) => {
 
     return () => ws.current?.close();
   }, [appointmentId]);
-
-  // Map Initialization
-  useEffect(() => {
-    if (!mapRef.current || leafletMap.current || !window.L || !trip) return;
-
-    const L = window.L;
-    leafletMap.current = L.map(mapRef.current, {
-      zoomControl: false,
-      scrollWheelZoom: false
-    }).setView([trip.pickup_lat || 11.0500, trip.pickup_lng || 124.0000], 15);
-
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; CARTO'
-    }).addTo(leafletMap.current);
-
-    return () => {
-      if (leafletMap.current) {
-        leafletMap.current.remove();
-        leafletMap.current = null;
-      }
-    };
-  }, [trip?.id]);
-
-  const pickupMarkerRef = useRef(null);
-  const destMarkerRef = useRef(null);
-  const driverMarkerRef = useRef(null);
-
-  // Update Markers on Map
-  useEffect(() => {
-    const L = window.L;
-    if (!leafletMap.current || !L || !trip) return;
-
-    // Pickup Marker
-    if (!pickupMarkerRef.current) {
-      pickupMarkerRef.current = L.marker([trip.pickup_lat, trip.pickup_lng], {
-        icon: L.icon({
-          iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-          iconSize: [20, 32], iconAnchor: [10, 32]
-        })
-      }).addTo(leafletMap.current);
-    } else {
-      pickupMarkerRef.current.setLatLng([trip.pickup_lat, trip.pickup_lng]);
-    }
-
-    // Destination Marker
-    if (trip.dest_lat) {
-      if (!destMarkerRef.current) {
-        destMarkerRef.current = L.marker([trip.dest_lat, trip.dest_lng], {
-          icon: L.icon({
-            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-            iconSize: [20, 32], iconAnchor: [10, 32]
-          })
-        }).addTo(leafletMap.current);
-      } else {
-        destMarkerRef.current.setLatLng([trip.dest_lat, trip.dest_lng]);
-      }
-    }
-
-    // Driver Marker
-    if (driverPos) {
-      const isFirstDriverPos = !driverMarkerRef.current;
-      if (isFirstDriverPos) {
-        driverMarkerRef.current = L.marker([driverPos.lat, driverPos.lng], {
-          icon: L.icon({
-            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-gold.png',
-            iconSize: [25, 41], iconAnchor: [12, 41]
-          })
-        }).addTo(leafletMap.current).bindPopup('<b>Driver</b>').openPopup();
-        leafletMap.current.panTo([driverPos.lat, driverPos.lng]); // Initial pan
-      } else {
-        driverMarkerRef.current.setLatLng([driverPos.lat, driverPos.lng]);
-        // Optional: you can pan conditionally if they move out of bounds, but for now we won't force pan on every tiny update
-      }
-    }
-  }, [trip?.pickup_lat, trip?.pickup_lng, trip?.dest_lat, trip?.dest_lng, driverPos?.lat, driverPos?.lng]);
-
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] bg-white p-8">
@@ -195,7 +118,12 @@ const PassengerTracking = ({ appointmentId, token, onClose }) => {
     <div className="max-w-md mx-auto min-h-screen font-['DM_Sans',_sans-serif] flex flex-col relative bg-transparent overflow-hidden pointer-events-none">
       {/* Map Area */}
       <div className="fixed inset-0 z-0">
-        <div ref={mapRef} className="absolute inset-0" />
+        <LiveTrackingMap 
+          riderPos={driverPos}
+          pickupPos={trip.pickup_lat ? { lat: parseFloat(trip.pickup_lat), lng: parseFloat(trip.pickup_lng) } : null}
+          destPos={trip.dest_lat ? { lat: parseFloat(trip.dest_lat), lng: parseFloat(trip.dest_lng) } : null}
+          status={trip.transport_status}
+        />
       </div>
 
       {/* Status Header */}
@@ -351,7 +279,7 @@ const PassengerTracking = ({ appointmentId, token, onClose }) => {
                 <p className="text-[10px] text-[#0F6E56] font-bold uppercase tracking-wider mb-1">
                   {isOnTrip ? 'ETA to destination' : 'Driver is arriving'}
                 </p>
-                <p className="text-3xl font-black text-[#085041] tracking-tighter italic">3 mins</p>
+                <p className="text-3xl font-black text-[#085041] tracking-tighter">3 mins</p>
               </div>
               <div className="text-right">
                 <p className="text-[10px] text-[#1D9E75] font-bold uppercase">{trip.service_type}</p>

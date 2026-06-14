@@ -23,17 +23,31 @@ const RideScheduling = ({ trips = [], riders = [], fetchTrips }) => {
   const sosCount = activeTrips.filter(t => t.transport_status === 'sos').length;
   const onlineRiders = riders.filter(r => r.status === 'online').length;
   
-  // Filter real riders based on search query
+  // Filter real riders based on selected trip service type and search query
   const filteredRiders = useMemo(() => {
-    if (!searchQuery.trim()) return riders;
+    let result = riders;
+
+    if (selectedTrip && selectedTrip.service_type) {
+      const tripServiceType = selectedTrip.service_type.toLowerCase();
+      result = result.filter(rider => {
+        if (!rider.vehicle_type) return false;
+        const vType = rider.vehicle_type.toLowerCase();
+        return vType.includes(tripServiceType) || tripServiceType.includes(vType) ||
+               (tripServiceType.includes('van') && vType.includes('van')) ||
+               (tripServiceType.includes('car') && vType.includes('car')) ||
+               (tripServiceType.includes('motor') && vType.includes('motor'));
+      });
+    }
+
+    if (!searchQuery.trim()) return result;
     const lowerQuery = searchQuery.toLowerCase();
-    return riders.filter(rider => 
+    return result.filter(rider => 
       (rider.name && rider.name.toLowerCase().includes(lowerQuery)) || 
       (rider.plate_number && rider.plate_number.toLowerCase().includes(lowerQuery)) ||
       (rider.vehicle_type && rider.vehicle_type.toLowerCase().includes(lowerQuery)) ||
       (rider.id && String(rider.id).includes(lowerQuery))
     );
-  }, [searchQuery, riders]);
+  }, [searchQuery, riders, selectedTrip]);
 
   const handleAssignRider = async (rider) => {
     setIsAssigning(true);

@@ -48,6 +48,8 @@ const LiveTrackingMap = ({ riderPos, pickupPos, destPos, status, pickMode = fals
             setMainRoute(data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]));
           }
         }).catch(() => setMainRoute(null));
+    } else {
+      setMainRoute(null);
     }
   }, [pickupPos?.lat, pickupPos?.lng, destPos?.lat, destPos?.lng]);
 
@@ -61,6 +63,8 @@ const LiveTrackingMap = ({ riderPos, pickupPos, destPos, status, pickMode = fals
             setDriverRoute(data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]));
           }
         }).catch(() => setDriverRoute(null));
+    } else {
+      setDriverRoute(null);
     }
   }, [riderPos?.lat, riderPos?.lng, pickupPos?.lat, pickupPos?.lng]);
 
@@ -77,20 +81,31 @@ const LiveTrackingMap = ({ riderPos, pickupPos, destPos, status, pickMode = fals
 
     const markers = [];
 
-    // Rider Marker (Pulsing Blue GPS Dot)
+    // Rider Marker (Detailed Top-Down Car Icon)
     if (riderPos) {
-      const pulsingDotHtml = `
-        <div class="relative flex h-6 w-6 items-center justify-center">
-          <div class="absolute h-full w-full animate-ping rounded-full bg-blue-500 opacity-40"></div>
-          <div class="relative h-4 w-4 rounded-full border-2 border-white bg-blue-600 shadow-lg"></div>
+      const iconColor = '#00B14F';
+      const carSvgHtml = `
+        <div class="relative flex items-center justify-center transition-all hover:scale-110" style="filter: drop-shadow(0 4px 6px rgba(0,0,0,0.2)); transform: translateY(-4px);">
+          <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24">
+            <path d="M12 1.5C8 1.5 6 3 6 5.5v14c0 2.5 2 3 6 3s6-0.5 6-3v-14c0-2.5-2-4-6-4z" fill="${iconColor}" />
+            <path d="M6.8 8 Q12 5 17.2 8 Z" fill="#1a1a1a" />
+            <rect x="6.5" y="9" width="0.8" height="8" fill="#1a1a1a" />
+            <rect x="16.7" y="9" width="0.8" height="8" fill="#1a1a1a" />
+            <rect x="7.8" y="8.5" width="8.4" height="8" rx="1.5" fill="black" opacity="0.15" />
+            <path d="M8 17.5 Q12 20 16 17.5 Z" fill="#1a1a1a" />
+            <circle cx="5" cy="8" r="1.2" fill="${iconColor}" />
+            <circle cx="19" cy="8" r="1.2" fill="${iconColor}" />
+            <rect x="7" y="20.5" width="3.5" height="1" rx="0.3" fill="#ff3333" />
+            <rect x="13.5" y="20.5" width="3.5" height="1" rx="0.3" fill="#ff3333" />
+          </svg>
         </div>
       `;
       L.marker([riderPos.lat, riderPos.lng], {
         icon: L.divIcon({
-          html: pulsingDotHtml,
-          className: 'gps-dot-container',
-          iconSize: [24, 24],
-          iconAnchor: [12, 12]
+          html: carSvgHtml,
+          className: 'rider-car-icon',
+          iconSize: [36, 36],
+          iconAnchor: [18, 18]
         })
       }).addTo(leafletMap.current);
       markers.push([riderPos.lat, riderPos.lng]);
@@ -121,21 +136,21 @@ const LiveTrackingMap = ({ riderPos, pickupPos, destPos, status, pickMode = fals
     // Draw lines
     if (driverRoute) {
       L.polyline(driverRoute, {
-        color: '#0f62fe', weight: 4, dashArray: '5, 8', opacity: 0.8, lineJoin: 'round'
+        color: '#00B14F', weight: 3, dashArray: '5, 8', opacity: 0.8, lineJoin: 'round'
       }).addTo(leafletMap.current);
     } else if (riderPos && pickupPos) {
       L.polyline([[riderPos.lat, riderPos.lng], [pickupPos.lat, pickupPos.lng]], {
-        color: '#0f62fe', weight: 4, dashArray: '5, 8', opacity: 0.8, lineJoin: 'round'
+        color: '#00B14F', weight: 3, dashArray: '5, 8', opacity: 0.8, lineJoin: 'round'
       }).addTo(leafletMap.current);
     }
 
     if (mainRoute) {
       L.polyline(mainRoute, {
-        color: '#161616', weight: 6, opacity: 1, lineJoin: 'round'
+        color: '#00B14F', weight: 4, opacity: 0.9, lineJoin: 'round'
       }).addTo(leafletMap.current);
     } else if (pickupPos && destPos) {
       L.polyline([[pickupPos.lat, pickupPos.lng], [destPos.lat, destPos.lng]], {
-        color: '#1c1917', weight: 6, opacity: 1, lineJoin: 'round'
+        color: '#00B14F', weight: 4, opacity: 0.9, lineJoin: 'round'
       }).addTo(leafletMap.current);
     }
 

@@ -648,6 +648,9 @@ function AccountDetailView({ account, onBack, activeTab, setActiveTab, ledger, i
   const [invoiceDetail, setInvoiceDetail] = useState(null);
   const [isLoadingInvoice, setIsLoadingInvoice] = useState(false);
 
+  const unbilledTripsList = trips.filter(t => t.status === 'unbilled');
+  const accruedAmountVal = unbilledTripsList.reduce((sum, t) => sum + parseFloat(t.fare || 0), 0);
+
   const openInvoiceDetail = async (invoice) => {
     setSelectedInvoice(invoice);
     setIsLoadingInvoice(true);
@@ -831,11 +834,11 @@ function AccountDetailView({ account, onBack, activeTab, setActiveTab, ledger, i
                   <div className="space-y-4 mb-8">
                      <div className="flex justify-between border-b border-gray-800 pb-2">
                         <span className="text-[10px] font-bold text-gray-500 uppercase">Unbilled Trips</span>
-                        <span className="text-white font-black">12 Items</span>
+                        <span className="text-white font-black">{unbilledTripsList.length} {unbilledTripsList.length === 1 ? 'Item' : 'Items'}</span>
                      </div>
                      <div className="flex justify-between border-b border-gray-800 pb-2">
                         <span className="text-[10px] font-bold text-gray-500 uppercase">Accrued Amount</span>
-                        <span className="text-[#24a148] font-black tracking-tighter">$1,452.00</span>
+                        <span className="text-[#24a148] font-black tracking-tighter">₱{accruedAmountVal.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                      </div>
                   </div>
                   <button className="w-full bg-[#24a148] text-white py-3 text-[10px] font-black uppercase tracking-[2px] shadow-lg hover:bg-[#1e8a3d] transition-all">

@@ -14,6 +14,7 @@ const ServiceIconRender = ({ iconName, className }) => {
 };
 import Sidebar from './components/layout/Sidebar';
 import CorporateAccountsManagement from './components/admin/CorporateAccountsManagement';
+import ClientsDatabase from './components/admin/ClientsDatabase';
 import AppointmentForm from './components/booking/AppointmentForm';
 import RiderPortal from './components/rider/RiderPortal';
 import LiveTrackingMap from './components/maps/LiveTrackingMap';
@@ -701,7 +702,7 @@ function AdminDashboard({ setCurrentPage }) {
   // Admin section tabs
   const [activeTab, setActiveTab] = useState('appointments');
   useEffect(() => {
-    const validTabs = ['appointments', 'queue', 'calendar', 'reports', 'feedback', 'settings', 'specialists', 'services', 'riders', 'trips'];
+    const validTabs = ['appointments', 'queue', 'calendar', 'reports', 'feedback', 'settings', 'specialists', 'services', 'riders', 'trips', 'corporate', 'clients'];
     const requestedTab = localStorage.getItem('adminActiveTab');
     if (requestedTab && validTabs.includes(requestedTab)) {
       setActiveTab(requestedTab);
@@ -741,6 +742,7 @@ function AdminDashboard({ setCurrentPage }) {
 
   // Reports state
   const [reportStats, setReportStats] = useState(null);
+  const [reportEarnings, setReportEarnings] = useState(null);
   const [csmStats, setCsmStats] = useState(null);
   const [specialists, setSpecialists] = useState([]);
   const [newSpecialist, setNewSpecialist] = useState({ name: '', title: '', email: '', imageUrl: '' });
@@ -1154,6 +1156,18 @@ function AdminDashboard({ setCurrentPage }) {
       const data = await response.json();
       if (data.success) {
         setReportStats(data.stats);
+      }
+
+      if (reportStartDate) {
+        const earningsRes = await fetch(`/api/reports/earnings?date=${reportStartDate}`);
+        const earningsData = await earningsRes.json();
+        if (earningsData.success) {
+          setReportEarnings(earningsData.earnings);
+        } else {
+          setReportEarnings(null);
+        }
+      } else {
+        setReportEarnings(null);
       }
 
       // Fetch detailed trips for preview table
@@ -1967,6 +1981,11 @@ function AdminDashboard({ setCurrentPage }) {
               <CorporateAccountsManagement />
             )}
 
+            {/* ==================== CLIENTS DATABASE TAB ==================== */}
+            {activeTab === 'clients' && (
+              <ClientsDatabase />
+            )}
+
             {/* ==================== RIDERS TAB ==================== */}
             {activeTab === 'riders' && (
               <RidersManagement riders={riders} setRiders={setRiders} />
@@ -2548,6 +2567,70 @@ function AdminDashboard({ setCurrentPage }) {
                         </p>
                       </div>
                     </div>
+
+                    {/* Z-Reading / Daily Earnings */}
+                    {reportEarnings && (
+                      <div className="bg-white rounded-0 p-6 border border-gray-800 shadow-xl bg-black text-white relative">
+                        <div className="flex justify-between items-start mb-6">
+                          <div>
+                            <h3 className="text-xs font-black uppercase tracking-widest text-[#10b981] mb-1">Daily Earnings (Z-Reading)</h3>
+                            <p className="text-[10px] text-gray-400 font-bold uppercase">Date: {reportEarnings.date || reportStartDate}</p>
+                          </div>
+                          <button 
+                            onClick={() => {
+                              const printWindow = window.open('', '', 'width=400,height=600');
+                              printWindow.document.write(`
+                                <html><head><title>Z-Reading - ${reportEarnings.date}</title>
+                                <style>
+                                  body { font-family: monospace; font-size: 12px; padding: 20px; }
+                                  .line { border-bottom: 1px dashed #000; margin: 10px 0; }
+                                  .row { display: flex; justify-content: space-between; margin: 5px 0; }
+                                  .bold { font-weight: bold; }
+                                </style></head>
+                                <body>
+                                  <h2 style="text-align:center;margin-bottom:5px;">Z-READING SUMMARY</h2>
+                                  <p style="text-align:center;margin-top:0;">Date: ${reportEarnings.date}</p>
+                                  <div class="line"></div>
+                                  <div class="row"><span>Cash/Direct Payments:</span> <span>PHP ${parseFloat(reportEarnings.cash?.total||0).toFixed(2)}</span></div>
+                                  <div class="row"><span>Transactions (Cash):</span> <span>${reportEarnings.cash?.count||0}</span></div>
+                                  <div class="line"></div>
+                                  <div class="row"><span>Corporate Payments:</span> <span>PHP ${parseFloat(reportEarnings.corporate?.total||0).toFixed(2)}</span></div>
+                                  <div class="row"><span>Transactions (Corp):</span> <span>${reportEarnings.corporate?.count||0}</span></div>
+                                  <div class="line"></div>
+                                  <div class="row bold" style="font-size:14px;"><span>GRAND TOTAL:</span> <span>PHP ${parseFloat(reportEarnings.grandTotal||0).toFixed(2)}</span></div>
+                                  <div class="row bold"><span>Total Transactions:</span> <span>${reportEarnings.totalTransactions||0}</span></div>
+                                  <div class="line"></div>
+                                  <p style="text-align:center;margin-top:20px;">*** END OF REPORT ***</p>
+                                </body></html>
+                              `);
+                              printWindow.document.close();
+                              printWindow.focus();
+                              setTimeout(() => { printWindow.print(); printWindow.close(); }, 500);
+                            }}
+                            className="bg-[#10b981] text-white px-4 py-2 text-[10px] font-black uppercase tracking-widest hover:bg-[#0ea5e9] transition-all"
+                          >
+                            Print Receipt
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
+                          <div className="p-4 border border-gray-800 bg-gray-900/50">
+                            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Cash / Direct</p>
+                            <p className="text-2xl font-black text-white tracking-tighter">₱{parseFloat(reportEarnings.cash?.total || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
+                            <p className="text-[9px] text-gray-400 uppercase mt-1">{reportEarnings.cash?.count || 0} Transactions</p>
+                          </div>
+                          <div className="p-4 border border-gray-800 bg-gray-900/50">
+                            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Corporate</p>
+                            <p className="text-2xl font-black text-white tracking-tighter">₱{parseFloat(reportEarnings.corporate?.total || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
+                            <p className="text-[9px] text-gray-400 uppercase mt-1">{reportEarnings.corporate?.count || 0} Transactions</p>
+                          </div>
+                          <div className="p-4 border border-[#10b981] bg-[#10b981]/10">
+                            <p className="text-[10px] font-bold text-[#10b981] uppercase tracking-widest mb-1">Total Daily Revenue</p>
+                            <p className="text-3xl font-black text-[#10b981] tracking-tighter">₱{parseFloat(reportEarnings.grandTotal || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
+                            <p className="text-[9px] text-gray-400 uppercase mt-1">{reportEarnings.totalTransactions || 0} Total Transactions</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     {/* By Service */}
                     <div className="bg-white rounded-0 p-6 border border-[#e0e0e0] shadow-sm">

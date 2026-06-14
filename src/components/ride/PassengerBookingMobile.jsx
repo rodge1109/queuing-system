@@ -14,6 +14,8 @@ const PassengerBookingMobile = () => {
   const [currentPos, setCurrentPos] = useState({ lat: 11.0500, lng: 124.0000 });
   const [pickup, setPickup] = useState("");
   const [destination, setDestination] = useState("");
+  const [destPos, setDestPos] = useState(null);
+  const [distanceKm, setDistanceKm] = useState(0);
   const [sheetState, setSheetState] = useState('medium');
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [step, setStep] = useState('selection');
@@ -24,6 +26,28 @@ const PassengerBookingMobile = () => {
   const [searchResults, setSearchResults] = useState([]);
   const [isMapSearching, setIsMapSearching] = useState(false);
   const [mapAction, setMapAction] = useState(null);
+
+  useEffect(() => {
+    const savedBookingId = localStorage.getItem('active_booking_id');
+    if (savedBookingId) {
+      fetch(`/api/appointments/${savedBookingId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.appointment) {
+            const status = data.appointment.transport_status || data.appointment.status;
+            if (!['completed', 'cancelled'].includes(status)) {
+              setBookingResult(savedBookingId);
+              setStep('tracking');
+            } else {
+              localStorage.removeItem('active_booking_id');
+            }
+          } else {
+            localStorage.removeItem('active_booking_id');
+          }
+        })
+        .catch(err => console.error(err));
+    }
+  }, []);
 
   const handleUseCurrentLocation = () => {
     console.log('Use current location clicked');
@@ -55,6 +79,7 @@ const PassengerBookingMobile = () => {
       },
       (err) => {
         console.error("Error getting location:", err);
+        alert(`GPS Error: ${err.message}. Ensure location services are enabled and you are using HTTPS.`);
         // Fallback to a realistic location without [Mock]
         const fallbackLat = 11.0503;
         const fallbackLng = 124.0049;
@@ -62,7 +87,7 @@ const PassengerBookingMobile = () => {
         setPickup("Bogo City Hall, Cebu");
         setMapAction({ type: 'pickup', coords: { lat: fallbackLat, lng: fallbackLng }, address: "Bogo City Hall, Cebu" });
       },
-      { enableHighAccuracy: true }
+      { enableHighAccuracy: true, timeout: 10000 }
     );
   };
 
@@ -91,6 +116,16 @@ const PassengerBookingMobile = () => {
   const [vehicles, setVehicles] = useState([]);
   const [isLoadingVehicles, setIsLoadingVehicles] = useState(true);
 
+  const getCalculatedPrice = (vId) => {
+    const v = vehicles.find(v => v.id === vId);
+    if (!v) return '0.00';
+    const base = parseFloat(v.base_fare || v.price || 0);
+    const perKm = parseFloat(v.per_km_rate || 0);
+    const dist = distanceKm > 0 ? distanceKm : 1;
+    const total = base + (dist * perKm);
+    return total.toFixed(2);
+  };
+
   useEffect(() => {
     const fetchVehicles = async () => {
       try {
@@ -115,6 +150,8 @@ const PassengerBookingMobile = () => {
               capacity: isVan ? 12 : isMotorcycle ? 1 : 4,
               img: vehicleImg,
               price: s.base_fare || s.price || '0.00',
+              base_fare: parseFloat(s.base_fare || s.price || 0),
+              per_km_rate: parseFloat(s.per_km_rate || 0),
               desc: s.duration || 'Standard travel',
               isEmojiIcon: s.icon && !s.icon.startsWith('http') && !s.icon.startsWith('/') ? s.icon : null
             };
@@ -227,9 +264,9 @@ const PassengerBookingMobile = () => {
         destinationLocation: destination,
         pickupLat: currentPos.lat,
         pickupLng: currentPos.lng,
-        destLat: currentPos.lat + 0.05,
-        destLng: currentPos.lng + 0.05,
-        totalAmount: vehicles.find(v => v.id === selectedVehicle)?.price || 0,
+        destLat: destPos ? destPos.lat : currentPos.lat + 0.05,
+        destLng: destPos ? destPos.lng : currentPos.lng + 0.05,
+        totalAmount: getCalculatedPrice(selectedVehicle),
         paymentMethod: formData.paymentMethod,
         notes: `Mobile Booking - ${vehicles.find(v => v.id === selectedVehicle)?.name || selectedVehicle}${formData.paymentMethod === 'Corporate' ? ' [Corp: ' + formData.corporateAccountId + ']' : ''}`
       };
@@ -242,6 +279,7 @@ const PassengerBookingMobile = () => {
       const data = await res.json();
       
       if (data.success) {
+        localStorage.setItem('active_booking_id', data.appointment.id);
         setBookingResult(data.appointment.id);
         setStep('tracking');
       } else {
@@ -257,7 +295,11 @@ const PassengerBookingMobile = () => {
 
 
   if (step === 'tracking') {
-    return <PassengerTracking appointmentId={bookingResult} onClose={() => { setStep('selection'); setDestinationSelected(false); }} />;
+    return <PassengerTracking appointmentId={bookingResult} onClose={() => { 
+      localStorage.removeItem('active_booking_id');
+      setStep('selection'); 
+      setDestinationSelected(false); 
+    }} />;
   }
 
   if (step === 'details') {
@@ -265,7 +307,7 @@ const PassengerBookingMobile = () => {
       <div className="min-h-screen bg-white flex flex-col p-6 animate-in slide-in-from-right duration-500">
         <div className="flex items-center gap-4 mb-10 pt-6">
           <button onClick={() => setStep('selection')} className="p-2 hover:bg-gray-100 rounded-full transition-all"><ArrowLeft className="w-6 h-6 text-gray-900" /></button>
-          <h2 className="text-xl font-semibold text-gray-900 uppercase tracking-tight italic">Passenger Details</h2>
+          <h2 className="text-xl font-semibold text-gray-900 uppercase tracking-tight">Passenger Details</h2>
         </div>
 
         <div className="space-y-6 flex-1">
@@ -385,7 +427,7 @@ const PassengerBookingMobile = () => {
           <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100 mt-8">
             <div className="flex justify-between items-center mb-2">
               <p className="text-xs font-medium text-gray-500 uppercase tracking-widest">Estimated Fare</p>
-              <p className="text-xl font-semibold text-blue-600">PHP {vehicles.find(v => v.id === selectedVehicle)?.price}</p>
+              <p className="text-xl font-semibold text-blue-600">PHP {getCalculatedPrice(selectedVehicle)}</p>
             </div>
             <p className="text-[10px] font-medium text-gray-400 leading-relaxed uppercase tracking-tighter">Fare includes base rate and platform fees. Final amount may vary based on actual distance.</p>
           </div>
@@ -394,7 +436,7 @@ const PassengerBookingMobile = () => {
         <button 
           onClick={handleConfirmBooking}
           disabled={bookingLoading}
-          className="w-full bg-blue-600 text-white py-5 rounded-2xl font-semibold uppercase tracking-widest shadow-xl shadow-blue-200 active:scale-95 transition-all mt-8 disabled:opacity-50 flex items-center justify-center gap-3"
+          className="w-full bg-[#00B14F] hover:bg-[#009241] text-white py-5 rounded-2xl font-semibold uppercase tracking-widest active:scale-95 transition-all mt-8 disabled:opacity-50 flex items-center justify-center gap-3"
         >
           {bookingLoading ? <RefreshCw className="w-6 h-6 animate-spin" /> : 'Complete My Booking'}
         </button>
@@ -416,6 +458,10 @@ const PassengerBookingMobile = () => {
             }
             if (dest && dest.address && (!mapAction || mapAction.type === 'dest')) {
               setDestination(dest.address);
+              if (dest.coords) setDestPos({ lat: dest.coords.lat, lng: dest.coords.lng });
+            }
+            if (dist !== undefined && dist !== null) {
+              setDistanceKm(dist);
             }
           }}
         />
@@ -449,18 +495,18 @@ const PassengerBookingMobile = () => {
           </div>
 
           {/* Pickup Card */}
-          <div className="bg-white/95 backdrop-blur-md p-4 rounded-2xl shadow-xl flex items-center gap-4 max-w-[280px] self-center pointer-events-auto border border-white/20 animate-in slide-in-from-top-4 duration-500">
-            <div className="flex flex-col items-center">
+          <div className="bg-white/95 backdrop-blur-md p-4 rounded-2xl shadow-xl flex items-center gap-4 w-full self-center pointer-events-auto border border-white/20 animate-in slide-in-from-top-4 duration-500">
+            <div className="flex flex-col items-center shrink-0">
               <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center">
                 <User className="w-5 h-5 text-white" />
               </div>
             </div>
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest leading-none mb-1">Pickup point</p>
-              <p className="text-sm font-medium text-gray-900 line-clamp-2 leading-tight">{pickup}</p>
+              <p className="text-sm font-medium text-gray-900 truncate leading-tight">{pickup}</p>
             </div>
-            <div className="flex flex-col gap-2 items-end">
-              <button onClick={handleUseCurrentLocation} className="text-xs text-[#00B14F] hover:underline pointer-events-auto">Use current location</button>
+            <div className="flex flex-col gap-2 items-start shrink-0">
+              <button onClick={handleUseCurrentLocation} className="text-xs text-[#00B14F] hover:underline pointer-events-auto text-left">Use current location</button>
               <button onClick={() => {
                 setMapAction({ type: 'pickup', address: pickup, coords: currentPos });
                 setSheetState('minimized');
@@ -504,7 +550,7 @@ const PassengerBookingMobile = () => {
           
           {/* Floating Back Button */}
           <button 
-            onClick={() => setDestinationSelected(false)}
+            onClick={() => { setDestinationSelected(false); setSheetState('medium'); }}
             className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg pointer-events-auto active:scale-95 transition-all mt-4"
           >
             <ArrowLeft className="w-6 h-6 text-gray-900" />
@@ -531,7 +577,7 @@ const PassengerBookingMobile = () => {
           <div className="bg-white/95 backdrop-blur-2xl rounded-t-2xl shadow-[0_-20px_50px_rgba(0,0,0,0.15)] border-t border-white/40 p-4">
             <div 
               className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6 cursor-pointer"
-              onClick={() => setSheetState(sheetState === 'expanded' ? 'medium' : 'expanded')}
+              onClick={() => setSheetState(sheetState === 'minimized' ? 'medium' : 'minimized')}
             />
             
             <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2 px-2">
@@ -642,7 +688,7 @@ const PassengerBookingMobile = () => {
                   </div>
                   <div className="text-right">
                     <p className="text-lg font-semibold tracking-tight text-gray-900">
-                      {String(v.price).includes('₱') || String(v.price).includes('PHP') ? v.price : `₱${v.price}`}
+                      {String(getCalculatedPrice(v.id)).includes('₱') || String(getCalculatedPrice(v.id)).includes('PHP') ? getCalculatedPrice(v.id) : `₱${getCalculatedPrice(v.id)}`}
                     </p>
                   </div>
                 </button>
@@ -659,7 +705,7 @@ const PassengerBookingMobile = () => {
               
               <button 
                 onClick={() => setStep('details')}
-                className="flex-1 bg-[#CCFF00] text-gray-900 h-14 rounded-2xl font-semibold text-lg flex items-center justify-center shadow-xl shadow-lime-100 active:scale-95 transition-all"
+                className="flex-1 bg-[#00B14F] hover:bg-[#009241] text-white h-14 rounded-2xl font-semibold text-lg flex items-center justify-center active:scale-95 transition-all"
               >
                 Find a driver
               </button>
@@ -743,6 +789,7 @@ const PassengerBookingMobile = () => {
                       className="flex items-center gap-4 p-4 hover:bg-gray-50 rounded-2xl transition-all group"
                       onClick={() => {
                         setDestination(dest.name);
+                        setMapAction({ type: 'dest', address: dest.name, coords: { lat: dest.lat, lng: dest.lng } });
                         setIsSearching(false);
                         setDestinationSelected(true);
                       }}
@@ -771,6 +818,7 @@ const PassengerBookingMobile = () => {
                         className="flex items-center gap-4 p-4 hover:bg-gray-50 rounded-2xl transition-all group"
                         onClick={() => {
                           setDestination(dest.name);
+                          setMapAction({ type: 'dest', address: dest.name, coords: { lat: dest.lat, lng: dest.lng } });
                           setIsSearching(false);
                           setDestinationSelected(true);
                         }}
@@ -798,7 +846,11 @@ const PassengerBookingMobile = () => {
                 <Search className="w-12 h-12 mb-4 text-gray-300" />
                 <p className="text-sm font-medium text-gray-400 uppercase tracking-widest italic">No results found</p>
                 <button 
-                  onClick={() => { setIsSearching(false); setDestinationSelected(true); }}
+                  onClick={() => { 
+                    setIsSearching(false); 
+                    setDestinationSelected(true);
+                    setMapAction({ type: 'dest', address: destination, coords: currentPos });
+                  }}
                   className="mt-4 px-6 py-2 bg-gray-900 text-white rounded-full text-xs font-bold"
                 >
                   Use "{destination}" anyway

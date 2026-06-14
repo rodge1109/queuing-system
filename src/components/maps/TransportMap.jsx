@@ -124,6 +124,8 @@ const TransportMapBase = ({ onLocationSelect, mapAction, className }) => {
           onLocationSelect({ address, coords: { lat: pos.lat, lng: pos.lng } }, null);
           updateRoute(true);
         });
+        
+        onLocationSelect({ address: action.address || '', coords: { lat, lng } }, null);
       } else {
         if (destMarker.current) destMarker.current.setLatLng([lat, lng]);
         else destMarker.current = L.marker([lat, lng], {
@@ -140,6 +142,8 @@ const TransportMapBase = ({ onLocationSelect, mapAction, className }) => {
           onLocationSelect(null, { address, coords: { lat: pos.lat, lng: pos.lng } });
           updateRoute(true);
         });
+
+        onLocationSelect(null, { address: action.address || '', coords: { lat, lng } });
       }
       leafletMap.current.setView([lat, lng], 15);
       updateRoute(false);

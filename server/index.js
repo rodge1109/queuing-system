@@ -1824,8 +1824,52 @@ app.get('/api/reports/csm', async (req, res) => {
   }
 });
 
-// Get appointment statistics
+// Get Daily Earnings (Z-Reading)
+app.get('/api/reports/earnings', async (req, res) => {
+  try {
+    const { date } = req.query; // YYYY-MM-DD
+    if (!date) return res.status(400).json({ success: false, message: 'Date is required' });
 
+    // 1. Get Cash/Direct payments from appointments that were completed on this date
+    // (Assuming payment_method = 'cash' and status/transport_status = 'completed')
+    const cashRes = await pool.query(`
+      SELECT SUM(total_amount) as total, COUNT(*) as count 
+      FROM appointments 
+      WHERE (payment_method = 'cash' OR LOWER(payment_method) != 'corporate')
+        AND (status = 'completed' OR transport_status = 'completed')
+        AND DATE(updated_at) = $1
+    `, [date]);
+
+    // 2. Get Corporate payments logged on this date
+    const corpRes = await pool.query(`
+      SELECT SUM(amount) as total, COUNT(*) as count 
+      FROM corporate_payments 
+      WHERE payment_date = $1
+    `, [date]);
+
+    const cashTotal = parseFloat(cashRes.rows[0].total || 0);
+    const cashCount = parseInt(cashRes.rows[0].count || 0);
+    
+    const corpTotal = parseFloat(corpRes.rows[0].total || 0);
+    const corpCount = parseInt(corpRes.rows[0].count || 0);
+
+    res.json({
+      success: true,
+      date,
+      earnings: {
+        cash: { total: cashTotal, count: cashCount },
+        corporate: { total: corpTotal, count: corpCount },
+        grandTotal: cashTotal + corpTotal,
+        totalTransactions: cashCount + corpCount
+      }
+    });
+  } catch (error) {
+    console.error('Earnings report error:', error);
+    res.status(500).json({ success: false, message: 'Failed to generate earnings report' });
+  }
+});
+
+// Get appointment statistics
 
 
 
@@ -3544,6 +3588,107 @@ app.get('/api/admin/riders/:id/trips', async (req, res) => {
   }
 });
 
+// ==================== CLIENTS DATABASE ====================
+
+// Get all clients from the clients table with their stats
+app.get('/api/admin/clients', async (req, res) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT 
+        c.id,
+        c.full_name as name,
+        c.phone_number as phone,
+        c.email,
+        c.address,
+        c.notes,
+        COUNT(a.id) as total_visits,
+        COALESCE(SUM(a.total_amount), 0) as total_spent,
+        COALESCE(MAX(a.created_at), c.created_at) as last_visit
+      FROM clients c
+      LEFT JOIN appointments a ON a.phone_number = c.phone_number
+      GROUP BY c.id
+      ORDER BY last_visit DESC
+    `);
+    res.json({ success: true, clients: rows });
+  } catch (error) {
+    console.error('Error fetching clients:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch clients' });
+  }
+});
+
+// Add a new client manually
+app.post('/api/admin/clients', async (req, res) => {
+  try {
+    const { name, phone, email, address, notes } = req.body;
+    if (!phone) {
+      return res.status(400).json({ success: false, message: 'Phone number is required' });
+    }
+
+    const { rows } = await pool.query(`
+      INSERT INTO clients (full_name, phone_number, email, address, notes)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING *
+    `, [name, phone, email, address, notes]);
+    
+    res.json({ success: true, client: rows[0] });
+  } catch (error) {
+    console.error('Error adding client:', error);
+    if (error.code === '23505') { // Unique violation
+      return res.status(400).json({ success: false, message: 'A client with this phone number already exists' });
+    }
+    res.status(500).json({ success: false, message: 'Failed to add client' });
+  }
+});
+
+// Update an existing client
+app.put('/api/admin/clients/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, phone, email, address, notes } = req.body;
+    
+    const { rows } = await pool.query(`
+      UPDATE clients 
+      SET full_name = $1, phone_number = $2, email = $3, address = $4, notes = $5, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $6
+      RETURNING *
+    `, [name, phone, email, address, notes, id]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Client not found' });
+    }
+    
+    res.json({ success: true, client: rows[0] });
+  } catch (error) {
+    console.error('Error updating client:', error);
+    if (error.code === '23505') {
+      return res.status(400).json({ success: false, message: 'A client with this phone number already exists' });
+    }
+    res.status(500).json({ success: false, message: 'Failed to update client' });
+  }
+});
+
+// Get a specific client's transaction history by phone
+app.get('/api/admin/clients/:phone/history', async (req, res) => {
+  try {
+    let phoneParam = req.params.phone;
+    let query, params;
+
+    if (phoneParam === 'Unknown') {
+      query = "SELECT * FROM appointments WHERE TRIM(phone_number) = '' OR phone_number IS NULL ORDER BY created_at DESC";
+      params = [];
+    } else {
+      query = "SELECT * FROM appointments WHERE TRIM(phone_number) = $1 ORDER BY created_at DESC";
+      params = [phoneParam];
+    }
+
+    const { rows } = await pool.query(query, params);
+    res.json({ success: true, history: rows });
+  } catch (error) {
+    console.error('Error fetching client history:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch history' });
+  }
+});
+
 // ==================== TRIP MONITORING ENDPOINTS ====================
 
 // Get all trips (admin monitoring)
@@ -3861,6 +4006,31 @@ const initClinicSettings = async () => {
       timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
+  
+  // Clients Database (Persistent Client Records)
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS clients (
+      id SERIAL PRIMARY KEY,
+      full_name VARCHAR(255),
+      phone_number VARCHAR(100) UNIQUE NOT NULL,
+      email VARCHAR(255),
+      address TEXT,
+      notes TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Migrate existing walk-in clients from appointments to clients table
+  await pool.query(`
+    INSERT INTO clients (full_name, phone_number, email)
+    SELECT MAX(full_name), phone_number, MAX(email)
+    FROM appointments
+    WHERE phone_number IS NOT NULL AND TRIM(phone_number) != ''
+    GROUP BY phone_number
+    ON CONFLICT (phone_number) DO NOTHING
+  `);
+
   
   // Seed a demo rider if none exists
   const rCheck = await pool.query('SELECT COUNT(*) FROM riders');

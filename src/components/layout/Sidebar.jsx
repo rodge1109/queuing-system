@@ -45,6 +45,7 @@ const Sidebar = ({ activeTab, setActiveTab, onLogout, userProfile }) => {
         { id: 'services', label: 'Services', icon: ClipboardList },
         { id: 'riders', label: 'Riders', icon: Truck },
         { id: 'corporate', label: 'Corporate Accounts', icon: Building2 },
+        { id: 'clients', label: 'Client Database', icon: Users },
         { id: 'users', label: 'Users', icon: UserCheck },
       ]
     },

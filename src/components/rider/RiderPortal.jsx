@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Car, ChevronLeft, MapPin, Navigation, Clock, DollarSign, User, Shield, LogOut, RefreshCw, Bell, ChevronRight, Play, CheckCircle2, UserCircle, Briefcase, Menu, X, History, Home, Settings, HelpCircle, LifeBuoy, Percent, Globe, MessageSquare, Phone, PlusCircle } from 'lucide-react';
+import { Car, ChevronLeft, MapPin, Navigation, Clock, DollarSign, User, Shield, LogOut, RefreshCw, Bell, ChevronRight, Play, CheckCircle2, UserCircle, Briefcase, Menu, X, History, Home, Settings, HelpCircle, LifeBuoy, Percent, Globe, MessageSquare, Phone, PlusCircle, Compass } from 'lucide-react';
 import LiveTrackingMap from '../maps/LiveTrackingMap';
 
 const PesoIcon = ({ className = "w-6 h-6" }) => (
@@ -37,10 +37,28 @@ const RiderPortal = () => {
   const [chatInput, setChatInput] = useState('');
 
   useEffect(() => {
-    navigator.geolocation.getCurrentPosition((pos) => {
-      setCurrentPos({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-    }, null, { enableHighAccuracy: true });
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        setCurrentPos({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+      },
+      (err) => console.error("Error watching position", err),
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+    return () => navigator.geolocation.clearWatch(watchId);
   }, []);
+
+  const forceGPSRefresh = () => {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setCurrentPos({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        alert(`Location updated successfully! (${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)})`);
+      },
+      (err) => {
+        alert(`GPS Error: ${err.message}. Please make sure location services are enabled for this browser/site.`);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
 
   useEffect(() => {
     if (rider) {
@@ -96,33 +114,25 @@ const RiderPortal = () => {
 
   const startTracking = () => {
     if (locationPulse) clearInterval(locationPulse);
-    let mockOffset = 0; // For demo: simulate driving movement
     const interval = setInterval(() => {
       if (!rider) return;
       navigator.geolocation.getCurrentPosition(
         (pos) => {
-          mockOffset += 0.00015; // move approx 15 meters
+          const newLat = pos.coords.latitude;
+          const newLng = pos.coords.longitude;
+          setCurrentPos({ lat: newLat, lng: newLng });
           fetch('/api/rider/update-location', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               riderId: rider.id,
-              lat: pos.coords.latitude + mockOffset,
-              lng: pos.coords.longitude + mockOffset
+              lat: newLat,
+              lng: newLng
             })
           });
         },
         (err) => {
-          mockOffset += 0.00015;
-          fetch('/api/rider/update-location', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              riderId: rider.id,
-              lat: 11.0500 + mockOffset,
-              lng: 124.0000 + mockOffset
-            })
-          });
+          console.error("Tracking location error:", err);
         },
         { enableHighAccuracy: true }
       );
@@ -543,7 +553,7 @@ const RiderPortal = () => {
             <div className="flex items-center justify-between px-2">
               <div className="flex items-center gap-3">
                 <div className={`w-10 h-10 ${sosActive ? 'bg-red-100' : 'bg-[#00B14F]/10'} rounded-xl flex items-center justify-center`}>
-                  <Navigation className={`w-5 h-5 ${sosActive ? 'text-red-600' : 'text-[#00B14F]'} animate-pulse`} />
+                  <Car className={`w-5 h-5 ${sosActive ? 'text-red-600' : 'text-[#00B14F]'} animate-pulse`} />
                 </div>
                 <div>
                   <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Ongoing Trip • {activeJob.transport_status.replace(/_/g, ' ')}</p>
@@ -585,7 +595,7 @@ const RiderPortal = () => {
         </div>
 
         {/* Content Area */}
-        <div className="bg-white/70 backdrop-blur-2xl h-[60vh] overflow-y-auto no-scrollbar px-6 pb-32 border-t border-white/20">
+        <div className="bg-white/70 backdrop-blur-2xl h-[60vh] overflow-y-auto overflow-x-hidden no-scrollbar px-4 pb-32 border-t border-white/20">
           {activeJob ? (
             <div className="py-6 space-y-6">
               <div className="flex gap-4">
@@ -606,7 +616,7 @@ const RiderPortal = () => {
                 </div>
               </div>
 
-              <div className="bg-white/40 backdrop-blur-md rounded-2xl p-6 flex items-center justify-between border border-white/40">
+              <div className="bg-white/40 backdrop-blur-md rounded-2xl p-4 flex items-center justify-between border border-white/40">
                 <div className="flex items-center gap-4">
                   <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-sm text-gray-400 border border-gray-100"><User className="w-7 h-7" /></div>
                   <div>
@@ -656,8 +666,8 @@ const RiderPortal = () => {
                 </div>
               ) : requests.length === 0 ? (
                 <div className="text-center py-20">
-                  <div className="w-24 h-24 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-6 animate-pulse">
-                    <Navigation className="w-10 h-10 text-[#00B14F]" />
+                  <div className="w-24 h-24 flex items-center justify-center mx-auto mb-6">
+                    <Car className="w-16 h-16 text-[#00B14F]" />
                   </div>
                   <h4 className="text-lg font-bold text-gray-900 mb-1">Searching for nearby jobs...</h4>
                   <p className="text-xs text-gray-400">We'll notify you as soon as someone books a ride.</p>
@@ -665,24 +675,30 @@ const RiderPortal = () => {
               ) : (
                 <div className="grid gap-4">
                   {requests.map(req => (
-                    <div key={req.id} className="bg-white/40 backdrop-blur-md rounded-2xl p-6 shadow-sm border border-white/40 hover:bg-white/60 transition-all active:scale-[0.98]">
-                      <div className="flex justify-between items-start mb-6">
-                        <div>
-                          <div className="flex items-center gap-2 mb-1.5">
-                            <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest">#{req.id}</span>
-                            <div className="bg-[#00B14F]/10 text-[#00B14F] text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter">Instant</div>
-                          </div>
-                          <h4 className="text-2xl font-black text-gray-900 tracking-tighter">PHP {parseFloat(req.total_amount).toFixed(2)}</h4>
+                    <div key={req.id} className="bg-white/40 backdrop-blur-md rounded-2xl p-4 shadow-sm border border-white/40 hover:bg-white/60 transition-all active:scale-[0.98]">
+                      <div className="flex flex-col mb-4 gap-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest">#{req.id}</span>
+                          <div className="bg-[#00B14F]/10 text-[#00B14F] text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter shrink-0">Instant</div>
                         </div>
-                        <button onClick={() => acceptJob(req.id)} className="bg-gray-900 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-gray-200 hover:bg-[#00B14F] hover:shadow-green-100 transition-all">Accept</button>
+                        <div className="flex items-center gap-4 mt-1">
+                          <h4 className="text-2xl font-black text-gray-900 tracking-tighter truncate">PHP {parseFloat(req.total_amount).toFixed(2)}</h4>
+                          <button onClick={() => acceptJob(req.id)} className="bg-gray-900 text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-gray-200 hover:bg-[#00B14F] hover:shadow-green-100 transition-all shrink-0">Accept</button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-3 text-gray-500 mb-4 bg-gray-50 p-3 rounded-2xl">
-                        <MapPin className="w-4 h-4 text-red-500" />
-                        <p className="text-xs font-bold truncate">{req.pickup_location}</p>
+                      <div className="flex flex-col gap-2 text-gray-500 mb-3 bg-gray-50 p-3 rounded-2xl">
+                        <div className="flex items-center gap-3">
+                          <div className="w-2 h-2 bg-[#00B14F] rounded-full shrink-0"></div>
+                          <p className="text-xs font-bold truncate text-gray-700">{req.pickup_location}</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="w-2 h-2 bg-red-500 rounded-full shrink-0"></div>
+                          <p className="text-xs font-bold truncate text-gray-700">{req.destination_location}</p>
+                        </div>
                       </div>
                       <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-gray-400 px-1">
-                        <div className="flex items-center gap-1.5"><Car className="w-3.5 h-3.5" /> <span>{req.service_type}</span></div>
-                        <div className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> <span>Now</span></div>
+                        <div className="flex items-center gap-1.5"><Car className="w-3.5 h-3.5 shrink-0" /> <span>{req.service_type}</span></div>
+                        <div className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 shrink-0" /> <span>Now</span></div>
                       </div>
                     </div>
                   ))}
