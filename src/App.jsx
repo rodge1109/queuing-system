@@ -3230,7 +3230,7 @@ function Header({ currentPage, setCurrentPage, searchQuery, setSearchQuery }) {
     <header className="fixed top-0 left-0 right-0 z-50 h-[100px] bg-[#161616] text-white">
       <div className="w-full px-8 h-[70px] flex items-center justify-between border-b border-[#393939]">
         <div className="flex items-center space-x-8">
-          <h1 className="text-xl font-bold uppercase tracking-tight cursor-pointer" onClick={() => setCurrentPage('home')}>Service<span className="font-light">Box</span></h1>
+          <h1 className="text-xl font-bold uppercase tracking-tight cursor-pointer" onClick={() => setCurrentPage('home')}>KINGS <span className="font-light">TRANSPORT</span></h1>
           <nav className="hidden lg:flex items-center space-x-1">
             {tabs.map(t => (
               <button key={t.id} onClick={() => setCurrentPage(t.id)} className={`px-4 py-6 text-sm font-medium transition-all border-b-2 ${currentPage === t.id ? 'border-[#10b981] text-white' : 'border-transparent text-[#c6c6c6] hover:text-white'}`}>{t.label}</button>
@@ -3274,7 +3274,7 @@ function HomePage({ setCurrentPage }) {
               {/* About */}
               <div>
                 <div className="flex items-center gap-2 mb-6">
-                  <h4 className="text-[20px] font-semibold text-[#f4f4f4] uppercase tracking-wider">Service<span className="font-light">Box</span></h4>
+                  <h4 className="text-[20px] font-semibold text-[#f4f4f4] uppercase tracking-wider">KINGS <span className="font-light">TRANSPORT</span></h4>
                 </div>
                 <p className="text-[#c6c6c6] text-sm leading-relaxed">
                   Enterprise-grade queuing and scheduling solution built for modern medical facilities. Corporate precision in every interaction.
