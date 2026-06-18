@@ -2456,7 +2456,9 @@ function AdminDashboard({ setCurrentPage }) {
                                   <div className="text-[10px] text-gray-400">{apt.phone_number || 'No Phone'}</div>
                                 </td>
                                 <td className="px-4 py-2">
-                                  {isAssigned && apt.rider_name ? (
+                                  {apt.status?.toLowerCase() === 'cancelled' || apt.transport_status?.toLowerCase() === 'cancelled' ? (
+                                    <span className="text-gray-500 font-semibold uppercase text-[10px] bg-gray-50 px-2 py-0.5 border border-gray-200 rounded-sm">Cancelled</span>
+                                  ) : isAssigned && apt.rider_name ? (
                                     <>
                                       <div className="font-bold text-gray-900">{apt.rider_name}</div>
                                       <div className="text-[10px] text-gray-400">
@@ -2480,15 +2482,15 @@ function AdminDashboard({ setCurrentPage }) {
                                 </td>
                                 <td className="px-4 py-2">
                                   <span className={`px-2.5 py-1 text-[9px] font-semibold uppercase tracking-wider rounded-sm ${
-                                    apt.transport_status === 'completed' || apt.status === 'completed' ? 'bg-green-50 text-green-700 border border-green-200' :
-                                    apt.transport_status === 'cancelled' || apt.status === 'cancelled' ? 'bg-red-50 text-red-700 border border-red-200' :
-                                    apt.transport_status === 'sos' ? 'bg-red-600 text-white font-bold animate-pulse' :
-                                    (!isAssigned && (apt.status === 'pending' || apt.transport_status === 'unassigned')) ? 'bg-yellow-50 text-yellow-700 border border-yellow-200 animate-pulse' :
+                                    apt.transport_status?.toLowerCase() === 'completed' || apt.status?.toLowerCase() === 'completed' ? 'bg-green-50 text-green-700 border border-green-200' :
+                                    apt.transport_status?.toLowerCase() === 'cancelled' || apt.status?.toLowerCase() === 'cancelled' ? 'bg-red-50 text-red-700 border border-red-200' :
+                                    apt.transport_status?.toLowerCase() === 'sos' ? 'bg-red-600 text-white font-bold animate-pulse' :
+                                    (!isAssigned && (apt.status?.toLowerCase() === 'pending' || apt.transport_status?.toLowerCase() === 'unassigned')) ? 'bg-yellow-50 text-yellow-700 border border-yellow-200 animate-pulse' :
                                     'bg-blue-50 text-blue-700 border border-blue-200'
                                   }`}>
-                                    {apt.status === 'cancelled' ? 'cancelled' : 
-                                     apt.status === 'completed' ? 'completed' : 
-                                     (apt.transport_status !== 'unassigned' && apt.transport_status) ? apt.transport_status : 
+                                    {apt.status?.toLowerCase() === 'cancelled' ? 'cancelled' : 
+                                     apt.status?.toLowerCase() === 'completed' ? 'completed' : 
+                                     (apt.transport_status?.toLowerCase() !== 'unassigned' && apt.transport_status) ? apt.transport_status : 
                                      apt.status || 'unassigned'}
                                   </span>
                                 </td>

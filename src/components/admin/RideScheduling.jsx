@@ -181,14 +181,14 @@ const RideScheduling = ({ trips = [], riders = [], fetchTrips }) => {
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
-                    <tr className="bg-[#f4f4f4] border-b border-[#e0e0e0]">
-                      <th className="px-4 py-2.5 font-bold uppercase tracking-widest text-gray-500 text-[9px]">Trip ID</th>
-                      <th className="px-4 py-2.5 font-bold uppercase tracking-widest text-gray-500 text-[9px]">Passenger</th>
-                      <th className="px-4 py-2.5 font-bold uppercase tracking-widest text-gray-500 text-[9px]">Driver / Vehicle</th>
-                      <th className="px-4 py-2.5 font-bold uppercase tracking-widest text-gray-500 text-[9px]">Route (Pickup &rarr; Drop)</th>
-                      <th className="px-4 py-2.5 font-bold uppercase tracking-widest text-gray-500 text-[9px]">Fare</th>
-                      <th className="px-4 py-2.5 font-bold uppercase tracking-widest text-gray-500 text-[9px]">Status</th>
-                      <th className="px-4 py-2.5 font-bold uppercase tracking-widest text-gray-500 text-[9px]">Schedule</th>
+                    <tr className="bg-gray-900 border-b border-gray-900">
+                      <th className="px-4 py-2.5 font-bold uppercase tracking-widest text-white text-[9px]">Trip ID</th>
+                      <th className="px-4 py-2.5 font-bold uppercase tracking-widest text-white text-[9px]">Passenger</th>
+                      <th className="px-4 py-2.5 font-bold uppercase tracking-widest text-white text-[9px]">Driver / Vehicle</th>
+                      <th className="px-4 py-2.5 font-bold uppercase tracking-widest text-white text-[9px]">Route (Pickup &rarr; Drop)</th>
+                      <th className="px-4 py-2.5 font-bold uppercase tracking-widest text-white text-[9px]">Fare</th>
+                      <th className="px-4 py-2.5 font-bold uppercase tracking-widest text-white text-[9px]">Status</th>
+                      <th className="px-4 py-2.5 font-bold uppercase tracking-widest text-white text-[9px]">Schedule</th>
                     </tr>
                   </thead>
                   <tbody>

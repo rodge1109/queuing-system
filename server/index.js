@@ -4520,6 +4520,20 @@ setInterval(autoQueueAppointments, 60 * 1000);
 // Run once 3 seconds after server starts to catch already-due appointments
 setTimeout(autoQueueAppointments, 3000);
 
+// ==================== FRONTEND STATIC SERVING ====================
+// Serve React static files in production
+const frontendDistPath = path.join(__dirname, '../dist');
+app.use(express.static(frontendDistPath));
+
+// Catch-all route for React Router (must be the LAST route)
+app.get('*', (req, res) => {
+  if (fs.existsSync(path.join(frontendDistPath, 'index.html'))) {
+    res.sendFile(path.join(frontendDistPath, 'index.html'));
+  } else {
+    res.status(404).send('Frontend build not found. Please run "npm run build" in the root directory.');
+  }
+});
+
 // Initialize clinic settings table + seed defaults, then start server
 initClinicSettings()
   .then(() => loadSettings())

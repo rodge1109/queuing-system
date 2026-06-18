@@ -12,7 +12,8 @@ import {
   User,
   ArrowRight,
   Car,
-  X
+  X,
+  Play
 } from 'lucide-react';
 import LiveTrackingMap from '../maps/LiveTrackingMap';
 
@@ -26,6 +27,16 @@ const PassengerTracking = ({ appointmentId, token, onClose }) => {
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatInput, setChatInput] = useState('');
+  const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
+  const isChatOpenRef = useRef(false);
+
+  useEffect(() => {
+    isChatOpenRef.current = isChatOpen;
+    if (isChatOpen) setHasUnreadMessages(false);
+  }, [isChatOpen]);
 
   useEffect(() => {
     const fetchTrip = async () => {
@@ -72,6 +83,47 @@ const PassengerTracking = ({ appointmentId, token, onClose }) => {
     }
   };
 
+  const fetchMessages = async () => {
+    if (!trip || !isChatOpen) return;
+    try {
+      const res = await fetch(`/api/rider/messages/${trip.id}`);
+      const data = await res.json();
+      if (data.success) setChatMessages(data.messages);
+    } catch (e) { }
+  };
+
+  const sendMessage = async (e) => {
+    if (e) e.preventDefault();
+    if (!chatInput.trim() || !trip) return;
+    const msg = chatInput;
+    setChatInput('');
+    try {
+      const res = await fetch('/api/rider/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tripId: trip.id,
+          senderType: 'passenger',
+          senderId: trip.id, // Anonymous passengers just use trip id
+          message: msg
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setChatMessages(prev => [...prev, data.message]);
+      }
+    } catch (e) { }
+  };
+
+  useEffect(() => {
+    let interval;
+    if (isChatOpen && trip) {
+      fetchMessages();
+      interval = setInterval(fetchMessages, 5000);
+    }
+    return () => clearInterval(interval);
+  }, [isChatOpen, trip]);
+
   // WebSocket for Live Location
   useEffect(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -83,6 +135,11 @@ const PassengerTracking = ({ appointmentId, token, onClose }) => {
         const data = JSON.parse(event.data);
         if (data.type === 'location_update' && tripRef.current && String(data.riderId) === String(tripRef.current.rider_id)) {
           setDriverPos({ lat: data.lat, lng: data.lng });
+        }
+        if (data.type === 'chat_message' && tripRef.current && String(data.message.trip_id) === String(tripRef.current.id)) {
+          if (data.message.sender_type === 'rider' && !isChatOpenRef.current) {
+            setHasUnreadMessages(true);
+          }
         }
       } catch (err) {}
     };
@@ -127,7 +184,7 @@ const PassengerTracking = ({ appointmentId, token, onClose }) => {
       </div>
 
       {/* Status Header */}
-      <div className="p-4 bg-white/90 backdrop-blur-md shadow-sm relative z-20 pointer-events-auto border-b border-gray-100">
+      <div className="p-4 bg-white/90 backdrop-blur-md shadow-sm fixed top-0 left-0 right-0 z-[60] pointer-events-auto border-b border-gray-100 max-w-md mx-auto">
           <div className="flex items-center gap-4">
             <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-full transition-colors bg-white">
               <X size={18} className="text-gray-600" />
@@ -141,7 +198,7 @@ const PassengerTracking = ({ appointmentId, token, onClose }) => {
           </div>
       </div>
 
-      <div className="relative z-10 px-4 pt-4 pointer-events-none mt-4">
+      <div className="relative z-10 px-4 pt-[80px] pointer-events-none mt-4">
         <div className="bg-white/90 backdrop-blur-sm p-3 rounded-xl border border-white shadow-lg flex items-center gap-3">
           <Shield size={16} className="text-[#00B14F]" />
           <span className="text-[10px] font-bold text-gray-800 uppercase tracking-tight">Your trip is protected by King's Safety Insurance</span>
@@ -305,8 +362,14 @@ const PassengerTracking = ({ appointmentId, token, onClose }) => {
                 <button className="w-10 h-10 bg-gray-50 text-gray-600 rounded-full flex items-center justify-center hover:bg-[#E1F5EE] transition-colors">
                   <Phone size={18} />
                 </button>
-                <button className="w-10 h-10 bg-gray-50 text-gray-600 rounded-full flex items-center justify-center hover:bg-[#E1F5EE] transition-colors">
+                <button 
+                  onClick={() => setIsChatOpen(true)}
+                  className="w-10 h-10 bg-gray-50 text-gray-600 rounded-full flex items-center justify-center hover:bg-[#E1F5EE] transition-colors relative"
+                >
                   <MessageSquare size={18} />
+                  {hasUnreadMessages && (
+                    <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full"></span>
+                  )}
                 </button>
               </div>
             </div>
@@ -337,6 +400,66 @@ const PassengerTracking = ({ appointmentId, token, onClose }) => {
           </div>
         </div>
       </div>
+
+      {/* Chat Window Overlay */}
+      {isChatOpen && trip && (
+        <div className="fixed inset-0 z-[120] bg-black/40 backdrop-blur-sm flex flex-col justify-end animate-in fade-in duration-300 pointer-events-auto">
+          <div className="bg-white rounded-t-2xl h-[80vh] flex flex-col shadow-2xl animate-in slide-in-from-bottom-10 duration-500 pointer-events-auto">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-2xl">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm text-[#00B14F]"><User className="w-6 h-6" /></div>
+                <div>
+                  <h4 className="text-base font-black text-gray-900 tracking-tight">{trip.rider_name || 'Assigned Driver'}</h4>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Driver • Trip #{trip.id}</p>
+                </div>
+              </div>
+              <button onClick={() => setIsChatOpen(false)} className="p-3 bg-white hover:bg-gray-100 rounded-full shadow-sm transition-all active:scale-90"><X className="w-6 h-6 text-gray-900" /></button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto no-scrollbar p-6 space-y-4 scrollbar-hide">
+              {chatMessages.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center opacity-20 grayscale">
+                  <MessageSquare className="w-16 h-16 mb-4" />
+                  <p className="text-xs font-black uppercase tracking-widest">No messages yet</p>
+                </div>
+              ) : (
+                chatMessages.map(msg => (
+                  <div key={msg.id} className={`flex ${msg.sender_type === 'passenger' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[80%] p-4 rounded-2xl text-sm font-medium ${
+                      msg.sender_type === 'passenger' 
+                        ? 'bg-[#00B14F] text-white rounded-tr-none shadow-lg shadow-green-100' 
+                        : 'bg-gray-100 text-gray-900 rounded-tl-none border border-gray-200'
+                    }`}>
+                      {msg.message}
+                      <p className={`text-[8px] mt-1.5 font-bold uppercase opacity-60 ${msg.sender_type === 'passenger' ? 'text-right' : 'text-left'}`}>
+                        {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="p-6 border-t border-gray-100 bg-gray-50/50">
+              <form onSubmit={sendMessage} className="flex gap-3">
+                <input 
+                  type="text" 
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  placeholder="Message driver..."
+                  className="flex-1 bg-white border border-gray-200 rounded-2xl px-6 py-4 text-sm font-medium focus:border-[#00B14F] focus:ring-1 focus:ring-[#00B14F] outline-none transition-all shadow-sm"
+                />
+                <button 
+                  type="submit"
+                  className="w-14 h-14 bg-[#00B14F] text-white rounded-2xl flex items-center justify-center shadow-lg shadow-green-200 active:scale-90 transition-all"
+                >
+                  <Play className="w-5 h-5 fill-white" />
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;900&display=swap');

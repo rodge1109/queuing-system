@@ -35,6 +35,52 @@ const RiderPortal = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
+  const [showNewJobAlert, setShowNewJobAlert] = useState(false);
+  const prevRequestsCount = useRef(0);
+
+  const playPing = () => {
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      const ctx = new AudioContext();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      gain.gain.setValueAtTime(1, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.5);
+      
+      setTimeout(() => {
+        const osc2 = ctx.createOscillator();
+        const gain2 = ctx.createGain();
+        osc2.connect(gain2);
+        gain2.connect(ctx.destination);
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(1046.50, ctx.currentTime);
+        gain2.gain.setValueAtTime(1, ctx.currentTime);
+        gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+        osc2.start(ctx.currentTime);
+        osc2.stop(ctx.currentTime + 0.5);
+      }, 150);
+    } catch (e) {
+      console.warn("Audio not supported or blocked");
+    }
+  };
+
+  useEffect(() => {
+    if (requests.length > prevRequestsCount.current) {
+      if (!activeJob && rider) {
+        setSheetState('expanded');
+        setShowNewJobAlert(true);
+        playPing();
+        setTimeout(() => setShowNewJobAlert(false), 4000);
+      }
+    }
+    prevRequestsCount.current = requests.length;
+  }, [requests, activeJob, rider]);
 
   useEffect(() => {
     const watchId = navigator.geolocation.watchPosition(
@@ -725,7 +771,7 @@ const RiderPortal = () => {
       </div>
 
       <div className="relative z-10">
-        <header className="bg-white/80 backdrop-blur-lg px-4 pt-4 pb-4 sticky top-0 z-50 shadow-sm border-b border-white/20">
+        <header className="bg-white/80 backdrop-blur-lg px-4 pt-4 pb-4 fixed top-0 left-0 right-0 z-[60] shadow-sm border-b border-white/20">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-3">
               <button 
@@ -756,8 +802,25 @@ const RiderPortal = () => {
           </div>
         </header>
 
+        <div className="h-[73px] pointer-events-none w-full" />
+
         {renderTabContent()}
         {renderBottomSheet()}
+
+        {/* New Job Alert Overlay */}
+        {showNewJobAlert && (
+          <div className="fixed inset-0 z-[150] bg-black/80 backdrop-blur-md flex flex-col items-center justify-center animate-in fade-in duration-300" onClick={() => setShowNewJobAlert(false)}>
+            <div className="relative flex items-center justify-center w-32 h-32 mb-8">
+              <div className="absolute inset-0 bg-[#00B14F] rounded-full animate-ping opacity-75"></div>
+              <div className="absolute inset-2 bg-[#00B14F] rounded-full animate-pulse opacity-90"></div>
+              <div className="relative w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-2xl">
+                <Car className="w-10 h-10 text-[#00B14F]" />
+              </div>
+            </div>
+            <h2 className="text-3xl font-black text-white uppercase tracking-widest mb-2 animate-bounce text-center px-4">New Ride Request!</h2>
+            <p className="text-green-400 font-bold mb-8 uppercase tracking-widest text-xs">Tap anywhere to view</p>
+          </div>
+        )}
 
         {/* Chat Window Overlay */}
         {isChatOpen && activeJob && (
@@ -847,11 +910,11 @@ const RiderPortal = () => {
         )}
 
         {/* Side Drawer Content */}
-        <div className={`fixed top-0 left-0 bottom-0 w-[280px] bg-white z-[100] shadow-2xl transform transition-transform duration-300 ease-in-out ${isDrawerOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-          <div className="p-6 bg-[#00B14F] text-white">
+        <div className={`fixed top-0 left-0 bottom-0 w-[280px] bg-white z-[100] shadow-2xl transform transition-transform duration-300 ease-in-out ${isDrawerOpen ? 'translate-x-0' : '-translate-x-full'} flex flex-col`}>
+          <div className="p-6 bg-gray-900 text-white flex-shrink-0">
             <div className="flex justify-between items-start mb-6">
               <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-lg">
-                <UserCircle className="w-10 h-10 text-[#00B14F]" />
+                <UserCircle className="w-10 h-10 text-gray-900" />
               </div>
               <button onClick={() => setIsDrawerOpen(false)} className="p-1 hover:bg-white/20 rounded-full transition-colors">
                 <X className="w-6 h-6" />
@@ -861,7 +924,7 @@ const RiderPortal = () => {
             <p className="text-white/80 text-xs font-bold uppercase tracking-widest mt-1">Diamond Member</p>
           </div>
 
-          <div className="py-4 overflow-y-auto no-scrollbar max-h-[calc(100vh-160px)] scrollbar-hide">
+          <div className="flex-1 overflow-y-auto no-scrollbar scrollbar-hide py-4">
             <div className="px-6 py-2">
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Menu</p>
               <div className="space-y-0.5">
@@ -880,8 +943,8 @@ const RiderPortal = () => {
                     className="w-full flex items-center gap-3 py-2 px-2 hover:bg-gray-50 rounded-xl transition-all group"
                     onClick={() => setIsDrawerOpen(false)}
                   >
-                    <div className="w-10 h-10 bg-gray-50 group-hover:bg-[#00B14F]/10 rounded-full flex items-center justify-center transition-colors">
-                      <item.icon className="w-5 h-5 text-gray-400 group-hover:text-[#00B14F]" />
+                    <div className="w-10 h-10 bg-gray-50 group-hover:bg-gray-900 group-hover:text-white rounded-full flex items-center justify-center transition-colors">
+                      <item.icon className="w-5 h-5 text-gray-400 group-hover:text-white" />
                     </div>
                     <span className="text-sm font-bold text-gray-700 group-hover:text-gray-900">{item.label}</span>
                   </button>
@@ -890,10 +953,10 @@ const RiderPortal = () => {
             </div>
           </div>
 
-          <div className="absolute bottom-0 left-0 right-0 p-6 border-t border-gray-100">
+          <div className="p-6 border-t border-gray-100 flex-shrink-0">
             <button 
               onClick={() => { setRider(null); if (locationPulse) clearInterval(locationPulse); }}
-              className="w-full flex items-center justify-center gap-2 py-4 bg-red-50 text-red-600 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-red-100 transition-colors"
+              className="w-full flex items-center justify-center gap-2 py-4 bg-[#00B14F] text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-[#009e46] transition-colors"
             >
               <LogOut className="w-4 h-4" /> Sign Out
             </button>
