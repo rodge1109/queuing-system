@@ -88,6 +88,20 @@ export default function RestaurantApp() {
   const [pendingOrderNumber, setPendingOrderNumber] = useState(null);
   const [showLoginMenu, setShowLoginMenu] = useState(false);
 
+  // PWA Install Prompt State
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
   // Products state
   const [menuData, setMenuData] = useState(fallbackMenuData);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
@@ -538,6 +552,8 @@ export default function RestaurantApp() {
             setCurrentPage={setCurrentPage}
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
+            deferredPrompt={deferredPrompt}
+            setDeferredPrompt={setDeferredPrompt}
           />
         )}
         {renderPage()}
@@ -3217,7 +3233,7 @@ const MyAppointment = ({ token: initialToken }) => {
 };
 
 // Header Component
-function Header({ currentPage, setCurrentPage, searchQuery, setSearchQuery }) {
+function Header({ currentPage, setCurrentPage, searchQuery, setSearchQuery, deferredPrompt, setDeferredPrompt }) {
   if (currentPage === 'admin') return null;
   const tabs = [
     { id: 'home', label: 'Home' },
@@ -3226,6 +3242,18 @@ function Header({ currentPage, setCurrentPage, searchQuery, setSearchQuery }) {
     { id: 'queue-teller', label: 'Teller' },
     { id: 'survey', label: 'Feedback' }
   ];
+
+  const handleInstallClick = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      console.log(`User response to the install prompt: ${outcome}`);
+      setDeferredPrompt(null);
+    } else {
+      alert("To add Kings Transport to your Home Screen:\n\n• For iOS Safari: Tap the Share button (square with arrow up) and select 'Add to Home Screen'.\n• For Chrome/Firefox/Edge: Click your browser's menu (three dots / settings icon) and select 'Install app' or 'Add to Home Screen'.");
+    }
+  };
+
   return (
     <header className="fixed top-0 left-0 right-0 z-50 h-[100px] bg-[#161616] text-white">
       <div className="w-full px-8 h-[70px] flex items-center justify-between border-b border-[#393939]">
@@ -3238,6 +3266,14 @@ function Header({ currentPage, setCurrentPage, searchQuery, setSearchQuery }) {
           </nav>
         </div>
         <div className="flex items-center space-x-4">
+          <button 
+            onClick={handleInstallClick}
+            className="flex items-center gap-2 border border-[#393939] hover:bg-[#262626] text-white px-4 py-2 text-xs font-semibold uppercase tracking-wider transition-all"
+            title="Download Kings Transport App"
+          >
+            <Download className="w-4 h-4 text-[#10b981]" />
+            <span>Download</span>
+          </button>
           <button onClick={() => { localStorage.setItem('adminActiveTab', 'settings'); setCurrentPage('admin'); }} className="p-2 hover:bg-[#262626]"><Settings className="w-5 h-5 text-[#c6c6c6]" /></button>
           <button onClick={() => setCurrentPage('queue-teller')} className="bg-[#10b981] px-4 py-2 text-sm font-medium hover:bg-[#0353e9]">LOG IN</button>
         </div>
