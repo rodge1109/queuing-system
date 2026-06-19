@@ -6,6 +6,9 @@ const LiveTrackingMap = ({ riderPos, pickupPos, destPos, status, pickMode = fals
   const leafletMap = React.useRef(null);
   const [mainRoute, setMainRoute] = useState(null);
   const [driverRoute, setDriverRoute] = useState(null);
+  const [userInteracted, setUserInteracted] = useState(false);
+  const userInteractedRef = React.useRef(false);
+  const markersRef = React.useRef([]);
 
   useEffect(() => {
     const L = window.L;
@@ -13,6 +16,12 @@ const LiveTrackingMap = ({ riderPos, pickupPos, destPos, status, pickMode = fals
       console.error('Leaflet (L) not found on window');
       return;
     }
+
+    const container = mapRef.current;
+    const handleUserInteraction = () => {
+      userInteractedRef.current = true;
+      setUserInteracted(true);
+    };
 
     try {
       leafletMap.current = L.map(mapRef.current, { 
@@ -27,6 +36,15 @@ const LiveTrackingMap = ({ riderPos, pickupPos, destPos, status, pickMode = fals
         maxZoom: 20
       }).addTo(leafletMap.current);
 
+      // Bind interaction listeners
+      leafletMap.current.on('dragstart', handleUserInteraction);
+
+      if (container) {
+        container.addEventListener('wheel', handleUserInteraction, { passive: true });
+        container.addEventListener('touchmove', handleUserInteraction, { passive: true });
+        container.addEventListener('dblclick', handleUserInteraction);
+      }
+
       // Force a resize check
       setTimeout(() => {
         if (leafletMap.current) leafletMap.current.invalidateSize();
@@ -35,7 +53,17 @@ const LiveTrackingMap = ({ riderPos, pickupPos, destPos, status, pickMode = fals
       console.error('Error initializing map:', err);
     }
 
-    return () => { if (leafletMap.current) { leafletMap.current.remove(); leafletMap.current = null; } };
+    return () => { 
+      if (container) {
+        container.removeEventListener('wheel', handleUserInteraction);
+        container.removeEventListener('touchmove', handleUserInteraction);
+        container.removeEventListener('dblclick', handleUserInteraction);
+      }
+      if (leafletMap.current) { 
+        leafletMap.current.remove(); 
+        leafletMap.current = null; 
+      } 
+    };
   }, []);
 
   // Fetch Main Trip Route
@@ -154,7 +182,8 @@ const LiveTrackingMap = ({ riderPos, pickupPos, destPos, status, pickMode = fals
       }).addTo(leafletMap.current);
     }
 
-    if (markers.length > 0) {
+    markersRef.current = markers;
+    if (markers.length > 0 && !userInteractedRef.current) {
       setTimeout(() => {
         if (leafletMap.current) {
           leafletMap.current.invalidateSize();
@@ -164,7 +193,31 @@ const LiveTrackingMap = ({ riderPos, pickupPos, destPos, status, pickMode = fals
     }
   }, [riderPos, pickupPos, destPos, status, mainRoute, driverRoute]);
 
-  return <div ref={mapRef} className="w-full h-full" />;
+  return (
+    <div className="relative w-full h-full">
+      <div ref={mapRef} className="w-full h-full" />
+      {userInteracted && (
+        <button
+          onClick={() => {
+            userInteractedRef.current = false;
+            setUserInteracted(false);
+            if (leafletMap.current && markersRef.current.length > 0) {
+              leafletMap.current.invalidateSize();
+              leafletMap.current.fitBounds(markersRef.current, { padding: [50, 50] });
+            }
+          }}
+          className="absolute bottom-6 right-6 z-[1000] bg-white text-gray-800 px-4 py-2.5 rounded-full shadow-lg border border-gray-200 hover:bg-gray-50 active:scale-95 transition-all flex items-center gap-2 text-[11px] font-black uppercase tracking-wider cursor-pointer"
+          title="Recenter Map"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-[#00B14F]">
+            <circle cx="12" cy="12" r="10" />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+          Recenter
+        </button>
+      )}
+    </div>
+  );
 };
 
 export default LiveTrackingMap;
