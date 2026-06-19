@@ -34,7 +34,7 @@ function AppointmentForm() {
 
   const [step, setStep] = useState('service');
   const [selectedService, setSelectedService] = useState(null);
-  const [selectedStaff, setSelectedStaff] = useState(null);
+  const [selectedStaff, setSelectedStaff] = useState({ id: 'any', name: 'Any Staff', email: 'Next available member', image_url: null });
   const [liveServices, setLiveServices] = useState([]);
   const [staffMembers, setStaffMembers] = useState([]);
   const [isLoadingStaff, setIsLoadingStaff] = useState(false);
@@ -239,7 +239,6 @@ function AppointmentForm() {
 
   const steps = [
     { id: 'service', label: 'Services', icon: <ShoppingCart className="w-4 h-4" /> },
-    { id: 'staff', label: 'Staff', icon: <Search className="w-4 h-4" /> },
     { id: 'datetime', label: 'Date & Time', icon: <Settings className="w-4 h-4" /> },
     { id: 'details', label: 'Basic Details', icon: <Settings className="w-4 h-4" /> },
     { id: 'summary', label: 'Summary', icon: <Check className="w-4 h-4" /> }
@@ -429,7 +428,7 @@ function AppointmentForm() {
               ) : liveServices.filter(s => s.is_active !== false && (activeCategory === 'All' || s.category === activeCategory)).map(service => (
                 <button
                   key={service.id}
-                  onClick={() => { setSelectedService(service); setStep('staff'); }}
+                  onClick={() => { setSelectedService(service); setStep('datetime'); }}
                   className={`relative group flex flex-col bg-white border-2 transition-all duration-500 overflow-hidden ${
                     selectedService?.id === service.id 
                     ? 'border-[#24a148] shadow-2xl shadow-green-100 -translate-y-2' 
@@ -568,8 +567,8 @@ function AppointmentForm() {
             </div>
 
             <div className="mt-12 flex justify-between items-center">
-              <button onClick={() => setStep('staff')} className="text-[#24a148] font-bold uppercase text-[11px] flex items-center gap-2 hover:underline tracking-widest">
-                <ChevronLeft className="w-3 h-3" /> Back to Staff
+              <button onClick={() => setStep('service')} className="text-[#24a148] font-bold uppercase text-[11px] flex items-center gap-2 hover:underline tracking-widest">
+                <ChevronLeft className="w-3 h-3" /> Back to Services
               </button>
               <button
                 disabled={!formData.preferredDate || !formData.preferredTime}
