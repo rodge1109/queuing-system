@@ -521,8 +521,8 @@ app.post('/api/appointments', async (req, res) => {
     let corporateAccountId = null;
     if (paymentMethod === 'corporate' && corporateAccountNumber) {
       const corpResult = await pool.query(
-        "SELECT id, balance, credit_limit, status FROM corporate_accounts WHERE account_number = $1",
-        [corporateAccountNumber]
+        "SELECT id, balance, credit_limit, status FROM corporate_accounts WHERE UPPER(account_number) = UPPER($1)",
+        [(corporateAccountNumber || '').trim()]
       );
       if (corpResult.rows.length === 0) {
         return res.status(400).json({ success: false, message: 'Corporate account not found' });
@@ -2946,7 +2946,7 @@ app.get('/api/corporate-accounts', async (req, res) => {
 app.get('/api/corporate-accounts/validate/:accountNumber', async (req, res) => {
   try {
     const { accountNumber } = req.params;
-    const { rows } = await pool.query('SELECT id, company_name, status, credit_limit, balance FROM corporate_accounts WHERE account_number = $1', [accountNumber]);
+    const { rows } = await pool.query('SELECT id, company_name, status, credit_limit, balance FROM corporate_accounts WHERE UPPER(account_number) = UPPER($1)', [(accountNumber || '').trim()]);
     if (rows.length > 0) {
       const account = rows[0];
       if (account.status !== 'active') {
