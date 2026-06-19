@@ -4112,6 +4112,104 @@ app.get('/api/corporate-accounts', async (req, res) => {
   }
 });
 
+// Get corporate accounts dashboard summary stats
+app.get('/api/corporate-accounts/dashboard-stats', async (req, res) => {
+  try {
+    // 1. Total Receivables (current)
+    const recRes = await pool.query('SELECT COALESCE(SUM(balance), 0) as total FROM corporate_accounts');
+    const totalReceivables = parseFloat(recRes.rows[0].total);
+
+    // 2. Receivables at the end of last month (to compute trend)
+    const prevRecRes = await pool.query(`
+      SELECT COALESCE(SUM(debit - credit), 0) as total 
+      FROM corporate_ledgers 
+      WHERE date < DATE_TRUNC('month', CURRENT_DATE)
+    `);
+    const prevReceivables = parseFloat(prevRecRes.rows[0].total);
+
+    let receivablesTrend = 'Stable';
+    if (prevReceivables > 0) {
+      const pctChange = ((totalReceivables - prevReceivables) / prevReceivables) * 100;
+      receivablesTrend = `${pctChange >= 0 ? '+' : ''}${pctChange.toFixed(1)}% from last month`;
+    } else if (totalReceivables > 0) {
+      receivablesTrend = '+100% from last month';
+    }
+
+    // 3. Overdue Amount (pending invoices older than 30 days)
+    const overdueRes = await pool.query(`
+      SELECT COALESCE(SUM(amount), 0) as total,
+             COUNT(DISTINCT account_id) as client_count
+      FROM corporate_invoices
+      WHERE status = 'pending' AND date < CURRENT_DATE - INTERVAL '30 days'
+    `);
+    const overdueAmount = parseFloat(overdueRes.rows[0].total);
+    const overdueClients = parseInt(overdueRes.rows[0].client_count);
+    const overdueTrend = `${overdueClients} client${overdueClients === 1 ? '' : 's'} overdue`;
+
+    // 4. Collected (MTD) - payments in current month
+    const collectedRes = await pool.query(`
+      SELECT COALESCE(SUM(amount), 0) as total,
+             COUNT(*) as count
+      FROM corporate_payments
+      WHERE payment_date >= DATE_TRUNC('month', CURRENT_DATE)
+        AND payment_date < DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month'
+    `);
+    const collectedMtd = parseFloat(collectedRes.rows[0].total);
+    const paymentsCount = parseInt(collectedRes.rows[0].count);
+    const collectedTrend = `${paymentsCount} payment${paymentsCount === 1 ? '' : 's'} received MTD`;
+
+    // 5. Avg Days
+    const avgCollectionRes = await pool.query(`
+      SELECT COALESCE(ROUND(AVG(p.payment_date - i.date)), 0) as avg_days
+      FROM corporate_payments p
+      JOIN corporate_invoices i ON p.invoice_id = i.id
+      WHERE i.status = 'paid'
+    `);
+    const avgDays = parseInt(avgCollectionRes.rows[0].avg_days);
+    const avgDaysText = `Avg. collection: ${avgDays} day${avgDays === 1 ? '' : 's'}`;
+
+    // 6. Brackets
+    const bracketsRes = await pool.query(`
+      SELECT 
+        COALESCE(SUM(CASE WHEN date >= CURRENT_DATE - INTERVAL '30 days' THEN amount ELSE 0 END), 0) as b1,
+        COALESCE(SUM(CASE WHEN date >= CURRENT_DATE - INTERVAL '60 days' AND date < CURRENT_DATE - INTERVAL '30 days' THEN amount ELSE 0 END), 0) as b2,
+        COALESCE(SUM(CASE WHEN date >= CURRENT_DATE - INTERVAL '90 days' AND date < CURRENT_DATE - INTERVAL '60 days' THEN amount ELSE 0 END), 0) as b3,
+        COALESCE(SUM(CASE WHEN date < CURRENT_DATE - INTERVAL '90 days' THEN amount ELSE 0 END), 0) as b4
+      FROM corporate_invoices
+      WHERE status = 'pending'
+    `);
+    
+    const b1 = parseFloat(bracketsRes.rows[0].b1);
+    const b2 = parseFloat(bracketsRes.rows[0].b2);
+    const b3 = parseFloat(bracketsRes.rows[0].b3);
+    const b4 = parseFloat(bracketsRes.rows[0].b4);
+
+    let maxBracketLabel = 'Current';
+    let maxVal = b1;
+    if (b2 > maxVal) { maxBracketLabel = '31-60 Days'; maxVal = b2; }
+    if (b3 > maxVal) { maxBracketLabel = '61-90 Days'; maxVal = b3; }
+    if (b4 > maxVal) { maxBracketLabel = 'Over 90 Days'; maxVal = b4; }
+
+    res.json({
+      success: true,
+      stats: {
+        totalReceivables,
+        receivablesTrend,
+        overdueAmount,
+        overdueTrend,
+        collectedMtd,
+        collectedTrend,
+        agingSummary: maxBracketLabel,
+        avgCollectionDaysText: avgDaysText,
+        agingBrackets: { b1, b2, b3, b4 }
+      }
+    });
+  } catch (error) {
+    console.error('Fetch dashboard stats error:', error);
+    res.status(500).json({ success: false, message: 'Server error fetching dashboard stats' });
+  }
+});
+
 // Create corporate account
 app.post('/api/corporate-accounts', async (req, res) => {
   try {

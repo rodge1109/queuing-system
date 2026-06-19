@@ -18,8 +18,29 @@ export default function RidersManagement({ riders, setRiders }) {
 
   const selectedRider = riders.find(r => r.id === selectedRiderId);
 
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to permanently delete this rider? This action cannot be undone.')) return;
+    try {
+      const res = await fetch(`/api/admin/riders/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        setRiders(riders.filter(r => r.id !== id));
+        setSelectedRiderId(null);
+      } else {
+        alert(data.message || 'Failed to delete rider');
+      }
+    } catch (err) {
+      alert('Network error while deleting rider');
+    }
+  };
+
   if (selectedRider && !editingRider) {
-    return <RiderProfile rider={selectedRider} onBack={() => setSelectedRiderId(null)} onEdit={() => setEditingRider(selectedRider)} />;
+    return <RiderProfile 
+             rider={selectedRider} 
+             onBack={() => setSelectedRiderId(null)} 
+             onEdit={() => setEditingRider(selectedRider)} 
+             onDelete={() => handleDelete(selectedRider.id)}
+           />;
   }
 
   if (showAddForm || editingRider) {
@@ -169,7 +190,7 @@ function RidersList({ riders, onSelect }) {
   );
 }
 
-function RiderProfile({ rider, onBack, onEdit }) {
+function RiderProfile({ rider, onBack, onEdit, onDelete }) {
   const [trips, setTrips] = useState([]);
   const [isLoadingTrips, setIsLoadingTrips] = useState(false);
 
@@ -225,8 +246,12 @@ function RiderProfile({ rider, onBack, onEdit }) {
               >
                 Edit Information
               </button>
-              <button className="w-full py-3 bg-[#da1e28] text-white text-[10px] font-bold uppercase tracking-widest hover:bg-[#750e13] transition-all">
-                Suspend Rider
+              <button 
+                onClick={onDelete}
+                className="w-full py-3 bg-[#da1e28] text-white text-[10px] font-bold uppercase tracking-widest hover:bg-[#750e13] transition-all flex items-center justify-center gap-2"
+              >
+                <Trash2 size={14} />
+                Delete Rider
               </button>
             </div>
           </div>

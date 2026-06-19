@@ -1,10 +1,8 @@
-
 async function test() {
   try {
-    const res = await fetch('http://localhost:5000/api/corporate-accounts');
+    const res = await fetch('http://localhost:5000/api/corporate-accounts/dashboard-stats');
     const data = await res.json();
-    console.log('Accounts count:', data.accounts ? data.accounts.length : 0);
-    console.log('First account:', data.accounts ? data.accounts[0] : 'none');
+    console.log('Stats Response:', JSON.stringify(data, null, 2));
   } catch (e) {
     console.error('Fetch failed:', e.message);
   }

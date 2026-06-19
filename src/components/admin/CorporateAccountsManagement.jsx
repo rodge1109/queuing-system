@@ -58,6 +58,17 @@ function CorporateAccountsManagement() {
   const [payments, setPayments] = useState([]);
   const [isBillingLoading, setIsBillingLoading] = useState(false);
 
+  const [stats, setStats] = useState({
+    totalReceivables: 0,
+    receivablesTrend: 'Stable',
+    overdueAmount: 0,
+    overdueTrend: '0 clients overdue',
+    collectedMtd: 0,
+    collectedTrend: '0 payments received MTD',
+    agingSummary: 'Current',
+    avgCollectionDaysText: 'Avg. collection: 0 days'
+  });
+
   useEffect(() => {
     fetchAccounts();
   }, []);
@@ -97,10 +108,18 @@ function CorporateAccountsManagement() {
   const fetchAccounts = async () => {
     try {
       setIsLoading(true);
-      const res = await fetch('/api/corporate-accounts');
-      const data = await res.json();
-      if (data.success) {
-        setAccounts(data.accounts);
+      const [accountsRes, statsRes] = await Promise.all([
+        fetch('/api/corporate-accounts'),
+        fetch('/api/corporate-accounts/dashboard-stats')
+      ]);
+      const accountsData = await accountsRes.json();
+      const statsData = await statsRes.json();
+      
+      if (accountsData.success) {
+        setAccounts(accountsData.accounts);
+      }
+      if (statsData.success) {
+        setStats(statsData.stats);
       }
     } catch (err) {
       console.error('Failed to fetch accounts:', err);
@@ -268,28 +287,28 @@ function CorporateAccountsManagement() {
       <div className="p-6 grid grid-cols-1 md:grid-cols-4 gap-4 bg-gray-50/50 border-b border-gray-100">
         <SummaryCard 
           label="Total Receivables" 
-          value="₱124,500.00" 
+          value={`₱${parseFloat(stats.totalReceivables || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}`} 
           icon={<TrendingUp />} 
-          trend="+12% from last month"
+          trend={stats.receivablesTrend}
         />
         <SummaryCard 
           label="Overdue Amount" 
-          value="₱18,240.00" 
+          value={`₱${parseFloat(stats.overdueAmount || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}`} 
           icon={<AlertTriangle />} 
-          trend="8 clients overdue"
-          warning
+          trend={stats.overdueTrend}
+          warning={parseFloat(stats.overdueAmount) > 0}
         />
         <SummaryCard 
           label="Collected (MTD)" 
-          value="₱82,400.00" 
+          value={`₱${parseFloat(stats.collectedMtd || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}`} 
           icon={<CheckCircle2 />} 
-          trend="On track for target"
+          trend={stats.collectedTrend}
         />
         <SummaryCard 
           label="Aging Summary" 
-          value="31-60 Days" 
+          value={stats.agingSummary} 
           icon={<History />} 
-          trend="Avg. collection: 24 days"
+          trend={stats.avgCollectionDaysText}
         />
       </div>
 
@@ -651,6 +670,66 @@ function AccountDetailView({ account, onBack, activeTab, setActiveTab, ledger, i
   const unbilledTripsList = trips.filter(t => t.status === 'unbilled');
   const accruedAmountVal = unbilledTripsList.reduce((sum, t) => sum + parseFloat(t.fare || 0), 0);
 
+  // Calculate Aging dynamically from invoices
+  const calculateAging = () => {
+    let b1 = 0, b2 = 0, b3 = 0, b4 = 0;
+    const now = new Date();
+    invoices.forEach(inv => {
+      if (inv.status === 'pending') {
+        const invDate = new Date(inv.date);
+        const diffTime = Math.abs(now - invDate);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        const amount = parseFloat(inv.amount || 0);
+        if (diffDays <= 30) b1 += amount;
+        else if (diffDays <= 60) b2 += amount;
+        else if (diffDays <= 90) b3 += amount;
+        else b4 += amount;
+      }
+    });
+    const total = b1 + b2 + b3 + b4;
+    return {
+      b1, b2, b3, b4, total,
+      p1: total > 0 ? (b1 / total) * 100 : 0,
+      p2: total > 0 ? (b2 / total) * 100 : 0,
+      p3: total > 0 ? (b3 / total) * 100 : 0,
+      p4: total > 0 ? (b4 / total) * 100 : 0,
+    };
+  };
+  const aging = calculateAging();
+
+  // Calculate Receivables Performance dynamically from invoices
+  const calculateReceivablesPerformance = () => {
+    const months = [];
+    const now = new Date();
+    // Get last 6 months
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months.push({
+        label: d.toLocaleString('default', { month: 'short' }),
+        year: d.getFullYear(),
+        month: d.getMonth(),
+        amount: 0
+      });
+    }
+
+    invoices.forEach(inv => {
+      const invDate = new Date(inv.date);
+      const m = invDate.getMonth();
+      const y = invDate.getFullYear();
+      const match = months.find(mo => mo.month === m && mo.year === y);
+      if (match) {
+        match.amount += parseFloat(inv.amount || 0);
+      }
+    });
+
+    const maxAmount = Math.max(...months.map(m => m.amount), 0);
+    return months.map(m => ({
+      ...m,
+      heightPercent: maxAmount > 0 ? (m.amount / maxAmount) * 100 : 0
+    }));
+  };
+  const performance = calculateReceivablesPerformance();
+
   const openInvoiceDetail = async (invoice) => {
     setSelectedInvoice(invoice);
     setIsLoadingInvoice(true);
@@ -764,33 +843,35 @@ function AccountDetailView({ account, onBack, activeTab, setActiveTab, ledger, i
                     Receivables Performance
                   </h3>
                   <div className="h-48 bg-gray-50 flex items-end justify-between p-4 gap-2">
-                    {[40, 70, 45, 90, 65, 80, 55, 30, 95, 60].map((h, i) => (
-                      <div key={i} className="flex-1 bg-[#24a148]/20 hover:bg-[#24a148] transition-all relative group" style={{ height: `${h}%` }}>
-                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-black text-white text-[9px] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-                          ${h*100}
+                    {performance.map((m, i) => (
+                      <div key={i} className="flex-1 bg-[#24a148]/20 hover:bg-[#24a148] transition-all relative group" style={{ height: `${Math.max(m.heightPercent, 5)}%` }}>
+                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-black text-white text-[9px] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                          ₱{m.amount.toLocaleString(undefined, {maximumFractionDigits: 0})}
                         </div>
                       </div>
                     ))}
                   </div>
                   <div className="flex justify-between mt-2 text-[9px] font-bold text-gray-400 uppercase tracking-tighter">
-                    <span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span><span>Aug</span><span>Sep</span><span>Oct</span>
+                    {performance.map((m, i) => (
+                      <span key={i} className="flex-1 text-center">{m.label}</span>
+                    ))}
                   </div>
                </div>
-
+ 
                <div className="grid grid-cols-2 gap-6">
                   <div className="bg-white p-6 border border-gray-100 shadow-sm">
                     <h3 className="text-xs font-black uppercase tracking-widest text-black mb-4">Aging Summary</h3>
                     <div className="space-y-4">
                       {[
-                        { label: '0-30 Days', value: '$45,000', color: 'bg-green-500', p: 60 },
-                        { label: '31-60 Days', value: '$12,500', color: 'bg-yellow-500', p: 25 },
-                        { label: '61-90 Days', value: '$5,000', color: 'bg-orange-500', p: 10 },
-                        { label: 'Over 90 Days', value: '$2,400', color: 'bg-red-500', p: 5 },
+                        { label: '0-30 Days', value: aging.b1, color: 'bg-green-500', p: aging.p1 },
+                        { label: '31-60 Days', value: aging.b2, color: 'bg-yellow-500', p: aging.p2 },
+                        { label: '61-90 Days', value: aging.b3, color: 'bg-orange-500', p: aging.p3 },
+                        { label: 'Over 90 Days', value: aging.b4, color: 'bg-red-500', p: aging.p4 },
                       ].map(age => (
                         <div key={age.label}>
                           <div className="flex justify-between text-[10px] font-bold mb-1">
                             <span>{age.label}</span>
-                            <span>{age.value}</span>
+                            <span>₱{parseFloat(age.value || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                           </div>
                           <div className="w-full bg-gray-50 h-1 rounded-full overflow-hidden">
                             <div className={`h-full ${age.color}`} style={{ width: `${age.p}%` }}></div>
@@ -841,7 +922,10 @@ function AccountDetailView({ account, onBack, activeTab, setActiveTab, ledger, i
                         <span className="text-[#24a148] font-black tracking-tighter">₱{accruedAmountVal.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                      </div>
                   </div>
-                  <button className="w-full bg-[#24a148] text-white py-3 text-[10px] font-black uppercase tracking-[2px] shadow-lg hover:bg-[#1e8a3d] transition-all">
+                  <button 
+                    onClick={onGenerateInvoice}
+                    className="w-full bg-[#24a148] text-white py-3 text-[10px] font-black uppercase tracking-[2px] shadow-lg hover:bg-[#1e8a3d] transition-all"
+                  >
                     Generate New Invoice
                   </button>
                </div>
