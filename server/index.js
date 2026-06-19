@@ -521,13 +521,16 @@ app.post('/api/appointments', async (req, res) => {
     let corporateAccountId = null;
     if (paymentMethod === 'corporate' && corporateAccountNumber) {
       const corpResult = await pool.query(
-        "SELECT id, balance, credit_limit FROM corporate_accounts WHERE account_number = $1 AND status = 'active'",
+        "SELECT id, balance, credit_limit, status FROM corporate_accounts WHERE account_number = $1",
         [corporateAccountNumber]
       );
       if (corpResult.rows.length === 0) {
-        return res.status(400).json({ success: false, message: 'Invalid or inactive corporate account' });
+        return res.status(400).json({ success: false, message: 'Corporate account not found' });
       }
       const account = corpResult.rows[0];
+      if (account.status !== 'active') {
+        return res.status(400).json({ success: false, message: 'Corporate account is inactive or suspended' });
+      }
       const amount = parseFloat(totalAmount || 0);
       if (parseFloat(account.credit_limit) > 0 && (parseFloat(account.balance) + amount > parseFloat(account.credit_limit))) {
         return res.status(400).json({ success: false, message: 'Corporate account credit limit exceeded' });
