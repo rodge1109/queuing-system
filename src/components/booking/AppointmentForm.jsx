@@ -503,7 +503,7 @@ function AppointmentForm() {
                   <div className="h-48 w-full bg-gray-50 flex items-center justify-center relative overflow-hidden">
                     <div className="absolute inset-0 bg-gradient-to-br from-white/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                     <div className="w-32 h-32 flex items-center justify-center text-5xl transform group-hover:scale-110 group-hover:-translate-y-2 transition-all duration-500 ease-out z-10 drop-shadow-xl">
-                      <ServiceIconRender iconName={service.icon} className="w-16 h-16 object-contain" />
+                      <ServiceIconRender iconName={service.icon} className="w-20 h-20 object-contain" />
                     </div>
                     {/* Category Tag */}
                     <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 text-[8px] font-black uppercase tracking-[2px] text-[#525252] border border-gray-100 shadow-sm">
@@ -825,7 +825,7 @@ function AppointmentForm() {
               <div className="bg-white border border-gray-100 p-8 shadow-sm relative group hover:shadow-xl transition-all duration-500">
                 <div className="flex items-center gap-4 mb-6">
                   <div className="w-14 h-14 bg-green-50 text-[#24a148] rounded-full flex items-center justify-center shadow-inner text-2xl overflow-hidden">
-                      <ServiceIconRender iconName={selectedService?.icon} className="w-8 h-8 object-contain" />
+                      <ServiceIconRender iconName={selectedService?.icon} className="w-10 h-10 object-contain" />
                   </div>
                   <div>
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-[2px]">Selected Service</p>
