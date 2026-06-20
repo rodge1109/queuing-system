@@ -569,7 +569,9 @@ app.post('/api/appointments', async (req, res) => {
         routeId: req.body.routeId
       });
       if (calculated.fare !== null) {
-        validatedAmount = calculated.fare;
+        const taxRateSetting = getSetting('government_tax_rate', '12');
+        const taxRate = parseFloat(taxRateSetting) || 0;
+        validatedAmount = calculated.fare + (calculated.fare * (taxRate / 100));
       }
     } catch (pricingErr) {
       console.error('Backend pricing validation failed, falling back to request amount:', pricingErr);
@@ -3838,6 +3840,20 @@ app.get('/api/patient/appointment/:token/tracker', async (req, res) => {
 
 // ==================== CLINIC SETTINGS ENDPOINTS ====================
 
+// Public GET settings
+app.get('/api/settings', async (req, res) => {
+  try {
+    const { rows } = await pool.query("SELECT key, value FROM clinic_settings WHERE key IN ('clinic_name', 'clinic_address', 'clinic_phone', 'government_tax_rate')");
+    const settings = {};
+    rows.forEach(r => { settings[r.key] = r.value; });
+    if (!settings.government_tax_rate) settings.government_tax_rate = '12';
+    res.json({ success: true, settings });
+  } catch (error) {
+    console.error('Error fetching public settings:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch settings' });
+  }
+});
+
 app.get('/api/admin/settings', async (_req, res) => {
   try {
     const { rows } = await pool.query('SELECT key, value FROM clinic_settings');
@@ -3853,12 +3869,30 @@ app.get('/api/admin/settings', async (_req, res) => {
 app.post('/api/admin/settings', async (req, res) => {
   try {
     const { settings } = req.body;
-    for (const [key, value] of Object.entries(settings)) {
-      await pool.query(
-        `INSERT INTO clinic_settings (key, value) VALUES ($1, $2)
-         ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()`,
-        [key, value]
-      );
+    
+    let settingsArray = [];
+    if (Array.isArray(settings)) {
+      settingsArray = settings;
+    } else if (settings && typeof settings === 'object') {
+      // It might be an array of {key, value} objects but parsed as object, or a key-value map
+      settingsArray = Object.entries(settings).map(([key, value]) => {
+        if (value && typeof value === 'object' && 'key' in value && 'value' in value) {
+          return { key: value.key, value: value.value };
+        }
+        return { key, value };
+      });
+    }
+
+    for (const item of settingsArray) {
+      const key = item.key;
+      const value = item.value;
+      if (key !== undefined && key !== null) {
+        await pool.query(
+          `INSERT INTO clinic_settings (key, value) VALUES ($1, $2)
+           ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()`,
+          [key, value]
+        );
+      }
     }
     await loadSettings();
     res.json({ success: true, message: 'Settings saved.' });
@@ -4165,6 +4199,7 @@ const initClinicSettings = async () => {
     ['clinic_name',                'King\'s Tourist and Transport Services'],
     ['clinic_address',             'Cantecson, Gairan, Bogo City, Cebu'],
     ['clinic_phone',               '+63 912 345 6789'],
+    ['government_tax_rate',        '12'],
     ['sms_confirmation',           'Hi {name}, your appointment at {clinic_name} is confirmed for {date} at {time}. Ref#{ref}'],
     ['sms_reminder',               'Hi {name}, reminder: Your appointment at {clinic_name} is on {date} at {time}. Ref#{ref}'],
     ['email_confirmation_subject', 'Appointment Confirmation - {clinic_name}'],

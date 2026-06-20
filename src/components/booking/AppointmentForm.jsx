@@ -58,6 +58,7 @@ function AppointmentForm() {
   const [isLoadingServices, setIsLoadingServices] = useState(false);
   const [predefinedRoutes, setPredefinedRoutes] = useState([]);
   const [selectedRoute, setSelectedRoute] = useState(null);
+  const [taxRate, setTaxRate] = useState(12);
   const formTopRef = useRef(null);
 
   // Auto-scroll to top of form when step changes
@@ -76,10 +77,11 @@ function AppointmentForm() {
         setIsLoadingStaff(true);
         setIsLoadingServices(true);
 
-        const [staffRes, servicesRes, routesRes] = await Promise.all([
+        const [staffRes, servicesRes, routesRes, settingsRes] = await Promise.all([
           fetch('/api/specialists'),
           fetch('/api/booking-services'),
-          fetch('/api/predefined-routes')
+          fetch('/api/predefined-routes'),
+          fetch('/api/settings').catch(() => null)
         ]);
 
         const staffData = await staffRes.json();
@@ -99,6 +101,16 @@ function AppointmentForm() {
 
         if (routesData.success && Array.isArray(routesData.routes)) {
           setPredefinedRoutes(routesData.routes);
+        }
+
+        if (settingsRes) {
+          const settingsData = await settingsRes.json().catch(() => null);
+          if (settingsData && settingsData.success && settingsData.settings) {
+            const parsedTax = parseFloat(settingsData.settings.government_tax_rate);
+            if (!isNaN(parsedTax)) {
+              setTaxRate(parsedTax);
+            }
+          }
         }
       } catch (err) {
         console.error('Error fetching data:', err);
@@ -157,7 +169,7 @@ function AppointmentForm() {
       subtotal = flatPrice;
     }
 
-    const tax = subtotal * 0.12;
+    const tax = subtotal * (taxRate / 100);
     const total = subtotal + tax;
 
     return {
@@ -869,7 +881,7 @@ function AppointmentForm() {
                   )}
                   
                   <div className="flex justify-between items-center py-4 border-t border-gray-200 mt-6">
-                    <span className="text-xs font-black text-gray-400 uppercase tracking-widest">Government Tax (12%)</span>
+                    <span className="text-xs font-black text-gray-400 uppercase tracking-widest">Government Tax ({taxRate}%)</span>
                     <span className="font-mono font-bold text-[#24a148]">₱{calculateFees().tax.toFixed(2)}</span>
                   </div>
 

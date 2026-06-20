@@ -7446,7 +7446,8 @@ function GeneralSettings() {
   const [settings, setSettings] = useState({
     clinic_name: 'King\'s Tourist and Transport Services',
     clinic_address: 'Cantecson, Gairan, Bogo City, Cebu',
-    clinic_phone: '+63 912 345 6789'
+    clinic_phone: '+63 912 345 6789',
+    government_tax_rate: '12'
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -7463,11 +7464,13 @@ function GeneralSettings() {
       const data = await res.json();
       if (data.success) {
         const newSettings = { ...settings };
-        data.settings.forEach(s => {
-          if (newSettings.hasOwnProperty(s.key)) {
-            newSettings[s.key] = s.value;
-          }
-        });
+        if (data.settings && typeof data.settings === 'object') {
+          Object.entries(data.settings).forEach(([key, value]) => {
+            if (newSettings.hasOwnProperty(key)) {
+              newSettings[key] = value;
+            }
+          });
+        }
         setSettings(newSettings);
       }
     } catch (err) {
@@ -7539,6 +7542,17 @@ function GeneralSettings() {
             <option>(GMT+08:00) Manila, Philippines</option>
             <option>(GMT+00:00) UTC</option>
           </select>
+        </div>
+        <div>
+          <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Government Tax Rate (%)</label>
+          <input
+            type="number"
+            min="0"
+            max="100"
+            value={settings.government_tax_rate}
+            onChange={e => setSettings({ ...settings, government_tax_rate: e.target.value })}
+            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm font-bold focus:border-[#10b981] outline-none"
+          />
         </div>
       </div>
     </SettingsSection>
