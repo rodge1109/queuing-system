@@ -10,6 +10,15 @@ import LiveTrackingMap from '../maps/LiveTrackingMap';
 import PassengerTracking from './PassengerTracking';
 import TransportMap from '../maps/TransportMap';
 
+const LucideIcons = { 
+  Menu, MapPin, Search, Navigation, 
+  Car, Clock, ChevronRight, User, 
+  ArrowLeft, Heart, History, Star,
+  Compass, Shield, Phone, MessageSquare,
+  CarFront, Bus, Check, Mail, RefreshCw, Play, X, Flag, Plus, Ticket, SlidersHorizontal, CreditCard
+};
+
+
 const PassengerBookingMobile = () => {
   const [currentPos, setCurrentPos] = useState({ lat: 11.0500, lng: 124.0000 });
   const [pickup, setPickup] = useState("");
@@ -167,8 +176,17 @@ const PassengerBookingMobile = () => {
             const isMotorcycle = s.name.toLowerCase().includes('motor');
             
             let vehicleImg = '/assets/images/services/green_car.png';
-            if (s.icon && (s.icon.startsWith('http') || s.icon.startsWith('/uploads') || s.icon.startsWith('/assets'))) {
-              vehicleImg = s.icon;
+            let isLucideIcon = false;
+            let isEmojiIcon = null;
+
+            if (s.icon) {
+              if (s.icon.startsWith('http') || s.icon.startsWith('/uploads') || s.icon.startsWith('/assets')) {
+                vehicleImg = s.icon;
+              } else if (LucideIcons[s.icon]) {
+                isLucideIcon = true;
+              } else {
+                isEmojiIcon = s.icon;
+              }
             } else if (isVan) {
               vehicleImg = '/assets/images/services/van.png';
             }
@@ -182,7 +200,9 @@ const PassengerBookingMobile = () => {
               base_fare: parseFloat(s.base_fare || s.price || 0),
               per_km_rate: parseFloat(s.per_km_rate || 0),
               desc: s.duration || 'Standard travel',
-              isEmojiIcon: s.icon && !s.icon.startsWith('http') && !s.icon.startsWith('/') ? s.icon : null
+              isEmojiIcon,
+              isLucideIcon,
+              iconName: s.icon
             };
           });
           setVehicles(mappedVehicles);
@@ -623,7 +643,12 @@ const PassengerBookingMobile = () => {
                   }`}
                 >
                   <div className="relative w-[150px] h-20 flex items-center justify-center">
-                    {v.isEmojiIcon ? (
+                    {v.isLucideIcon ? (
+                      (() => {
+                        const IconComponent = LucideIcons[v.iconName];
+                        return <IconComponent className={`w-14 h-14 ${selectedVehicle === v.id ? 'text-[#00B14F]' : 'text-gray-400'}`} />;
+                      })()
+                    ) : v.isEmojiIcon ? (
                       <span className="text-4xl">{v.isEmojiIcon}</span>
                     ) : (
                       <img 
@@ -694,7 +719,12 @@ const PassengerBookingMobile = () => {
                   }`}
                 >
                   <div className="w-[150px] h-24 flex items-center justify-center overflow-hidden">
-                    {v.isEmojiIcon ? (
+                    {v.isLucideIcon ? (
+                      (() => {
+                        const IconComponent = LucideIcons[v.iconName];
+                        return <IconComponent className={`w-16 h-16 ${selectedVehicle === v.id ? 'text-[#00B14F]' : 'text-gray-400'}`} />;
+                      })()
+                    ) : v.isEmojiIcon ? (
                       <span className="text-5xl">{v.isEmojiIcon}</span>
                     ) : (
                       <img 

@@ -1704,7 +1704,16 @@ function AdminDashboard({ setCurrentPage }) {
                             </label>
                           </div>
                         </div>
+                        {newService.icon && (
+                          <div className="flex items-center gap-3 p-3 bg-gray-50 border border-[#e0e0e0] mt-2">
+                            <span className="text-[9px] font-bold text-gray-500 uppercase tracking-wider">Icon Preview:</span>
+                            <div className="w-10 h-10 flex items-center justify-center bg-white border border-gray-200 text-[#10b981]">
+                              <ServiceIconRender iconName={newService.icon} className="w-8 h-8 object-contain" />
+                            </div>
+                          </div>
+                        )}
                       </div>
+
 
                       {newService.category?.toUpperCase() === 'TRANSPORT' || newService.category === 'NEW_CATEGORY' ? (
                         <div className="grid grid-cols-2 gap-4 pt-2 border-t border-[#f4f4f4]">
