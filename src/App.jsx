@@ -5,12 +5,21 @@ import { ShoppingCart, Plus, Minus, Trash2, ChevronRight, ChevronLeft, ArrowRigh
 const LucideIcons = { ShoppingCart, Plus, Minus, Trash2, ChevronRight, ChevronLeft, ArrowRight, Check, X, Search, Settings, Smartphone, Printer, Download, Store, CreditCard, Lock, User, Users, Wallet, Calendar, MapPin, Clock, Phone, Mail, Star, Car, Truck, Shield, Activity, Clipboard, Stethoscope, Hospital, Pill, Syringe, HeartPulse, Map: MapIcon, Navigation, AlertTriangle, AlertCircle, RefreshCw };
 
 const ServiceIconRender = ({ iconName, className }) => {
-  if (iconName && (iconName.startsWith('http') || iconName.startsWith('/uploads'))) {
-    return <img src={iconName} alt="Icon" className={className || "w-8 h-8 object-contain"} />;
+  const [imageError, setImageError] = React.useState(false);
+
+  if (iconName && (iconName.startsWith('http') || iconName.startsWith('/uploads')) && !imageError) {
+    return (
+      <img 
+        src={iconName} 
+        alt="Icon" 
+        className={className || "w-8 h-8 object-contain"} 
+        onError={() => setImageError(true)} 
+      />
+    );
   }
-  const Icon = LucideIcons[iconName];
+  const Icon = LucideIcons[iconName] || LucideIcons['Car'];
   if (Icon) return <Icon className={className || "w-8 h-8"} />;
-  return <span className={className || "text-4xl"}>{iconName}</span>;
+  return <span className={className || "text-4xl"}>{iconName || '🚗'}</span>;
 };
 import Sidebar from './components/layout/Sidebar';
 import CorporateAccountsManagement from './components/admin/CorporateAccountsManagement';

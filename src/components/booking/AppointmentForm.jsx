@@ -14,12 +14,21 @@ const LucideIcons = {
 };
 
 const ServiceIconRender = ({ iconName, className }) => {
-  if (iconName && (iconName.startsWith('http') || iconName.startsWith('/uploads'))) {
-    return <img src={iconName} alt="Icon" className={className || "w-full h-full object-contain"} />;
+  const [imageError, setImageError] = React.useState(false);
+
+  if (iconName && (iconName.startsWith('http') || iconName.startsWith('/uploads')) && !imageError) {
+    return (
+      <img 
+        src={iconName} 
+        alt="Icon" 
+        className={className || "w-full h-full object-contain"} 
+        onError={() => setImageError(true)} 
+      />
+    );
   }
-  const Icon = LucideIcons[iconName];
+  const Icon = LucideIcons[iconName] || LucideIcons['Car'];
   if (Icon) return <Icon className={className || "w-12 h-12"} />;
-  return <span className={className || "text-5xl"}>{iconName || '🏥'}</span>;
+  return <span className={className || "text-5xl"}>{iconName || '🚗'}</span>;
 };
 
 
