@@ -115,16 +115,45 @@ const PassengerBookingMobile = () => {
 
   const [vehicles, setVehicles] = useState([]);
   const [isLoadingVehicles, setIsLoadingVehicles] = useState(true);
+  const [predefinedRoutes, setPredefinedRoutes] = useState([]);
+  const [selectedRoute, setSelectedRoute] = useState(null);
 
   const getCalculatedPrice = (vId) => {
     const v = vehicles.find(v => v.id === vId);
     if (!v) return '0.00';
+
+    if (selectedRoute && selectedRoute.prices) {
+      const matched = selectedRoute.prices.find(p => {
+        return p.service_type.toLowerCase() === v.name.toLowerCase() ||
+               v.name.toLowerCase().includes(p.service_type.toLowerCase()) ||
+               p.service_type.toLowerCase().includes(v.name.toLowerCase());
+      });
+      if (matched) {
+        return parseFloat(matched.price).toFixed(2);
+      }
+    }
+
     const base = parseFloat(v.base_fare || v.price || 0);
     const perKm = parseFloat(v.per_km_rate || 0);
     const dist = distanceKm > 0 ? distanceKm : 1;
     const total = base + (dist * perKm);
     return total.toFixed(2);
   };
+
+  useEffect(() => {
+    const fetchRoutes = async () => {
+      try {
+        const res = await fetch('/api/predefined-routes');
+        const data = await res.json();
+        if (data.success && Array.isArray(data.routes)) {
+          setPredefinedRoutes(data.routes);
+        }
+      } catch (err) {
+        console.error('Failed to fetch predefined routes:', err);
+      }
+    };
+    fetchRoutes();
+  }, []);
 
   useEffect(() => {
     const fetchVehicles = async () => {
@@ -268,6 +297,8 @@ const PassengerBookingMobile = () => {
         destLng: destPos ? destPos.lng : currentPos.lng + 0.05,
         totalAmount: getCalculatedPrice(selectedVehicle),
         paymentMethod: formData.paymentMethod,
+        routeId: selectedRoute?.id || null,
+        distanceKm: distanceKm || 0,
         notes: `Mobile Booking - ${vehicles.find(v => v.id === selectedVehicle)?.name || selectedVehicle}${formData.paymentMethod === 'Corporate' ? ' [Corp: ' + formData.corporateAccountId + ']' : ''}`
       };
 
@@ -781,6 +812,51 @@ const PassengerBookingMobile = () => {
           <div className="flex-1 overflow-y-auto no-scrollbar p-6 pt-2">
             {!destination ? (
               <div className="space-y-6">
+                {predefinedRoutes.length > 0 && (
+                  <div className="space-y-3">
+                    <h4 className="text-[10px] font-semibold uppercase tracking-widest text-[#00B14F] px-1 flex items-center gap-1.5">
+                      <Ticket className="w-3.5 h-3.5" /> Popular Fixed-Rate Routes
+                    </h4>
+                    <div className="grid gap-2">
+                      {predefinedRoutes.map((route) => (
+                        <button 
+                          key={route.id}
+                          className="flex items-center gap-4 p-4 bg-gray-50 border border-gray-100 hover:bg-[#E1F5EE] hover:border-[#00B14F]/20 rounded-2xl transition-all group text-left w-full shadow-sm"
+                          onClick={() => {
+                            setPickup(route.pickup_name);
+                            setDestination(route.destination_name);
+                            setCurrentPos({ lat: parseFloat(route.pickup_lat), lng: parseFloat(route.pickup_lng) });
+                            setDestPos({ lat: parseFloat(route.destination_lat), lng: parseFloat(route.destination_lng) });
+                            setSelectedRoute(route);
+                            setIsSearching(false);
+                            setDestinationSelected(true);
+                            setMapAction({
+                              type: 'route',
+                              pickup: { coords: { lat: parseFloat(route.pickup_lat), lng: parseFloat(route.pickup_lng) }, address: route.pickup_name },
+                              dest: { coords: { lat: parseFloat(route.destination_lat), lng: parseFloat(route.destination_lng) }, address: route.destination_name }
+                            });
+                          }}
+                        >
+                          <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm flex-shrink-0 transition-colors">
+                            <Navigation className="w-5 h-5 text-[#00B14F]" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-gray-900 group-hover:text-[#00B14F] transition-colors truncate">{route.route_name}</p>
+                            <div className="flex flex-wrap gap-2 mt-1">
+                              {route.prices.map((p, pIdx) => (
+                                <span key={pIdx} className="inline-block text-[9px] font-bold bg-white text-gray-500 border border-gray-200 px-1.5 py-0.5 rounded">
+                                  {p.service_type}: ₱{parseFloat(p.price).toLocaleString()}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-[#00B14F] flex-shrink-0" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <h4 className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 px-1">Recent Places</h4>
                 <div className="grid gap-2">
                   {recentDestinations.map((dest, idx) => (
@@ -792,6 +868,7 @@ const PassengerBookingMobile = () => {
                         setMapAction({ type: 'dest', address: dest.name, coords: { lat: dest.lat, lng: dest.lng } });
                         setIsSearching(false);
                         setDestinationSelected(true);
+                        setSelectedRoute(null);
                       }}
                     >
                       <div className="w-10 h-10 bg-gray-100 group-hover:bg-blue-50 rounded-full flex items-center justify-center transition-colors">
@@ -821,6 +898,7 @@ const PassengerBookingMobile = () => {
                           setMapAction({ type: 'dest', address: dest.name, coords: { lat: dest.lat, lng: dest.lng } });
                           setIsSearching(false);
                           setDestinationSelected(true);
+                          setSelectedRoute(null);
                         }}
                       >
                         <div className="w-10 h-10 bg-gray-100 group-hover:bg-[#E1F5EE] rounded-full flex items-center justify-center transition-colors flex-shrink-0">
@@ -850,6 +928,7 @@ const PassengerBookingMobile = () => {
                     setIsSearching(false); 
                     setDestinationSelected(true);
                     setMapAction({ type: 'dest', address: destination, coords: currentPos });
+                    setSelectedRoute(null);
                   }}
                   className="mt-4 px-6 py-2 bg-gray-900 text-white rounded-full text-xs font-bold"
                 >

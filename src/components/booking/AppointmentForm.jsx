@@ -40,6 +40,8 @@ function AppointmentForm() {
   const [isLoadingStaff, setIsLoadingStaff] = useState(false);
   const [activeCategory, setActiveCategory] = useState('All');
   const [isLoadingServices, setIsLoadingServices] = useState(false);
+  const [predefinedRoutes, setPredefinedRoutes] = useState([]);
+  const [selectedRoute, setSelectedRoute] = useState(null);
   const formTopRef = useRef(null);
 
   // Auto-scroll to top of form when step changes
@@ -58,13 +60,15 @@ function AppointmentForm() {
         setIsLoadingStaff(true);
         setIsLoadingServices(true);
 
-        const [staffRes, servicesRes] = await Promise.all([
+        const [staffRes, servicesRes, routesRes] = await Promise.all([
           fetch('/api/specialists'),
-          fetch('/api/booking-services')
+          fetch('/api/booking-services'),
+          fetch('/api/predefined-routes')
         ]);
 
         const staffData = await staffRes.json();
         const servicesData = await servicesRes.json();
+        const routesData = await routesRes.json();
 
         if (staffData.success) {
           setStaffMembers([
@@ -75,6 +79,10 @@ function AppointmentForm() {
 
         if (servicesData.success) {
           setLiveServices(servicesData.services);
+        }
+
+        if (routesData.success && Array.isArray(routesData.routes)) {
+          setPredefinedRoutes(routesData.routes);
         }
       } catch (err) {
         console.error('Error fetching data:', err);
@@ -98,17 +106,34 @@ function AppointmentForm() {
     let flatPrice = 0;
 
     if (cat === 'TRANSPORT') {
-      base = parseFloat((selectedService.base_fare || '0').toString().replace(/[^\d.]/g, '')) || 0;
-      rate = parseFloat((selectedService.per_km_rate || '0').toString().replace(/[^\d.]/g, '')) || 0;
-      const dist = parseFloat(distance || 0) || 0;
+      let routePrice = null;
+      if (selectedRoute && selectedRoute.prices) {
+        const matched = selectedRoute.prices.find(p => {
+          return p.service_type.toLowerCase() === selectedService.name.toLowerCase() ||
+                 selectedService.name.toLowerCase().includes(p.service_type.toLowerCase()) ||
+                 p.service_type.toLowerCase().includes(selectedService.name.toLowerCase());
+        });
+        if (matched) {
+          routePrice = parseFloat(matched.price);
+        }
+      }
 
-      if (base > 0 || rate > 0) {
-        transportFees = base + (dist * rate);
-        subtotal = transportFees;
+      if (routePrice !== null) {
+        subtotal = routePrice;
+        transportFees = routePrice;
       } else {
-        const priceStr = (selectedService.price || '0').toString();
-        flatPrice = parseFloat(priceStr.replace(/[^\d.]/g, '')) || 0;
-        subtotal = flatPrice;
+        base = parseFloat((selectedService.base_fare || '0').toString().replace(/[^\d.]/g, '')) || 0;
+        rate = parseFloat((selectedService.per_km_rate || '0').toString().replace(/[^\d.]/g, '')) || 0;
+        const dist = parseFloat(distance || 0) || 0;
+
+        if (base > 0 || rate > 0) {
+          transportFees = base + (dist * rate);
+          subtotal = transportFees;
+        } else {
+          const priceStr = (selectedService.price || '0').toString();
+          flatPrice = parseFloat(priceStr.replace(/[^\d.]/g, '')) || 0;
+          subtotal = flatPrice;
+        }
       }
     } else {
       const priceStr = (selectedService.price || '0').toString();
@@ -209,6 +234,8 @@ function AppointmentForm() {
         totalAmount: fees.total,
         paymentMethod,
         corporateAccountNumber: formData.corporateAccountNumber,
+        routeId: selectedRoute?.id || null,
+        distanceKm: distance || 0,
         // Map coordinates to flat structure for backend
         pickupLat: formData.pickupCoords?.lat,
         pickupLng: formData.pickupCoords?.lng,
@@ -632,15 +659,62 @@ function AppointmentForm() {
               </div>
             </div>
 
+            {predefinedRoutes.length > 0 && (
+              <div className="mb-6 bg-green-50/50 p-4 border border-[#24a148]/20 rounded-0 space-y-2">
+                <label className="block text-[9px] font-bold text-[#24a148] uppercase tracking-widest">Select Predefined Route (Fixed Rates)</label>
+                <select
+                  value={selectedRoute?.id || ''}
+                  onChange={(e) => {
+                    const routeId = parseInt(e.target.value);
+                    const route = predefinedRoutes.find(r => r.id === routeId);
+                    if (route) {
+                      setSelectedRoute(route);
+                      setFormData(prev => ({
+                        ...prev,
+                        pickupLocation: route.pickup_name,
+                        pickupCoords: { lat: parseFloat(route.pickup_lat), lng: parseFloat(route.pickup_lng) },
+                        destinationLocation: route.destination_name,
+                        destCoords: { lat: parseFloat(route.destination_lat), lng: parseFloat(route.destination_lng) }
+                      }));
+                      setMapAction({
+                        type: 'route',
+                        pickup: { coords: { lat: parseFloat(route.pickup_lat), lng: parseFloat(route.pickup_lng) }, address: route.pickup_name },
+                        dest: { coords: { lat: parseFloat(route.destination_lat), lng: parseFloat(route.destination_lng) }, address: route.destination_name }
+                      });
+                    } else {
+                      setSelectedRoute(null);
+                    }
+                  }}
+                  className="w-full bg-white border border-gray-300 p-2.5 text-[12px] text-black focus:outline-none focus:border-[#24a148] focus:ring-0 uppercase font-medium"
+                >
+                  <option value="">-- Choose a Predefined Route (Or search custom below) --</option>
+                  {predefinedRoutes.map(r => (
+                    <option key={r.id} value={r.id}>
+                      {r.route_name}
+                    </option>
+                  ))}
+                </select>
+                {selectedRoute && (
+                  <p className="text-[10px] text-green-700 font-bold uppercase tracking-wider">
+                    Fixed pricing active for this route!
+                  </p>
+                )}
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
               <div className="space-y-1">
                 <label className="block text-[9px] font-bold text-[#525252] uppercase tracking-widest">Pickup Location</label>
                 <LocationAutocomplete
                   value={formData.pickupLocation}
-                  onChange={(val) => setFormData(prev => ({ ...prev, pickupLocation: val }))}
+                  onChange={(val) => {
+                    setFormData(prev => ({ ...prev, pickupLocation: val }));
+                    if (selectedRoute) setSelectedRoute(null);
+                  }}
                   onSelect={(data) => {
                     handleLocationSelect({ address: data.address, coords: data.coords }, null);
                     setMapAction({ type: 'pickup', coords: data.coords, address: data.address });
+                    if (selectedRoute) setSelectedRoute(null);
                   }}
                   placeholder="Search pickup..."
                 />
@@ -649,10 +723,14 @@ function AppointmentForm() {
                 <label className="block text-[9px] font-bold text-[#525252] uppercase tracking-widest">Destination</label>
                 <LocationAutocomplete
                   value={formData.destinationLocation}
-                  onChange={(val) => setFormData(prev => ({ ...prev, destinationLocation: val }))}
+                  onChange={(val) => {
+                    setFormData(prev => ({ ...prev, destinationLocation: val }));
+                    if (selectedRoute) setSelectedRoute(null);
+                  }}
                   onSelect={(data) => {
                     handleLocationSelect(null, { address: data.address, coords: data.coords });
                     setMapAction({ type: 'dest', coords: data.coords, address: data.address });
+                    if (selectedRoute) setSelectedRoute(null);
                   }}
                   placeholder="Search destination..."
                 />

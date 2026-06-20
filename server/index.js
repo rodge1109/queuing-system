@@ -556,6 +556,25 @@ app.post('/api/appointments', async (req, res) => {
       });
     }
 
+    // Re-verify the fare amount on the backend to prevent client-side manipulation
+    let validatedAmount = parseFloat(totalAmount) || 0;
+    try {
+      const calculated = await getCalculatedFare({
+        pickupLat,
+        pickupLng,
+        destLat,
+        destLng,
+        serviceType,
+        distanceKm: req.body.distanceKm || (req.body.distance ? parseFloat(req.body.distance) : 0),
+        routeId: req.body.routeId
+      });
+      if (calculated.fare !== null) {
+        validatedAmount = calculated.fare;
+      }
+    } catch (pricingErr) {
+      console.error('Backend pricing validation failed, falling back to request amount:', pricingErr);
+    }
+
     // Generate a unique cancel token
     const cancelToken = Math.random().toString(36).substring(2) + Date.now().toString(36) + Math.random().toString(36).substring(2);
 
@@ -589,7 +608,7 @@ app.post('/api/appointments', async (req, res) => {
       pickupLng || null,
       destLat || null,
       destLng || null,
-      totalAmount || 0,
+      validatedAmount,
       corporateAccountId,
       paymentMethod || 'cash'
     ];
@@ -4067,6 +4086,81 @@ const initClinicSettings = async () => {
     await pool.query('CREATE INDEX IF NOT EXISTS idx_queue_date ON queue_tickets(queue_date)');
   } catch (e) {}
 
+  // Predefined routes and pricing tables setup
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS predefined_routes (
+        id SERIAL PRIMARY KEY,
+        route_name VARCHAR(255) NOT NULL,
+        pickup_name TEXT NOT NULL,
+        pickup_lat DECIMAL(10, 8),
+        pickup_lng DECIMAL(11, 8),
+        destination_name TEXT NOT NULL,
+        destination_lat DECIMAL(10, 8),
+        destination_lng DECIMAL(11, 8),
+        radius_meters INTEGER DEFAULT 500,
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS predefined_route_prices (
+        id SERIAL PRIMARY KEY,
+        route_id INTEGER REFERENCES predefined_routes(id) ON DELETE CASCADE,
+        service_type VARCHAR(100) NOT NULL,
+        price DECIMAL(10, 2) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(route_id, service_type)
+      )
+    `);
+
+    // Seed default route "Maya, Daanbantayan to Cebu City" if none exists
+    const routeCheck = await pool.query('SELECT COUNT(*) FROM predefined_routes');
+    if (parseInt(routeCheck.rows[0].count) === 0) {
+      const routeResult = await pool.query(`
+        INSERT INTO predefined_routes (route_name, pickup_name, pickup_lat, pickup_lng, destination_name, destination_lat, destination_lng)
+        VALUES (
+          'Maya, Daanbantayan to Cebu City',
+          'Maya Port, Daanbantayan, Cebu',
+          11.266100,
+          124.061300,
+          'Cebu City, Cebu',
+          10.315700,
+          123.885400
+        )
+        RETURNING id
+      `);
+      
+      const routeId = routeResult.rows[0].id;
+      
+      // Seed prices for Van and Car
+      await pool.query(`
+        INSERT INTO predefined_route_prices (route_id, service_type, price)
+        VALUES ($1, 'Luxury Van', 10000.00)
+      `, [routeId]);
+
+      await pool.query(`
+        INSERT INTO predefined_route_prices (route_id, service_type, price)
+        VALUES ($1, 'Luxury White Van', 10000.00)
+      `, [routeId]);
+      
+      await pool.query(`
+        INSERT INTO predefined_route_prices (route_id, service_type, price)
+        VALUES ($1, 'Car', 4000.00)
+      `, [routeId]);
+
+      await pool.query(`
+        INSERT INTO predefined_route_prices (route_id, service_type, price)
+        VALUES ($1, 'Standard', 4000.00)
+      `, [routeId]);
+
+      console.log('Seeded predefined route: Maya, Daanbantayan to Cebu City');
+    }
+  } catch (err) {
+    console.error('Error initializing predefined routes schema:', err);
+  }
+
   const defaults = [
     ['clinic_name',                'King\'s Tourist and Transport Services'],
     ['clinic_address',             'Cantecson, Gairan, Bogo City, Cebu'],
@@ -4099,6 +4193,336 @@ const initClinicSettings = async () => {
   // One-time migration: Replace "HealthCare Clinic" if it was seeded previously
   await pool.query(`UPDATE clinic_settings SET value = 'King''s Tourist and Transport Services' WHERE key = 'clinic_name' AND value = 'HealthCare Clinic'`);
 };
+
+/* ==========================================================================
+   PREDEFINED ROUTES & FIXED PRICING MODULE
+   ========================================================================== */
+
+const getDistanceMeters = (lat1, lon1, lat2, lon2) => {
+  const R = 6371e3; // meters
+  const φ1 = lat1 * Math.PI / 180;
+  const φ2 = lat2 * Math.PI / 180;
+  const Δφ = (lat2 - lat1) * Math.PI / 180;
+  const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+  const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+            Math.cos(φ1) * Math.cos(φ2) *
+            Math.sin(Δλ/2) * Math.sin(Δλ/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+  return R * c; 
+};
+
+async function getCalculatedFare({ pickupLat, pickupLng, destLat, destLng, serviceType, distanceKm, routeId }) {
+  // 1. Check if specific predefined route is selected
+  if (routeId) {
+    const priceQuery = await pool.query(`
+      SELECT p.price, r.route_name
+      FROM predefined_route_prices p
+      JOIN predefined_routes r ON p.route_id = r.id
+      WHERE p.route_id = $1 AND r.is_active = true
+      AND (
+        LOWER(p.service_type) = LOWER($2) 
+        OR LOWER($2) LIKE '%' || LOWER(p.service_type) || '%' 
+        OR LOWER(p.service_type) LIKE '%' || LOWER($2) || '%'
+      )
+      LIMIT 1
+    `, [routeId, serviceType]);
+
+    if (priceQuery.rows.length > 0) {
+      return { fare: parseFloat(priceQuery.rows[0].price), isPredefined: true, routeName: priceQuery.rows[0].route_name };
+    }
+  }
+
+  // 2. Check if coordinates match geofenced predefined routes
+  if (pickupLat && pickupLng && destLat && destLng) {
+    const routesQuery = await pool.query(`
+      SELECT r.*, p.price, p.service_type
+      FROM predefined_routes r
+      JOIN predefined_route_prices p ON r.id = p.route_id
+      WHERE r.is_active = true
+    `);
+
+    const matchingRoute = routesQuery.rows.find(route => {
+      const isServiceMatch = route.service_type.toLowerCase() === serviceType.toLowerCase() || 
+                             serviceType.toLowerCase().includes(route.service_type.toLowerCase()) ||
+                             route.service_type.toLowerCase().includes(serviceType.toLowerCase());
+      if (!isServiceMatch) return false;
+
+      const distFromOrigin = getDistanceMeters(parseFloat(pickupLat), parseFloat(pickupLng), parseFloat(route.pickup_lat), parseFloat(route.pickup_lng));
+      const distToDest = getDistanceMeters(parseFloat(destLat), parseFloat(destLng), parseFloat(route.destination_lat), parseFloat(route.destination_lng));
+      const radius = route.radius_meters || 500;
+
+      return distFromOrigin <= radius && distToDest <= radius;
+    });
+
+    if (matchingRoute) {
+      return { fare: parseFloat(matchingRoute.price), isPredefined: true, routeName: matchingRoute.route_name };
+    }
+  }
+
+  // 3. Fallback to service base fare + per km rate
+  const serviceQuery = await pool.query(`
+    SELECT base_fare, per_km_rate, category
+    FROM booking_services 
+    WHERE LOWER(name) = LOWER($1) 
+       OR LOWER($1) LIKE '%' || LOWER(name) || '%' 
+       OR LOWER(name) LIKE '%' || LOWER($1) || '%'
+    LIMIT 1
+  `, [serviceType]);
+
+  if (serviceQuery.rows.length > 0) {
+    const service = serviceQuery.rows[0];
+    if (service.category?.toUpperCase() === 'TRANSPORT') {
+      const base = parseFloat(service.base_fare || 0);
+      const perKm = parseFloat(service.per_km_rate || 0);
+      const dist = parseFloat(distanceKm) > 0 ? parseFloat(distanceKm) : 1;
+      return { fare: base + (dist * perKm), isPredefined: false };
+    }
+  }
+
+  return { fare: null, isPredefined: false };
+}
+
+// Get active routes and nested prices
+app.get('/api/predefined-routes', async (req, res) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT r.*, 
+        COALESCE(
+          (
+            SELECT json_agg(json_build_object('id', p.id, 'service_type', p.service_type, 'price', p.price))
+            FROM predefined_route_prices p
+            WHERE p.route_id = r.id
+          ),
+          '[]'::json
+        ) as prices
+      FROM predefined_routes r
+      WHERE r.is_active = true
+      ORDER BY r.route_name ASC
+    `);
+    res.json({ success: true, routes: rows });
+  } catch (error) {
+    console.error('Fetch predefined routes error:', error);
+    res.status(500).json({ success: false, message: 'Server error fetching predefined routes' });
+  }
+});
+
+// Admin: Get all routes
+app.get('/api/admin/predefined-routes', async (req, res) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT r.*, 
+        COALESCE(
+          (
+            SELECT json_agg(json_build_object('id', p.id, 'service_type', p.service_type, 'price', p.price))
+            FROM predefined_route_prices p
+            WHERE p.route_id = r.id
+          ),
+          '[]'::json
+        ) as prices
+      FROM predefined_routes r
+      ORDER BY r.id DESC
+    `);
+    res.json({ success: true, routes: rows });
+  } catch (error) {
+    console.error('Admin fetch predefined routes error:', error);
+    res.status(500).json({ success: false, message: 'Server error fetching predefined routes' });
+  }
+});
+
+// Admin: Create route and nested prices
+app.post('/api/admin/predefined-routes', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { route_name, pickup_name, pickup_lat, pickup_lng, destination_name, destination_lat, destination_lng, prices, is_active } = req.body;
+    
+    if (!route_name || !pickup_name || !destination_name) {
+      return res.status(400).json({ success: false, message: 'Please fill in route, pickup and destination names' });
+    }
+
+    await client.query('BEGIN');
+
+    const routeRes = await client.query(`
+      INSERT INTO predefined_routes (route_name, pickup_name, pickup_lat, pickup_lng, destination_name, destination_lat, destination_lng, is_active)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING *
+    `, [
+      route_name, 
+      pickup_name, 
+      pickup_lat ? parseFloat(pickup_lat) : null, 
+      pickup_lng ? parseFloat(pickup_lng) : null, 
+      destination_name, 
+      destination_lat ? parseFloat(destination_lat) : null, 
+      destination_lng ? parseFloat(destination_lng) : null, 
+      is_active !== false
+    ]);
+
+    const route = routeRes.rows[0];
+
+    if (Array.isArray(prices)) {
+      for (const p of prices) {
+        if (p.service_type && p.price !== undefined) {
+          await client.query(`
+            INSERT INTO predefined_route_prices (route_id, service_type, price)
+            VALUES ($1, $2, $3)
+          `, [route.id, p.service_type, parseFloat(p.price) || 0]);
+        }
+      }
+    }
+
+    await client.query('COMMIT');
+    
+    // Fetch populated
+    const populated = await pool.query(`
+      SELECT r.*, 
+        COALESCE(
+          (
+            SELECT json_agg(json_build_object('id', p.id, 'service_type', p.service_type, 'price', p.price))
+            FROM predefined_route_prices p
+            WHERE p.route_id = r.id
+          ),
+          '[]'::json
+        ) as prices
+      FROM predefined_routes r
+      WHERE r.id = $1
+    `, [route.id]);
+
+    res.json({ success: true, route: populated.rows[0] });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Create predefined route error:', error);
+    res.status(500).json({ success: false, message: 'Server error creating predefined route' });
+  } finally {
+    client.release();
+  }
+});
+
+// Admin: Update route and nested prices
+app.put('/api/admin/predefined-routes/:id', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { id } = req.params;
+    const { route_name, pickup_name, pickup_lat, pickup_lng, destination_name, destination_lat, destination_lng, prices, is_active } = req.body;
+
+    if (!route_name || !pickup_name || !destination_name) {
+      return res.status(400).json({ success: false, message: 'Please fill in route, pickup and destination names' });
+    }
+
+    await client.query('BEGIN');
+
+    const routeRes = await client.query(`
+      UPDATE predefined_routes 
+      SET route_name = $1, pickup_name = $2, pickup_lat = $3, pickup_lng = $4, 
+          destination_name = $5, destination_lat = $6, destination_lng = $7, is_active = $8
+      WHERE id = $9
+      RETURNING *
+    `, [
+      route_name, 
+      pickup_name, 
+      pickup_lat ? parseFloat(pickup_lat) : null, 
+      pickup_lng ? parseFloat(pickup_lng) : null, 
+      destination_name, 
+      destination_lat ? parseFloat(destination_lat) : null, 
+      destination_lng ? parseFloat(destination_lng) : null, 
+      is_active !== false,
+      id
+    ]);
+
+    if (routeRes.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ success: false, message: 'Route not found' });
+    }
+
+    await client.query('DELETE FROM predefined_route_prices WHERE route_id = $1', [id]);
+
+    if (Array.isArray(prices)) {
+      for (const p of prices) {
+        if (p.service_type && p.price !== undefined) {
+          await client.query(`
+            INSERT INTO predefined_route_prices (route_id, service_type, price)
+            VALUES ($1, $2, $3)
+          `, [id, p.service_type, parseFloat(p.price) || 0]);
+        }
+      }
+    }
+
+    await client.query('COMMIT');
+
+    const populated = await pool.query(`
+      SELECT r.*, 
+        COALESCE(
+          (
+            SELECT json_agg(json_build_object('id', p.id, 'service_type', p.service_type, 'price', p.price))
+            FROM predefined_route_prices p
+            WHERE p.route_id = r.id
+          ),
+          '[]'::json
+        ) as prices
+      FROM predefined_routes r
+      WHERE r.id = $1
+    `, [id]);
+
+    res.json({ success: true, route: populated.rows[0] });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Update predefined route error:', error);
+    res.status(500).json({ success: false, message: 'Server error updating predefined route' });
+  } finally {
+    client.release();
+  }
+});
+
+// Admin: Delete route
+app.delete('/api/admin/predefined-routes/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.query('DELETE FROM predefined_routes WHERE id = $1', [id]);
+    res.json({ success: true, message: 'Predefined route deleted successfully' });
+  } catch (error) {
+    console.error('Delete predefined route error:', error);
+    res.status(500).json({ success: false, message: 'Server error deleting predefined route' });
+  }
+});
+
+// Pricing calculation endpoint
+app.post('/api/pricing/calculate', async (req, res) => {
+  try {
+    const { pickupLat, pickupLng, destLat, destLng, serviceType, distanceKm, routeId } = req.body;
+    
+    if (!serviceType) {
+      return res.status(400).json({ success: false, message: 'serviceType is required' });
+    }
+
+    const calculated = await getCalculatedFare({
+      pickupLat,
+      pickupLng,
+      destLat,
+      destLng,
+      serviceType,
+      distanceKm,
+      routeId
+    });
+
+    if (calculated.fare !== null) {
+      return res.json({
+        success: true,
+        fare: calculated.fare,
+        isPredefined: calculated.isPredefined,
+        routeName: calculated.routeName
+      });
+    }
+
+    res.json({
+      success: true,
+      fare: 0.00,
+      isPredefined: false
+    });
+  } catch (error) {
+    console.error('Pricing calculation API error:', error);
+    res.status(500).json({ success: false, message: 'Server error calculating pricing' });
+  }
+});
 
 /* ==========================================================================
    CORPORATE ACCOUNTS & BILLING MODULE

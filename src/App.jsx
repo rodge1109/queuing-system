@@ -7644,11 +7644,152 @@ function GeofenceGlobalSettings() {
 }
 
 function PricingFareSettings() {
+  const [routes, setRoutes] = useState([]);
+  const [services, setServices] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editingRoute, setEditingRoute] = useState(null);
+
+  // Form State
+  const [routeName, setRouteName] = useState('');
+  const [pickupName, setPickupName] = useState('');
+  const [pickupLat, setPickupLat] = useState('');
+  const [pickupLng, setPickupLng] = useState('');
+  const [destinationName, setDestinationName] = useState('');
+  const [destinationLat, setDestinationLat] = useState('');
+  const [destinationLng, setDestinationLng] = useState('');
+  const [prices, setPrices] = useState({}); // { [service_type]: price }
+  const [isActive, setIsActive] = useState(true);
+
+  const fetchRoutesAndServices = async () => {
+    try {
+      setLoading(true);
+      const [routesRes, servicesRes] = await Promise.all([
+        fetch('/api/admin/predefined-routes'),
+        fetch('/api/booking-services')
+      ]);
+      const routesData = await routesRes.json();
+      const servicesData = await servicesRes.json();
+
+      if (routesData.success) setRoutes(routesData.routes);
+      if (servicesData.success) {
+        const transport = servicesData.services.filter(s => (s.category || '').toUpperCase() === 'TRANSPORT');
+        setServices(transport);
+      }
+    } catch (err) {
+      console.error('Error loading pricing settings:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRoutesAndServices();
+  }, []);
+
+  const handleEdit = (route) => {
+    setEditingRoute(route);
+    setRouteName(route.route_name);
+    setPickupName(route.pickup_name);
+    setPickupLat(route.pickup_lat || '');
+    setPickupLng(route.pickup_lng || '');
+    setDestinationName(route.destination_name);
+    setDestinationLat(route.destination_lat || '');
+    setDestinationLng(route.destination_lng || '');
+    setIsActive(route.is_active !== false);
+
+    const pricesMap = {};
+    if (route.prices) {
+      route.prices.forEach(p => {
+        pricesMap[p.service_type] = p.price;
+      });
+    }
+    setPrices(pricesMap);
+    setShowForm(true);
+  };
+
+  const handleCreateNew = () => {
+    setEditingRoute(null);
+    setRouteName('');
+    setPickupName('');
+    setPickupLat('');
+    setPickupLng('');
+    setDestinationName('');
+    setDestinationLat('');
+    setDestinationLng('');
+    setPrices({});
+    setIsActive(true);
+    setShowForm(true);
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this predefined route?')) return;
+    try {
+      const res = await fetch(`/api/admin/predefined-routes/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        setRoutes(routes.filter(r => r.id !== id));
+      } else {
+        alert(data.message || 'Failed to delete route');
+      }
+    } catch (err) {
+      alert('Network error deleting route');
+    }
+  };
+
+  const handleSave = async () => {
+    if (!routeName || !pickupName || !destinationName) {
+      alert('Route name, pickup, and destination descriptions are required.');
+      return;
+    }
+
+    const pricesPayload = Object.entries(prices).map(([service_type, price]) => ({
+      service_type,
+      price: parseFloat(price) || 0
+    }));
+
+    const payload = {
+      route_name: routeName,
+      pickup_name: pickupName,
+      pickup_lat: pickupLat ? parseFloat(pickupLat) : null,
+      pickup_lng: pickupLng ? parseFloat(pickupLng) : null,
+      destination_name: destinationName,
+      destination_lat: destinationLat ? parseFloat(destinationLat) : null,
+      destination_lng: destinationLng ? parseFloat(destinationLng) : null,
+      prices: pricesPayload,
+      is_active: isActive
+    };
+
+    try {
+      const url = editingRoute 
+        ? `/api/admin/predefined-routes/${editingRoute.id}`
+        : '/api/admin/predefined-routes';
+      const method = editingRoute ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        alert(editingRoute ? 'Route updated successfully!' : 'Route created successfully!');
+        fetchRoutesAndServices();
+        setShowForm(false);
+      } else {
+        alert(data.message || 'Failed to save route');
+      }
+    } catch (err) {
+      alert('Error saving predefined route');
+    }
+  };
+
   return (
-    <SettingsSection title="Pricing & Fare Rules" subtitle="Configure Revenue Model and Surcharges" onSave={() => { }}>
+    <SettingsSection title="Pricing & Fare Rules" subtitle="Configure Revenue Model and Predefined Routes" onSave={() => { }}>
       <div className="grid grid-cols-3 gap-6">
         <div className="bg-[#f4f4f4] p-6 border-l-4 border-[#10b981]">
-          <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Base Fare (Ã¢â€šÂ±)</label>
+          <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Base Fare (₱)</label>
           <input type="number" defaultValue="45" className="w-full bg-transparent border-0 text-3xl font-light focus:outline-none" />
         </div>
         <div className="bg-[#f4f4f4] p-6 border-l-4 border-[#24a148]">
@@ -7660,37 +7801,237 @@ function PricingFareSettings() {
           <input type="number" defaultValue="2" className="w-full bg-transparent border-0 text-3xl font-light focus:outline-none" />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-8 mt-10">
-        <div className="space-y-4">
-          <h4 className="text-xs font-bold uppercase tracking-widest text-[#161616]">Surcharges</h4>
-          <div className="space-y-3">
-            <div className="flex justify-between items-center text-sm">
-              <span>Surge Multiplier</span>
-              <span className="font-bold">x1.5 - x3.0</span>
+
+      <div className="border-t border-[#e0e0e0] mt-10 pt-10">
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h4 className="text-sm font-bold uppercase tracking-widest text-[#161616]">Predefined Fixed-Rate Routes</h4>
+            <p className="text-xs text-gray-500 mt-1">Define standard paths with specific fixed pricing that bypass dynamic calculations</p>
+          </div>
+          {!showForm && (
+            <button
+              onClick={handleCreateNew}
+              className="px-4 py-2 bg-[#10b981] hover:bg-[#1f893d] text-white text-[10px] font-bold uppercase tracking-widest transition-all"
+            >
+              + Create Fixed Route
+            </button>
+          )}
+        </div>
+
+        {showForm ? (
+          <div className="bg-[#f4f4f4] p-6 border border-[#e0e0e0] space-y-6">
+            <h5 className="text-xs font-bold uppercase tracking-wider text-gray-700">
+              {editingRoute ? 'Edit Predefined Route' : 'Create New Predefined Route'}
+            </h5>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-1">
+                <label className="block text-[10px] font-bold text-[#525252] uppercase tracking-widest">Route Display Name</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Maya Port to Cebu City"
+                  value={routeName}
+                  onChange={(e) => setRouteName(e.target.value)}
+                  className="w-full bg-white border border-gray-300 p-2.5 text-xs text-black focus:outline-none focus:border-[#24a148]"
+                />
+              </div>
+
+              <div className="space-y-1 flex items-end">
+                <label className="flex items-center gap-2 text-[10px] font-bold text-[#525252] uppercase tracking-widest cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={isActive}
+                    onChange={(e) => setIsActive(e.target.checked)}
+                    className="w-4 h-4 text-[#10b981] focus:ring-0"
+                  />
+                  Route is Active
+                </label>
+              </div>
+
+              <div className="space-y-3 p-4 bg-white border border-gray-200">
+                <h6 className="text-[10px] font-bold uppercase tracking-widest text-[#10b981]">Origin (Pickup Point)</h6>
+                <div className="space-y-2">
+                  <label className="block text-[9px] font-bold text-gray-400 uppercase">Address Description</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Maya Port, Daanbantayan, Cebu"
+                    value={pickupName}
+                    onChange={(e) => setPickupName(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 p-2 text-xs focus:outline-none focus:border-[#10b981]"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <label className="block text-[9px] font-bold text-gray-400 uppercase">Latitude</label>
+                    <input
+                      type="number"
+                      step="0.000001"
+                      placeholder="11.266100"
+                      value={pickupLat}
+                      onChange={(e) => setPickupLat(e.target.value)}
+                      className="w-full bg-gray-50 border border-gray-200 p-2 text-xs focus:outline-none focus:border-[#10b981]"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-[9px] font-bold text-gray-400 uppercase">Longitude</label>
+                    <input
+                      type="number"
+                      step="0.000001"
+                      placeholder="124.061300"
+                      value={pickupLng}
+                      onChange={(e) => setPickupLng(e.target.value)}
+                      className="w-full bg-gray-50 border border-gray-200 p-2 text-xs focus:outline-none focus:border-[#10b981]"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3 p-4 bg-white border border-gray-200">
+                <h6 className="text-[10px] font-bold uppercase tracking-widest text-[#10b981]">Destination (Drop-off Point)</h6>
+                <div className="space-y-2">
+                  <label className="block text-[9px] font-bold text-gray-400 uppercase">Address Description</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Cebu City, Cebu"
+                    value={destinationName}
+                    onChange={(e) => setDestinationName(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 p-2 text-xs focus:outline-none focus:border-[#10b981]"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <label className="block text-[9px] font-bold text-gray-400 uppercase">Latitude</label>
+                    <input
+                      type="number"
+                      step="0.000001"
+                      placeholder="10.315700"
+                      value={destinationLat}
+                      onChange={(e) => setDestinationLat(e.target.value)}
+                      className="w-full bg-gray-50 border border-gray-200 p-2 text-xs focus:outline-none focus:border-[#10b981]"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-[9px] font-bold text-gray-400 uppercase">Longitude</label>
+                    <input
+                      type="number"
+                      step="0.000001"
+                      placeholder="123.885400"
+                      value={destinationLng}
+                      onChange={(e) => setDestinationLng(e.target.value)}
+                      className="w-full bg-gray-50 border border-gray-200 p-2 text-xs focus:outline-none focus:border-[#10b981]"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="flex justify-between items-center text-sm">
-              <span>Night Differential (22:00 - 05:00)</span>
-              <span className="font-bold">+Ã¢â€šÂ±20.00</span>
+
+            <div className="space-y-3 p-4 bg-white border border-gray-200">
+              <h6 className="text-[10px] font-bold uppercase tracking-widest text-[#10b981]">Service Pricing (Fixed Fares)</h6>
+              <p className="text-[9px] text-gray-400 uppercase">Leave blank or 0 if service type is not supported on this route</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {services.map(srv => (
+                  <div key={srv.id} className="space-y-1">
+                    <label className="block text-[9px] font-bold text-gray-600 uppercase">{srv.name}</label>
+                    <div className="relative">
+                      <span className="absolute left-2.5 top-2 text-xs text-gray-400 font-bold">₱</span>
+                      <input
+                        type="number"
+                        placeholder="0.00"
+                        value={prices[srv.name] || ''}
+                        onChange={(e) => setPrices({ ...prices, [srv.name]: e.target.value })}
+                        className="w-full bg-gray-50 border border-gray-200 py-1.5 pl-6 pr-2 text-xs focus:outline-none focus:border-[#10b981] font-mono font-bold"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-            <div className="flex justify-between items-center text-sm">
-              <span>Cancellation Fee</span>
-              <span className="font-bold">Ã¢â€šÂ±30.00</span>
+
+            <div className="flex gap-2">
+              <button
+                onClick={handleSave}
+                className="px-6 py-2.5 bg-[#10b981] hover:bg-[#1f893d] text-white text-[10px] font-bold uppercase tracking-widest"
+              >
+                Save Route Settings
+              </button>
+              <button
+                onClick={() => setShowForm(false)}
+                className="px-6 py-2.5 bg-[#161616] hover:bg-black text-white text-[10px] font-bold uppercase tracking-widest"
+              >
+                Cancel
+              </button>
             </div>
           </div>
-        </div>
-        <div className="space-y-4">
-          <h4 className="text-xs font-bold uppercase tracking-widest text-[#161616]">Global Caps</h4>
-          <div className="space-y-3">
-            <div className="flex justify-between items-center text-sm">
-              <span>Minimum Fare</span>
-              <span className="font-bold">Ã¢â€šÂ±50.00</span>
-            </div>
-            <div className="flex justify-between items-center text-sm">
-              <span>Maximum Fare Cap</span>
-              <span className="font-bold">Ã¢â€šÂ±1,500.00</span>
-            </div>
+        ) : (
+          <div className="overflow-x-auto">
+            {loading ? (
+              <div className="text-center py-8 text-gray-400 italic">Loading predefined routes...</div>
+            ) : routes.length === 0 ? (
+              <div className="text-center py-8 bg-[#f4f4f4] text-gray-400 uppercase font-mono text-xs">
+                No predefined routes configured.
+              </div>
+            ) : (
+              <table className="w-full text-left text-xs border border-gray-200">
+                <thead className="bg-[#161616] text-white uppercase text-[9px] tracking-widest">
+                  <tr>
+                    <th className="p-3">Route Name</th>
+                    <th className="p-3">Pickup Location</th>
+                    <th className="p-3">Destination</th>
+                    <th className="p-3">Pricing Fares</th>
+                    <th className="p-3">Status</th>
+                    <th className="p-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {routes.map(r => (
+                    <tr key={r.id} className="hover:bg-gray-50">
+                      <td className="p-3 font-bold text-gray-900">{r.route_name}</td>
+                      <td className="p-3 text-gray-500">
+                        {r.pickup_name}
+                        {r.pickup_lat && <span className="block text-[9px] font-mono text-gray-400">({parseFloat(r.pickup_lat).toFixed(4)}, {parseFloat(r.pickup_lng).toFixed(4)})</span>}
+                      </td>
+                      <td className="p-3 text-gray-500">
+                        {r.destination_name}
+                        {r.destination_lat && <span className="block text-[9px] font-mono text-gray-400">({parseFloat(r.destination_lat).toFixed(4)}, {parseFloat(r.destination_lng).toFixed(4)})</span>}
+                      </td>
+                      <td className="p-3">
+                        <div className="flex flex-wrap gap-1">
+                          {r.prices.map((p, pIdx) => (
+                            <span key={pIdx} className="inline-block bg-green-50 border border-green-200 text-green-700 font-bold font-mono px-1.5 py-0.5 text-[10px]">
+                              {p.service_type}: ₱{parseFloat(p.price).toLocaleString()}
+                            </span>
+                          ))}
+                          {r.prices.length === 0 && <span className="text-gray-300 font-bold italic">No pricing</span>}
+                        </div>
+                      </td>
+                      <td className="p-3">
+                        <span className={`inline-block px-2 py-0.5 text-[9px] font-black uppercase tracking-widest border ${r.is_active !== false ? 'bg-[#f0fdf4] text-[#24a148] border-[#24a148]/30' : 'bg-red-50 text-red-600 border-red-200'}`}>
+                          {r.is_active !== false ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                      <td className="p-3 text-right">
+                        <div className="flex gap-2 justify-end">
+                          <button
+                            onClick={() => handleEdit(r)}
+                            className="text-[#10b981] font-bold uppercase tracking-widest text-[9px] hover:underline"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDelete(r.id)}
+                            className="text-red-500 font-bold uppercase tracking-widest text-[9px] hover:underline"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
-        </div>
+        )}
       </div>
     </SettingsSection>
   );
