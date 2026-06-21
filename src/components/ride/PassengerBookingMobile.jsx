@@ -855,18 +855,54 @@ const PassengerBookingMobile = () => {
                         <button 
                           key={route.id}
                           className="flex items-center gap-4 p-4 bg-gray-50 border border-gray-100 hover:bg-[#E1F5EE] hover:border-[#00B14F]/20 rounded-2xl transition-all group text-left w-full shadow-sm"
-                          onClick={() => {
+                          onClick={async () => {
                             setPickup(route.pickup_name);
                             setDestination(route.destination_name);
-                            setCurrentPos({ lat: parseFloat(route.pickup_lat), lng: parseFloat(route.pickup_lng) });
-                            setDestPos({ lat: parseFloat(route.destination_lat), lng: parseFloat(route.destination_lng) });
                             setSelectedRoute(route);
                             setIsSearching(false);
                             setDestinationSelected(true);
+
+                            let pLat = parseFloat(route.pickup_lat);
+                            let pLng = parseFloat(route.pickup_lng);
+                            let dLat = parseFloat(route.destination_lat);
+                            let dLng = parseFloat(route.destination_lng);
+
+                            const geocode = async (address) => {
+                              try {
+                                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`);
+                                const data = await res.json();
+                                if (data && data.length > 0) {
+                                  return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+                                }
+                              } catch (e) {
+                                console.error("Geocoding error:", e);
+                              }
+                              return null;
+                            };
+
+                            if (isNaN(pLat) || isNaN(pLng)) {
+                              const coords = await geocode(route.pickup_name);
+                              if (coords) {
+                                pLat = coords.lat;
+                                pLng = coords.lng;
+                              }
+                            }
+
+                            if (isNaN(dLat) || isNaN(dLng)) {
+                              const coords = await geocode(route.destination_name);
+                              if (coords) {
+                                dLat = coords.lat;
+                                dLng = coords.lng;
+                              }
+                            }
+
+                            setCurrentPos({ lat: pLat, lng: pLng });
+                            setDestPos({ lat: dLat, lng: dLng });
+
                             setMapAction({
                               type: 'route',
-                              pickup: { coords: { lat: parseFloat(route.pickup_lat), lng: parseFloat(route.pickup_lng) }, address: route.pickup_name },
-                              dest: { coords: { lat: parseFloat(route.destination_lat), lng: parseFloat(route.destination_lng) }, address: route.destination_name }
+                              pickup: { coords: { lat: pLat, lng: pLng }, address: route.pickup_name },
+                              dest: { coords: { lat: dLat, lng: dLng }, address: route.destination_name }
                             });
                           }}
                         >

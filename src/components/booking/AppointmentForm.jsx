@@ -697,22 +697,65 @@ function AppointmentForm() {
                 <label className="block text-[9px] font-bold text-[#24a148] uppercase tracking-widest">Select Predefined Route (Fixed Rates)</label>
                 <select
                   value={selectedRoute?.id || ''}
-                  onChange={(e) => {
+                  onChange={async (e) => {
                     const routeId = parseInt(e.target.value);
                     const route = predefinedRoutes.find(r => r.id === routeId);
                     if (route) {
                       setSelectedRoute(route);
+                      
+                      let pLat = parseFloat(route.pickup_lat);
+                      let pLng = parseFloat(route.pickup_lng);
+                      let dLat = parseFloat(route.destination_lat);
+                      let dLng = parseFloat(route.destination_lng);
+
+                      const geocode = async (address) => {
+                        try {
+                          const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`);
+                          const data = await res.json();
+                          if (data && data.length > 0) {
+                            return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+                          }
+                        } catch (e) {
+                          console.error("Geocoding error:", e);
+                        }
+                        return null;
+                      };
+
+                      // Set immediately for UI responsiveness
                       setFormData(prev => ({
                         ...prev,
                         pickupLocation: route.pickup_name,
-                        pickupCoords: { lat: parseFloat(route.pickup_lat), lng: parseFloat(route.pickup_lng) },
+                        pickupCoords: { lat: pLat, lng: pLng },
                         destinationLocation: route.destination_name,
-                        destCoords: { lat: parseFloat(route.destination_lat), lng: parseFloat(route.destination_lng) }
+                        destCoords: { lat: dLat, lng: dLng }
                       }));
+
+                      if (isNaN(pLat) || isNaN(pLng)) {
+                        const coords = await geocode(route.pickup_name);
+                        if (coords) {
+                          pLat = coords.lat;
+                          pLng = coords.lng;
+                        }
+                      }
+
+                      if (isNaN(dLat) || isNaN(dLng)) {
+                        const coords = await geocode(route.destination_name);
+                        if (coords) {
+                          dLat = coords.lat;
+                          dLng = coords.lng;
+                        }
+                      }
+
+                      setFormData(prev => ({
+                        ...prev,
+                        pickupCoords: { lat: pLat, lng: pLng },
+                        destCoords: { lat: dLat, lng: dLng }
+                      }));
+
                       setMapAction({
                         type: 'route',
-                        pickup: { coords: { lat: parseFloat(route.pickup_lat), lng: parseFloat(route.pickup_lng) }, address: route.pickup_name },
-                        dest: { coords: { lat: parseFloat(route.destination_lat), lng: parseFloat(route.destination_lng) }, address: route.destination_name }
+                        pickup: { coords: { lat: pLat, lng: pLng }, address: route.pickup_name },
+                        dest: { coords: { lat: dLat, lng: dLng }, address: route.destination_name }
                       });
                     } else {
                       setSelectedRoute(null);
