@@ -782,6 +782,8 @@ function AppointmentForm() {
                 <TransportMap
                   mapAction={mapAction}
                   onLocationSelect={handleLocationSelect}
+                  pickupCoords={formData.pickupCoords}
+                  destCoords={formData.destCoords}
                 />
               </div>
             )}

@@ -808,7 +808,8 @@ app.get('/api/appointments/:id', async (req, res) => {
              r.current_lat as rider_lat, 
              r.current_lng as rider_lng, 
              r.name as rider_name, 
-             r.plate_number
+             r.plate_number,
+             r.phone_number as rider_phone
       FROM appointments a
       LEFT JOIN riders r ON a.rider_id = r.id
       WHERE a.id = $1

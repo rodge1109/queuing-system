@@ -614,8 +614,8 @@ const RiderPortal = () => {
                   <MessageSquare className="w-4 h-4" />
                   <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border-2 border-white" />
                 </button>
-                {(activeJob.contact_number || activeJob.phone) && (
-                  <a href={`tel:${activeJob.contact_number || activeJob.phone}`} onClick={e => e.stopPropagation()} className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center text-[#00B14F]">
+                {(activeJob.phone_number || activeJob.contact_number || activeJob.phone) && (
+                  <a href={`tel:${activeJob.phone_number || activeJob.contact_number || activeJob.phone}`} onClick={e => e.stopPropagation()} className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center text-[#00B14F]">
                     <Phone className="w-4 h-4" />
                   </a>
                 )}
@@ -679,9 +679,9 @@ const RiderPortal = () => {
                   >
                     <MessageSquare className="w-5 h-5" />
                   </button>
-                  {(activeJob.contact_number || activeJob.phone) && (
+                  {(activeJob.phone_number || activeJob.contact_number || activeJob.phone) && (
                     <a 
-                      href={`tel:${activeJob.contact_number || activeJob.phone}`}
+                      href={`tel:${activeJob.phone_number || activeJob.contact_number || activeJob.phone}`}
                       className="w-12 h-12 bg-[#00B14F] text-white rounded-2xl flex items-center justify-center shadow-lg shadow-green-100 active:scale-90 transition-all"
                     >
                       <Phone className="w-5 h-5" />

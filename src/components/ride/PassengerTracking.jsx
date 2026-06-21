@@ -359,9 +359,23 @@ const PassengerTracking = ({ appointmentId, token, onClose }) => {
                 <p className="text-xs text-gray-400">Silver Toyota Vios</p>
               </div>
               <div className="flex gap-2">
-                <button className="w-10 h-10 bg-gray-50 text-gray-600 rounded-full flex items-center justify-center hover:bg-[#E1F5EE] transition-colors">
-                  <Phone size={18} />
-                </button>
+                {trip.rider_phone ? (
+                  <a 
+                    href={`tel:${trip.rider_phone}`}
+                    className="w-10 h-10 bg-gray-50 text-gray-600 rounded-full flex items-center justify-center hover:bg-[#E1F5EE] transition-colors animate-[pulse_3s_infinite]"
+                    title="Call Driver"
+                  >
+                    <Phone size={18} />
+                  </a>
+                ) : (
+                  <button 
+                    onClick={() => alert("Driver's phone number is not available.")}
+                    className="w-10 h-10 bg-gray-50 text-gray-300 rounded-full flex items-center justify-center cursor-not-allowed"
+                    title="Phone number not available"
+                  >
+                    <Phone size={18} />
+                  </button>
+                )}
                 <button 
                   onClick={() => setIsChatOpen(true)}
                   className="w-10 h-10 bg-gray-50 text-gray-600 rounded-full flex items-center justify-center hover:bg-[#E1F5EE] transition-colors relative"

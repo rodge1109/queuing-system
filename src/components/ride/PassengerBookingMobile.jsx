@@ -502,6 +502,9 @@ const PassengerBookingMobile = () => {
         <TransportMap 
           className="w-full h-full"
           mapAction={mapAction}
+          isPicking={sheetState === 'minimized' && !destinationSelected}
+          pickupCoords={currentPos}
+          destCoords={destPos}
           onLocationSelect={(pick, dest, dist) => {
             if (pick && pick.address && (!mapAction || mapAction.type === 'pickup')) {
               setPickup(pick.address);

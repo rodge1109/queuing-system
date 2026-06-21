@@ -1,18 +1,27 @@
-
 import React from 'react';
 
-const TransportMapBase = ({ onLocationSelect, mapAction, className }) => {
+const TransportMapBase = ({ onLocationSelect, mapAction, isPicking, pickupCoords, destCoords, className }) => {
   const mapRef = React.useRef(null);
   const leafletMap = React.useRef(null);
   const pickupMarker = React.useRef(null);
   const destMarker = React.useRef(null);
   const routeLine = React.useRef(null);
+  const distanceMarker = React.useRef(null);
+  const [isLoadingAddress, setIsLoadingAddress] = React.useState(false);
+  
+  const isPickingRef = React.useRef(isPicking);
+  React.useEffect(() => {
+    isPickingRef.current = isPicking;
+  }, [isPicking]);
 
   const reverseGeocode = async (lat, lng) => {
     try {
       const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
       const data = await response.json();
-      return data.display_name || `Location: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+      if (data.display_name) {
+        return data.display_name;
+      }
+      return `Location: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
     } catch (e) {
       return `Location: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
     }
@@ -31,13 +40,11 @@ const TransportMapBase = ({ onLocationSelect, mapAction, className }) => {
     }
   };
 
-  const distanceMarker = React.useRef(null);
-
   const updateRoute = async (preventPan = false) => {
-    if (!pickupMarker.current || !destMarker.current) return;
-    const p1 = pickupMarker.current.getLatLng();
-    const p2 = destMarker.current.getLatLng();
     const L = window.L;
+    if (!L || !pickupCoords || !destCoords) return;
+    const p1 = L.latLng(pickupCoords.lat, pickupCoords.lng);
+    const p2 = L.latLng(destCoords.lat, destCoords.lng);
 
     try {
       // Use OSRM for real-road routing
@@ -93,63 +100,147 @@ const TransportMapBase = ({ onLocationSelect, mapAction, className }) => {
     }
   };
 
+  // Center pan view on mapAction change
   React.useEffect(() => {
-    if (mapAction && leafletMap.current) {
-      const L = window.L;
-      handleGeocodeAction(mapAction);
-    }
+    if (!leafletMap.current || !mapAction) return;
 
-    async function handleGeocodeAction(action) {
-      let coords = action.coords;
-      if (!coords && action.address) {
-        coords = await forwardGeocode(action.address);
+    async function handleAction() {
+      let coords = mapAction.coords;
+      if (!coords && mapAction.address) {
+        coords = await forwardGeocode(mapAction.address);
       }
       if (!coords) return;
-      const { lat, lng } = coords;
-      const L = window.L;
+      
+      leafletMap.current.setView([coords.lat, coords.lng], 15);
+    }
+    
+    handleAction();
+  }, [mapAction]);
 
-      if (action.type === 'pickup') {
-        if (pickupMarker.current) pickupMarker.current.setLatLng([lat, lng]);
-        else pickupMarker.current = L.marker([lat, lng], {
+  // Synchronize Markers and route
+  React.useEffect(() => {
+    if (!leafletMap.current) return;
+    const L = window.L;
+    if (!L) return;
+
+    // If picking, hide standard markers and route path
+    if (isPicking) {
+      if (pickupMarker.current) {
+        pickupMarker.current.remove();
+        pickupMarker.current = null;
+      }
+      if (destMarker.current) {
+        destMarker.current.remove();
+        destMarker.current = null;
+      }
+      if (routeLine.current) {
+        routeLine.current.remove();
+        routeLine.current = null;
+      }
+      if (distanceMarker.current) {
+        distanceMarker.current.remove();
+        distanceMarker.current = null;
+      }
+      return;
+    }
+
+    // Sync pickupMarker
+    if (pickupCoords && pickupCoords.lat && pickupCoords.lng) {
+      if (pickupMarker.current) {
+        pickupMarker.current.setLatLng([pickupCoords.lat, pickupCoords.lng]);
+      } else {
+        pickupMarker.current = L.marker([pickupCoords.lat, pickupCoords.lng], {
           draggable: true, icon: L.icon({
             iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
             shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
             iconSize: [25, 41], iconAnchor: [12, 41]
           })
         }).addTo(leafletMap.current).bindPopup('Pickup');
-        
+
         pickupMarker.current.on('dragend', async () => {
           const pos = pickupMarker.current.getLatLng();
           const address = await reverseGeocode(pos.lat, pos.lng);
           onLocationSelect({ address, coords: { lat: pos.lat, lng: pos.lng } }, null);
-          updateRoute(true);
         });
-        
-        onLocationSelect({ address: action.address || '', coords: { lat, lng } }, null);
+      }
+    } else {
+      if (pickupMarker.current) {
+        pickupMarker.current.remove();
+        pickupMarker.current = null;
+      }
+    }
+
+    // Sync destMarker
+    if (destCoords && destCoords.lat && destCoords.lng) {
+      if (destMarker.current) {
+        destMarker.current.setLatLng([destCoords.lat, destCoords.lng]);
       } else {
-        if (destMarker.current) destMarker.current.setLatLng([lat, lng]);
-        else destMarker.current = L.marker([lat, lng], {
+        destMarker.current = L.marker([destCoords.lat, destCoords.lng], {
           draggable: true, icon: L.icon({
             iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
             shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
             iconSize: [25, 41], iconAnchor: [12, 41]
           })
         }).addTo(leafletMap.current).bindPopup('Destination');
-        
+
         destMarker.current.on('dragend', async () => {
           const pos = destMarker.current.getLatLng();
           const address = await reverseGeocode(pos.lat, pos.lng);
           onLocationSelect(null, { address, coords: { lat: pos.lat, lng: pos.lng } });
-          updateRoute(true);
         });
-
-        onLocationSelect(null, { address: action.address || '', coords: { lat, lng } });
       }
-      leafletMap.current.setView([lat, lng], 15);
-      updateRoute(false);
+    } else {
+      if (destMarker.current) {
+        destMarker.current.remove();
+        destMarker.current = null;
+      }
     }
-  }, [mapAction]);
 
+    // Route updates
+    if (pickupCoords && destCoords) {
+      updateRoute(false);
+    } else {
+      if (routeLine.current) {
+        routeLine.current.remove();
+        routeLine.current = null;
+      }
+      if (distanceMarker.current) {
+        distanceMarker.current.remove();
+        distanceMarker.current = null;
+      }
+    }
+  }, [pickupCoords, destCoords, isPicking]);
+
+  // Center-pin tracking moveend
+  React.useEffect(() => {
+    if (!leafletMap.current) return;
+
+    const handleMapMoveEnd = async () => {
+      if (!isPicking || !leafletMap.current) return;
+      const center = leafletMap.current.getCenter();
+      setIsLoadingAddress(true);
+      const address = await reverseGeocode(center.lat, center.lng);
+      setIsLoadingAddress(false);
+      
+      if (mapAction?.type === 'pickup') {
+        onLocationSelect({ address, coords: { lat: center.lat, lng: center.lng } }, null);
+      } else if (mapAction?.type === 'dest') {
+        onLocationSelect(null, { address, coords: { lat: center.lat, lng: center.lng } });
+      }
+    };
+
+    if (isPicking) {
+      leafletMap.current.on('moveend', handleMapMoveEnd);
+    }
+
+    return () => {
+      if (leafletMap.current) {
+        leafletMap.current.off('moveend', handleMapMoveEnd);
+      }
+    };
+  }, [isPicking, mapAction, onLocationSelect]);
+
+  // Initialize Map
   React.useEffect(() => {
     if (!mapRef.current || leafletMap.current || mapRef.current._leaflet_id) return;
     const L = window.L;
@@ -166,7 +257,9 @@ const TransportMapBase = ({ onLocationSelect, mapAction, className }) => {
       if (leafletMap.current) leafletMap.current.invalidateSize();
     }, 200);
 
+    // Standard click listener for simple clicking
     leafletMap.current.on('click', async (e) => {
+      if (isPickingRef.current) return;
       const { lat, lng } = e.latlng;
       const address = await reverseGeocode(lat, lng);
 
@@ -182,7 +275,6 @@ const TransportMapBase = ({ onLocationSelect, mapAction, className }) => {
           const pos = pickupMarker.current.getLatLng();
           const adr = await reverseGeocode(pos.lat, pos.lng);
           onLocationSelect({ address: adr, coords: { lat: pos.lat, lng: pos.lng } }, null);
-          updateRoute(true);
         });
         onLocationSelect({ address, coords: { lat, lng } }, null);
       } else if (!destMarker.current) {
@@ -197,11 +289,9 @@ const TransportMapBase = ({ onLocationSelect, mapAction, className }) => {
           const pos = destMarker.current.getLatLng();
           const adr = await reverseGeocode(pos.lat, pos.lng);
           onLocationSelect(null, { address: adr, coords: { lat: pos.lat, lng: pos.lng } });
-          updateRoute(true);
         });
         onLocationSelect(null, { address, coords: { lat, lng } });
       }
-      updateRoute(true);
     });
 
     return () => {
@@ -212,7 +302,44 @@ const TransportMapBase = ({ onLocationSelect, mapAction, className }) => {
     };
   }, []);
 
-  return <div ref={mapRef} className={className || "h-96 md:h-[450px] w-full border border-[#e0e0e0] z-0"} />;
+  return (
+    <div className="relative w-full h-full">
+      <div ref={mapRef} className={className || "h-96 md:h-[450px] w-full border border-[#e0e0e0] z-0"} />
+      
+      {isPicking && mapAction && (
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-full pointer-events-none z-[1000] flex flex-col items-center animate-[bounceIn_0.3s_ease-out]">
+          <div className="bg-black/85 backdrop-blur-sm text-white text-[10px] font-bold px-3 py-1.5 rounded-lg shadow-lg mb-2 max-w-[220px] truncate text-center flex items-center gap-1.5 border border-white/10 uppercase tracking-wider">
+            {isLoadingAddress ? (
+              <>
+                <svg className="animate-spin h-3 w-3 text-white shrink-0" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                <span>Searching address...</span>
+              </>
+            ) : (
+              <span>Move map to select</span>
+            )}
+          </div>
+
+          <div className="relative">
+            <div className="w-4 h-2 bg-black/25 rounded-full blur-[1px] absolute -bottom-1 left-1/2 -translate-x-1/2 scale-x-150"></div>
+            <div className="transform -translate-y-2 transition-transform duration-200">
+              <svg width="42" height="42" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2C8.13 2 5 5.13 5 9C5 14.25 12 22 12 22C12 22 19 14.25 19 9C19 5.13 15.87 2 12 2Z" 
+                      fill={mapAction.type === 'pickup' ? '#00B14F' : '#3b82f6'} 
+                      stroke="white" 
+                      strokeWidth="2.5" 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round"/>
+                <circle cx="12" cy="9" r="3.5" fill="white"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 };
 
 const TransportMap = React.memo(TransportMapBase);
