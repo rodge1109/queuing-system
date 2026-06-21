@@ -409,11 +409,8 @@ const RiderPortal = () => {
             </svg>
           </div>
           <div className="relative z-10 text-center px-4">
-            <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-xl">
-              <Car className="w-10 h-10 text-[#00B14F]" />
-            </div>
-            <h1 className="text-3xl font-extrabold text-white tracking-tight">Grab Driver</h1>
-            <p className="text-white/80 text-sm mt-1">Accept jobs, earn more, drive better.</p>
+            <img src="/uploads/byahero2.png" alt="Byahero Logo" className="h-40 w-auto object-contain mx-auto mb-4 transform translate-y-[10px]" />
+            <p className="text-white/80 text-sm mt-1 transform -translate-y-[5px]">Accept jobs, earn more, drive better.</p>
           </div>
         </div>
 
