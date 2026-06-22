@@ -934,6 +934,7 @@ const PassengerBookingMobile = () => {
                       className="flex items-center gap-4 p-4 hover:bg-gray-50 rounded-2xl transition-all group"
                       onClick={() => {
                         setDestination(dest.name);
+                        setDestPos({ lat: dest.lat, lng: dest.lng });
                         setMapAction({ type: 'dest', address: dest.name, coords: { lat: dest.lat, lng: dest.lng } });
                         setIsSearching(false);
                         setDestinationSelected(true);
@@ -964,6 +965,7 @@ const PassengerBookingMobile = () => {
                         className="flex items-center gap-4 p-4 hover:bg-gray-50 rounded-2xl transition-all group"
                         onClick={() => {
                           setDestination(dest.name);
+                          setDestPos({ lat: dest.lat, lng: dest.lng });
                           setMapAction({ type: 'dest', address: dest.name, coords: { lat: dest.lat, lng: dest.lng } });
                           setIsSearching(false);
                           setDestinationSelected(true);
@@ -993,11 +995,24 @@ const PassengerBookingMobile = () => {
                 <Search className="w-12 h-12 mb-4 text-gray-300" />
                 <p className="text-sm font-medium text-gray-400 uppercase tracking-widest italic">No results found</p>
                 <button 
-                  onClick={() => { 
+                  onClick={async () => { 
                     setIsSearching(false); 
                     setDestinationSelected(true);
-                    setMapAction({ type: 'dest', address: destination, coords: currentPos });
                     setSelectedRoute(null);
+                    
+                    let lat = currentPos.lat + 0.03;
+                    let lng = currentPos.lng + 0.03;
+                    try {
+                      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(destination)}&limit=1`);
+                      const data = await res.json();
+                      if (data && data.length > 0) {
+                        lat = parseFloat(data[0].lat);
+                        lng = parseFloat(data[0].lon);
+                      }
+                    } catch (e) {}
+                    
+                    setDestPos({ lat, lng });
+                    setMapAction({ type: 'dest', address: destination, coords: { lat, lng } });
                   }}
                   className="mt-4 px-6 py-2 bg-gray-900 text-white rounded-full text-xs font-bold"
                 >

@@ -39,6 +39,8 @@ const PassengerTracking = ({ appointmentId, token, onClose }) => {
   }, [isChatOpen]);
 
   useEffect(() => {
+    if (!appointmentId) return;
+    
     const fetchTrip = async () => {
       try {
         const res = await fetch(`/api/appointments/${appointmentId}`);
