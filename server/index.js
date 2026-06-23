@@ -3249,6 +3249,118 @@ app.delete('/api/booking-services/:id', async (req, res) => {
   }
 });
 
+// ==================== PASSENGER AUTHENTICATION ENDPOINTS ====================
+
+// Passenger Registration
+app.post('/api/passenger/register', async (req, res) => {
+  try {
+    const { fullName, email, phoneNumber, password } = req.body;
+    
+    if (!fullName || !phoneNumber || !password) {
+      return res.status(400).json({ success: false, message: 'Please provide full name, phone number, and password' });
+    }
+
+    // Check if client/passenger with the same phone number already exists
+    const checkUser = await pool.query('SELECT * FROM clients WHERE phone_number = $1', [phoneNumber]);
+    if (checkUser.rows.length > 0) {
+      return res.status(400).json({ success: false, message: 'Phone number already registered' });
+    }
+
+    // Insert new passenger/client
+    const result = await pool.query(
+      `INSERT INTO clients (full_name, phone_number, email, password)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id, full_name, phone_number, email`,
+      [fullName, phoneNumber, email || null, password]
+    );
+
+    res.status(201).json({
+      success: true,
+      message: 'Account created successfully!',
+      passenger: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Passenger registration error:', error);
+    res.status(500).json({ success: false, message: 'Failed to create passenger account' });
+  }
+});
+
+// Passenger Login
+app.post('/api/passenger/login', async (req, res) => {
+  try {
+    const { phoneNumber, password } = req.body;
+    
+    if (!phoneNumber || !password) {
+      return res.status(400).json({ success: false, message: 'Please provide phone number and password' });
+    }
+
+    // Retrieve passenger/client
+    const { rows } = await pool.query(
+      'SELECT id, full_name, phone_number, email, password FROM clients WHERE phone_number = $1',
+      [phoneNumber]
+    );
+
+    if (rows.length === 0 || rows[0].password !== password) {
+      return res.status(401).json({ success: false, message: 'Invalid phone number or password' });
+    }
+
+    const passenger = rows[0];
+    delete passenger.password; // Do not return password to the client
+
+    res.json({
+      success: true,
+      message: 'Login successful!',
+      passenger
+    });
+  } catch (error) {
+    console.error('Passenger login error:', error);
+    res.status(500).json({ success: false, message: 'Failed to log in' });
+  }
+});
+
+// Driver Registration
+app.post('/api/driver/register', async (req, res) => {
+  try {
+    const { fullName, email, phoneNumber, password, vehicleModel, plateNumber, licenseNumber } = req.body;
+
+    if (!fullName || !phoneNumber || !password || !vehicleModel || !plateNumber || !licenseNumber) {
+      return res.status(400).json({ success: false, message: 'Please fill in all required fields' });
+    }
+
+    // Check if phone number is already registered in riders
+    const checkPhone = await pool.query('SELECT * FROM riders WHERE phone = $1', [phoneNumber]);
+    if (checkPhone.rows.length > 0) {
+      return res.status(400).json({ success: false, message: 'Mobile number already registered' });
+    }
+
+    // Insert new rider (driver)
+    const result = await pool.query(
+      `INSERT INTO riders (name, username, password, phone, status, vehicle_type, plate_number, email, brand_model, license_number)
+       VALUES ($1, $2, $3, $4, 'offline', $5, $6, $7, $5, $8)
+       RETURNING id, name, username, phone, vehicle_type, plate_number, email`,
+      [
+        fullName,
+        phoneNumber, // Use phone number as default username
+        password,
+        phoneNumber,
+        vehicleModel,
+        plateNumber,
+        email || null,
+        licenseNumber
+      ]
+    );
+
+    res.status(201).json({
+      success: true,
+      message: 'Driver registration successful! You can now sign in.',
+      driver: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Driver registration error:', error);
+    res.status(500).json({ success: false, message: 'Failed to register driver' });
+  }
+});
+
 // ==================== RIDER TRACKING ENDPOINTS ====================
 
 // Standard rider login (by username/password)
@@ -3256,7 +3368,7 @@ app.post('/api/rider/login', async (req, res) => {
   try {
     const { username, password } = req.body;
     console.log(`[Rider Login] Attempt for: ${username}`);
-    const { rows } = await pool.query('SELECT * FROM riders WHERE username = $1 AND password = $2', [username, password]);
+    const { rows } = await pool.query('SELECT * FROM riders WHERE (username = $1 OR phone = $1 OR email = $1) AND password = $2', [username, password]);
     
     if (rows.length === 0) {
       console.log(`[Rider Login] FAILED for: ${username}`);
@@ -4029,6 +4141,7 @@ const initClinicSettings = async () => {
   await pool.query(`ALTER TABLE riders ADD COLUMN IF NOT EXISTS brand_model VARCHAR(100)`);
   await pool.query(`ALTER TABLE riders ADD COLUMN IF NOT EXISTS vehicle_type VARCHAR(50)`);
   await pool.query(`ALTER TABLE riders ADD COLUMN IF NOT EXISTS plate_number VARCHAR(20)`);
+  await pool.query(`ALTER TABLE riders ADD COLUMN IF NOT EXISTS license_number VARCHAR(100)`);
   
   // Migration for appointments tracking
   await pool.query(`ALTER TABLE appointments ADD COLUMN IF NOT EXISTS rider_id INTEGER`);
@@ -4076,6 +4189,10 @@ const initClinicSettings = async () => {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
+  `);
+
+  await pool.query(`
+    ALTER TABLE clients ADD COLUMN IF NOT EXISTS password VARCHAR(255);
   `);
 
   // Migrate existing walk-in clients from appointments to clients table

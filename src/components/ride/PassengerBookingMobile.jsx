@@ -4,7 +4,8 @@ import {
   Car, Clock, ChevronRight, User, 
   ArrowLeft, Heart, History, Star,
   Compass, Shield, Phone, MessageSquare,
-  CarFront, Bus, Check, Mail, RefreshCw, Play, X, Flag, Plus, Ticket, SlidersHorizontal, CreditCard
+  CarFront, Bus, Check, Mail, RefreshCw, Play, X, Flag, Plus, Ticket, SlidersHorizontal, CreditCard,
+  Lock, Eye, EyeOff, ClipboardList
 } from 'lucide-react';
 import LiveTrackingMap from '../maps/LiveTrackingMap';
 import PassengerTracking from './PassengerTracking';
@@ -15,11 +16,11 @@ const LucideIcons = {
   Car, Clock, ChevronRight, User, 
   ArrowLeft, Heart, History, Star,
   Compass, Shield, Phone, MessageSquare,
-  CarFront, Bus, Check, Mail, RefreshCw, Play, X, Flag, Plus, Ticket, SlidersHorizontal, CreditCard
+  CarFront, Bus, Check, Mail, RefreshCw, Play, X, Flag, Plus, Ticket, SlidersHorizontal, CreditCard, ClipboardList
 };
 
 
-const PassengerBookingMobile = () => {
+const PassengerBookingMobile = ({ setCurrentPage }) => {
   const [currentPos, setCurrentPos] = useState({ lat: 11.0500, lng: 124.0000 });
   const [pickup, setPickup] = useState("");
   const [destination, setDestination] = useState("");
@@ -27,7 +28,8 @@ const PassengerBookingMobile = () => {
   const [distanceKm, setDistanceKm] = useState(0);
   const [sheetState, setSheetState] = useState('medium');
   const [selectedVehicle, setSelectedVehicle] = useState(null);
-  const [step, setStep] = useState('selection');
+  const [step, setStep] = useState('welcome');
+  const [selectedRole, setSelectedRole] = useState('passenger');
   const [destinationSelected, setDestinationSelected] = useState(false);
   const [bookingResult, setBookingResult] = useState(null);
   const [bookingLoading, setBookingLoading] = useState(false);
@@ -35,6 +37,39 @@ const PassengerBookingMobile = () => {
   const [searchResults, setSearchResults] = useState([]);
   const [isMapSearching, setIsMapSearching] = useState(false);
   const [mapAction, setMapAction] = useState(null);
+
+  const [passenger, setPassenger] = useState(() => {
+    const saved = localStorage.getItem('passenger_user');
+    return saved ? JSON.parse(saved) : null;
+  });
+
+  const [signupForm, setSignupForm] = useState({
+    fullName: '',
+    email: '',
+    phoneNumber: '',
+    password: '',
+    confirmPassword: ''
+  });
+  const [showPassword, setShowPassword] = useState(false);
+  const [authLoading, setAuthLoading] = useState(false);
+
+  const [loginForm, setLoginForm] = useState({
+    phoneNumber: '',
+    password: ''
+  });
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+
+  const [driverForm, setDriverForm] = useState({
+    fullName: '',
+    email: '',
+    phoneNumber: '',
+    password: '',
+    confirmPassword: '',
+    vehicleModel: '',
+    plateNumber: '',
+    licenseNumber: ''
+  });
+  const [showDriverPassword, setShowDriverPassword] = useState(false);
 
   useEffect(() => {
     const savedBookingId = localStorage.getItem('active_booking_id');
@@ -108,13 +143,24 @@ const PassengerBookingMobile = () => {
 
 
   const [formData, setFormData] = useState({
-    fullName: '',
-    phoneNumber: '',
-    email: '',
+    fullName: passenger ? passenger.full_name : '',
+    phoneNumber: passenger ? passenger.phone_number : '',
+    email: passenger ? passenger.email || '' : '',
     paymentMethod: 'Cash',
     corporateAccountId: ''
   });
   const [corporateValid, setCorporateValid] = useState(null); // null, 'loading', 'valid', 'invalid'
+
+  useEffect(() => {
+    if (passenger) {
+      setFormData(prev => ({
+        ...prev,
+        fullName: passenger.full_name || prev.fullName,
+        phoneNumber: passenger.phone_number || prev.phoneNumber,
+        email: passenger.email || prev.email
+      }));
+    }
+  }, [passenger]);
 
   useEffect(() => {
     navigator.geolocation.getCurrentPosition((pos) => {
@@ -344,6 +390,623 @@ const PassengerBookingMobile = () => {
   };
 
 
+
+  if (step === 'welcome') {
+    return (
+      <div className="min-h-screen bg-[#00B14F] flex flex-col justify-between items-center p-6 text-white text-center font-['DM_Sans',_sans-serif] animate-fadeIn">
+        {/* Center content */}
+        <div className="flex-1 flex flex-col items-center justify-center -translate-y-8 w-full">
+          {/* Byahero Logo wrapper */}
+          <div className="mb-6 w-[45%] max-w-[180px] aspect-square mx-auto flex items-center justify-center translate-y-[30px]">
+            <img 
+              src="/uploads/byahero2.png" 
+              alt="Byahero Logo" 
+              className="w-full h-full object-contain mx-auto" 
+            />
+          </div>
+
+          <p className="text-white/90 text-sm font-medium max-w-[280px] mx-auto leading-relaxed">
+            Your safe, affordable ride — anywhere, anytime.
+          </p>
+        </div>
+
+        {/* Bottom content */}
+        <div className="w-full max-w-xs flex flex-col items-center gap-4 pb-8 animate-in slide-in-from-bottom duration-500">
+          <button 
+            onClick={() => setStep('role-select')}
+            className="w-full bg-white text-[#00B14F] hover:bg-gray-50 py-[18px] rounded-2xl font-bold text-base shadow-lg shadow-black/10 active:scale-95 transition-all"
+          >
+            Get Started
+          </button>
+
+          {setCurrentPage && (
+            <button 
+              onClick={() => setCurrentPage('home')}
+              className="text-white/80 hover:text-white hover:underline text-xs font-medium cursor-pointer bg-transparent border-none outline-none mt-2"
+            >
+              Already have an account? Choose your role below.
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (step === 'role-select') {
+    return (
+      <div className="min-h-screen bg-white flex flex-col justify-between p-6 font-['DM_Sans',_sans-serif] animate-fadeIn text-gray-900">
+        {/* Header */}
+        <div className="w-full flex items-center gap-4 pt-6 select-none shrink-0">
+          <button 
+            onClick={() => setStep('welcome')}
+            className="p-2 hover:bg-gray-100 rounded-full transition-all active:scale-95"
+          >
+            <ArrowLeft className="w-6 h-6 text-gray-800" />
+          </button>
+          <h2 className="text-xl font-bold text-gray-900">I am a...</h2>
+        </div>
+
+        {/* Roles List */}
+        <div className="flex-1 flex flex-col justify-center gap-6 max-w-sm w-full mx-auto my-auto py-8">
+          {/* Passenger Card */}
+          <button
+            onClick={() => setSelectedRole('passenger')}
+            className={`w-full text-left p-6 rounded-3xl border-2 transition-all duration-300 relative flex flex-col gap-4 shadow-sm active:scale-[0.99] ${
+              selectedRole === 'passenger' 
+                ? 'border-[#00B14F] bg-[#E1F5EE]/20 shadow-[#00B14F]/5' 
+                : 'border-gray-100 bg-white hover:border-gray-200'
+            }`}
+          >
+            {/* Checked badge */}
+            {selectedRole === 'passenger' && (
+              <div className="absolute top-4 right-4 w-5 h-5 bg-[#00B14F] text-white rounded-full flex items-center justify-center shadow-md animate-in zoom-in-50 duration-200">
+                <Check className="w-3 h-3 stroke-[3]" />
+              </div>
+            )}
+            
+            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-colors ${
+              selectedRole === 'passenger' ? 'bg-[#00B14F] text-white' : 'bg-gray-100 text-gray-500'
+            }`}>
+              <User className="w-7 h-7" />
+            </div>
+
+            <div>
+              <h3 className={`text-lg font-bold transition-colors ${
+                selectedRole === 'passenger' ? 'text-[#00B14F]' : 'text-gray-800'
+              }`}>Passenger</h3>
+              <p className="text-xs text-gray-400 font-medium leading-relaxed mt-1">
+                Book rides to your destination easily and safely.
+              </p>
+            </div>
+          </button>
+
+          {/* Driver Card */}
+          <button
+            onClick={() => setSelectedRole('driver')}
+            className={`w-full text-left p-6 rounded-3xl border-2 transition-all duration-300 relative flex flex-col gap-4 shadow-sm active:scale-[0.99] ${
+              selectedRole === 'driver' 
+                ? 'border-[#00B14F] bg-[#E1F5EE]/20 shadow-[#00B14F]/5' 
+                : 'border-gray-100 bg-white hover:border-gray-200'
+            }`}
+          >
+            {/* Checked badge */}
+            {selectedRole === 'driver' && (
+              <div className="absolute top-4 right-4 w-5 h-5 bg-[#00B14F] text-white rounded-full flex items-center justify-center shadow-md animate-in zoom-in-50 duration-200">
+                <Check className="w-3 h-3 stroke-[3]" />
+              </div>
+            )}
+
+            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-colors ${
+              selectedRole === 'driver' ? 'bg-[#00B14F] text-white' : 'bg-gray-100 text-gray-500'
+            }`}>
+              <Car className="w-7 h-7" />
+            </div>
+
+            <div>
+              <h3 className={`text-lg font-bold transition-colors ${
+                selectedRole === 'driver' ? 'text-[#00B14F]' : 'text-gray-800'
+              }`}>Driver</h3>
+              <p className="text-xs text-gray-400 font-medium leading-relaxed mt-1">
+                Earn money by driving passengers to their destinations.
+              </p>
+            </div>
+          </button>
+        </div>
+
+        {/* Buttons */}
+        <div className="w-full max-w-sm mx-auto flex gap-4 pb-8 shrink-0">
+          <button 
+            onClick={() => {
+              if (selectedRole === 'passenger') {
+                setStep('passenger-login');
+              } else {
+                setCurrentPage?.('rider');
+              }
+            }}
+            className="flex-1 border-2 border-[#00B14F] text-[#00B14F] hover:bg-[#E1F5EE]/10 py-[18px] rounded-2xl font-bold text-sm uppercase tracking-wider active:scale-95 transition-all text-center"
+          >
+            Sign In
+          </button>
+          
+          <button 
+            onClick={() => {
+              if (selectedRole === 'passenger') {
+                setStep('passenger-signup');
+              } else {
+                setStep('driver-signup');
+              }
+            }}
+            className="flex-1 bg-[#00B14F] hover:bg-[#009241] text-white py-[18px] rounded-2xl font-bold text-sm uppercase tracking-wider active:scale-95 transition-all text-center"
+          >
+            Register
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (step === 'driver-signup') {
+    const handleDriverSignup = async (e) => {
+      e.preventDefault();
+      if (driverForm.password !== driverForm.confirmPassword) {
+        alert("Passwords do not match!");
+        return;
+      }
+      if (driverForm.password.length < 6) {
+        alert("Password must be at least 6 characters!");
+        return;
+      }
+
+      setAuthLoading(true);
+      try {
+        const res = await fetch('/api/driver/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fullName: driverForm.fullName,
+            email: driverForm.email,
+            phoneNumber: driverForm.phoneNumber,
+            password: driverForm.password,
+            vehicleModel: driverForm.vehicleModel,
+            plateNumber: driverForm.plateNumber,
+            licenseNumber: driverForm.licenseNumber
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert(data.message || "Driver account created successfully!");
+          localStorage.setItem('rider_user', JSON.stringify(data.driver));
+          setCurrentPage?.('rider'); // Redirect to Rider Portal dashboard
+        } else {
+          alert(data.message || "Driver registration failed");
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Error connecting to server");
+      } finally {
+        setAuthLoading(false);
+      }
+    };
+
+    return (
+      <div className="min-h-screen bg-white flex flex-col justify-between p-6 font-['DM_Sans',_sans-serif] animate-fadeIn text-gray-900 overflow-y-auto">
+        {/* Header */}
+        <div className="w-full pt-6 select-none shrink-0 mb-6">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => setStep('role-select')}
+              className="p-2 hover:bg-gray-100 rounded-full transition-all active:scale-95"
+            >
+              <ArrowLeft className="w-6 h-6 text-gray-800" />
+            </button>
+            <h2 className="text-xl font-bold text-gray-900">Driver Sign Up</h2>
+          </div>
+          <p className="text-xs text-gray-400 font-medium ml-12 mt-1">Register as a RideGo driver</p>
+        </div>
+
+        {/* Signup Form */}
+        <form onSubmit={handleDriverSignup} className="flex-1 flex flex-col gap-5 max-w-sm w-full mx-auto pb-10">
+          
+          {/* Section 1: PERSONAL INFO */}
+          <div className="space-y-4">
+            <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Personal Info</h3>
+            
+            {/* Full Name */}
+            <div className="bg-gray-50 rounded-2xl p-4 flex items-center gap-4 border border-gray-100 focus-within:border-[#00B14F] focus-within:bg-white transition-all">
+              <User className="w-5 h-5 text-gray-400" />
+              <input 
+                required
+                type="text" 
+                placeholder="Full name"
+                className="bg-transparent border-none outline-none text-sm font-medium text-gray-900 w-full placeholder:text-gray-400"
+                value={driverForm.fullName}
+                onChange={(e) => setDriverForm({...driverForm, fullName: e.target.value})}
+              />
+            </div>
+
+            {/* Email Address */}
+            <div className="bg-gray-50 rounded-2xl p-4 flex items-center gap-4 border border-gray-100 focus-within:border-[#00B14F] focus-within:bg-white transition-all">
+              <Mail className="w-5 h-5 text-gray-400" />
+              <input 
+                type="email" 
+                placeholder="Email address"
+                className="bg-transparent border-none outline-none text-sm font-medium text-gray-900 w-full placeholder:text-gray-400"
+                value={driverForm.email}
+                onChange={(e) => setDriverForm({...driverForm, email: e.target.value})}
+              />
+            </div>
+
+            {/* Mobile Number */}
+            <div className="bg-gray-50 rounded-2xl p-4 flex items-center gap-4 border border-gray-100 focus-within:border-[#00B14F] focus-within:bg-white transition-all">
+              <Phone className="w-5 h-5 text-gray-400" />
+              <input 
+                required
+                type="tel" 
+                placeholder="Mobile number"
+                className="bg-transparent border-none outline-none text-sm font-medium text-gray-900 w-full placeholder:text-gray-400"
+                value={driverForm.phoneNumber}
+                onChange={(e) => setDriverForm({...driverForm, phoneNumber: e.target.value})}
+              />
+            </div>
+
+            {/* Password */}
+            <div className="bg-gray-50 rounded-2xl p-4 flex items-center gap-4 border border-gray-100 focus-within:border-[#00B14F] focus-within:bg-white transition-all relative">
+              <Lock className="w-5 h-5 text-gray-400" />
+              <input 
+                required
+                type={showDriverPassword ? "text" : "password"} 
+                placeholder="Password (min. 6 characters)"
+                className="bg-transparent border-none outline-none text-sm font-medium text-gray-900 w-full placeholder:text-gray-400 pr-10"
+                value={driverForm.password}
+                onChange={(e) => setDriverForm({...driverForm, password: e.target.value})}
+              />
+              <button 
+                type="button"
+                onClick={() => setShowDriverPassword(!showDriverPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+              >
+                {showDriverPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+
+            {/* Confirm Password */}
+            <div className="bg-gray-50 rounded-2xl p-4 flex items-center gap-4 border border-gray-100 focus-within:border-[#00B14F] focus-within:bg-white transition-all">
+              <Lock className="w-5 h-5 text-gray-400" />
+              <input 
+                required
+                type="password" 
+                placeholder="Confirm password"
+                className="bg-transparent border-none outline-none text-sm font-medium text-gray-900 w-full placeholder:text-gray-400"
+                value={driverForm.confirmPassword}
+                onChange={(e) => setDriverForm({...driverForm, confirmPassword: e.target.value})}
+              />
+            </div>
+          </div>
+
+          {/* Section 2: VEHICLE & LICENSE */}
+          <div className="space-y-4 pt-2">
+            <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Vehicle & License</h3>
+
+            {/* Vehicle make & model */}
+            <div className="bg-gray-50 rounded-2xl p-4 flex items-center gap-4 border border-gray-100 focus-within:border-[#00B14F] focus-within:bg-white transition-all">
+              <Car className="w-5 h-5 text-gray-400" />
+              <input 
+                required
+                type="text" 
+                placeholder="Vehicle make & model (e.g. Toyota Vios)"
+                className="bg-transparent border-none outline-none text-sm font-medium text-gray-900 w-full placeholder:text-gray-400"
+                value={driverForm.vehicleModel}
+                onChange={(e) => setDriverForm({...driverForm, vehicleModel: e.target.value})}
+              />
+            </div>
+
+            {/* Plate number */}
+            <div className="bg-gray-50 rounded-2xl p-4 flex items-center gap-4 border border-gray-100 focus-within:border-[#00B14F] focus-within:bg-white transition-all">
+              <ClipboardList className="w-5 h-5 text-gray-400" />
+              <input 
+                required
+                type="text" 
+                placeholder="Plate number (e.g. ABC 1234)"
+                className="bg-transparent border-none outline-none text-sm font-medium text-gray-900 w-full placeholder:text-gray-400"
+                value={driverForm.plateNumber}
+                onChange={(e) => setDriverForm({...driverForm, plateNumber: e.target.value})}
+              />
+            </div>
+
+            {/* License number */}
+            <div className="bg-gray-50 rounded-2xl p-4 flex items-center gap-4 border border-gray-100 focus-within:border-[#00B14F] focus-within:bg-white transition-all">
+              <Shield className="w-5 h-5 text-gray-400" />
+              <input 
+                required
+                type="text" 
+                placeholder="Driver's license number"
+                className="bg-transparent border-none outline-none text-sm font-medium text-gray-900 w-full placeholder:text-gray-400"
+                value={driverForm.licenseNumber}
+                onChange={(e) => setDriverForm({...driverForm, licenseNumber: e.target.value})}
+              />
+            </div>
+          </div>
+
+          {/* Button */}
+          <button 
+            type="submit"
+            disabled={authLoading}
+            className="w-full bg-[#00B14F] hover:bg-[#009241] text-white py-[18px] rounded-2xl font-bold text-base shadow-lg shadow-green-100 active:scale-95 transition-all mt-4 disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {authLoading ? <RefreshCw className="w-5 h-5 animate-spin" /> : 'Create Driver Account'}
+          </button>
+
+          {/* Sign In Link */}
+          <div className="w-full text-center mt-2 shrink-0">
+            <button 
+              type="button"
+              onClick={() => setCurrentPage?.('rider')}
+              className="text-xs font-semibold text-gray-400 cursor-pointer bg-transparent border-none outline-none"
+            >
+              Already registered? <span className="text-[#00B14F] hover:underline">Sign In</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    );
+  }
+
+  if (step === 'passenger-signup') {
+    const handleSignup = async (e) => {
+      e.preventDefault();
+      if (signupForm.password !== signupForm.confirmPassword) {
+        alert("Passwords do not match!");
+        return;
+      }
+      if (signupForm.password.length < 6) {
+        alert("Password must be at least 6 characters!");
+        return;
+      }
+      
+      setAuthLoading(true);
+      try {
+        const res = await fetch('/api/passenger/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fullName: signupForm.fullName,
+            email: signupForm.email,
+            phoneNumber: signupForm.phoneNumber,
+            password: signupForm.password
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          localStorage.setItem('passenger_user', JSON.stringify(data.passenger));
+          setPassenger(data.passenger);
+          alert(data.message || "Account created successfully!");
+          setStep('selection');
+        } else {
+          alert(data.message || "Failed to create account");
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Error connecting to server");
+      } finally {
+        setAuthLoading(false);
+      }
+    };
+
+    return (
+      <div className="min-h-screen bg-white flex flex-col justify-between p-6 font-['DM_Sans',_sans-serif] animate-fadeIn text-gray-900">
+        {/* Header */}
+        <div className="w-full pt-6 select-none shrink-0">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => setStep('role-select')}
+              className="p-2 hover:bg-gray-100 rounded-full transition-all active:scale-95"
+            >
+              <ArrowLeft className="w-6 h-6 text-gray-850" />
+            </button>
+            <h2 className="text-xl font-bold text-gray-900">Passenger Sign Up</h2>
+          </div>
+          <p className="text-xs text-gray-400 font-medium ml-12 mt-1">Create your passenger account</p>
+        </div>
+
+        {/* Signup Form */}
+        <form onSubmit={handleSignup} className="flex-1 flex flex-col justify-center gap-4 max-w-sm w-full mx-auto my-auto py-8">
+          {/* Full Name */}
+          <div className="bg-gray-50 rounded-2xl p-4 flex items-center gap-4 border border-gray-100 focus-within:border-[#00B14F] focus-within:bg-white transition-all">
+            <User className="w-5 h-5 text-gray-400" />
+            <input 
+              required
+              type="text" 
+              placeholder="Full name"
+              className="bg-transparent border-none outline-none text-sm font-medium text-gray-905 w-full placeholder:text-gray-400"
+              value={signupForm.fullName}
+              onChange={(e) => setSignupForm({...signupForm, fullName: e.target.value})}
+            />
+          </div>
+
+          {/* Email Address */}
+          <div className="bg-gray-50 rounded-2xl p-4 flex items-center gap-4 border border-gray-100 focus-within:border-[#00B14F] focus-within:bg-white transition-all">
+            <Mail className="w-5 h-5 text-gray-400" />
+            <input 
+              type="email" 
+              placeholder="Email address"
+              className="bg-transparent border-none outline-none text-sm font-medium text-gray-905 w-full placeholder:text-gray-400"
+              value={signupForm.email}
+              onChange={(e) => setSignupForm({...signupForm, email: e.target.value})}
+            />
+          </div>
+
+          {/* Mobile Number */}
+          <div className="bg-gray-50 rounded-2xl p-4 flex items-center gap-4 border border-gray-100 focus-within:border-[#00B14F] focus-within:bg-white transition-all">
+            <Phone className="w-5 h-5 text-gray-400" />
+            <input 
+              required
+              type="tel" 
+              placeholder="Mobile number"
+              className="bg-transparent border-none outline-none text-sm font-medium text-gray-905 w-full placeholder:text-gray-400"
+              value={signupForm.phoneNumber}
+              onChange={(e) => setSignupForm({...signupForm, phoneNumber: e.target.value})}
+            />
+          </div>
+
+          {/* Password */}
+          <div className="bg-gray-50 rounded-2xl p-4 flex items-center gap-4 border border-gray-100 focus-within:border-[#00B14F] focus-within:bg-white transition-all relative">
+            <Lock className="w-5 h-5 text-gray-400" />
+            <input 
+              required
+              type={showPassword ? "text" : "password"} 
+              placeholder="Password (min. 6 characters)"
+              className="bg-transparent border-none outline-none text-sm font-medium text-gray-905 w-full placeholder:text-gray-400 pr-10"
+              value={signupForm.password}
+              onChange={(e) => setSignupForm({...signupForm, password: e.target.value})}
+            />
+            <button 
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+            >
+              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+
+          {/* Confirm Password */}
+          <div className="bg-gray-50 rounded-2xl p-4 flex items-center gap-4 border border-gray-100 focus-within:border-[#00B14F] focus-within:bg-white transition-all">
+            <Lock className="w-5 h-5 text-gray-400" />
+            <input 
+              required
+              type="password" 
+              placeholder="Confirm password"
+              className="bg-transparent border-none outline-none text-sm font-medium text-gray-905 w-full placeholder:text-gray-400"
+              value={signupForm.confirmPassword}
+              onChange={(e) => setSignupForm({...signupForm, confirmPassword: e.target.value})}
+            />
+          </div>
+
+          {/* Button */}
+          <button 
+            type="submit"
+            disabled={authLoading}
+            className="w-full bg-[#00B14F] hover:bg-[#009241] text-white py-[18px] rounded-2xl font-bold text-base shadow-lg shadow-green-100 active:scale-95 transition-all mt-4 disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {authLoading ? <RefreshCw className="w-5 h-5 animate-spin" /> : 'Create Passenger Account'}
+          </button>
+        </form>
+
+        {/* Link */}
+        <div className="w-full text-center pb-8 shrink-0">
+          <button 
+            onClick={() => setStep('passenger-login')}
+            className="text-xs font-semibold text-gray-400 cursor-pointer bg-transparent border-none outline-none"
+          >
+            Already registered? <span className="text-[#00B14F] hover:underline">Sign In</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (step === 'passenger-login') {
+    const handleLogin = async (e) => {
+      e.preventDefault();
+      setAuthLoading(true);
+      try {
+        const res = await fetch('/api/passenger/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            phoneNumber: loginForm.phoneNumber,
+            password: loginForm.password
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          localStorage.setItem('passenger_user', JSON.stringify(data.passenger));
+          setPassenger(data.passenger);
+          alert("Login successful!");
+          setStep('selection');
+        } else {
+          alert(data.message || "Failed to log in");
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Error connecting to server");
+      } finally {
+        setAuthLoading(false);
+      }
+    };
+
+    return (
+      <div className="min-h-screen bg-white flex flex-col justify-between p-6 font-['DM_Sans',_sans-serif] animate-fadeIn text-gray-900">
+        {/* Header */}
+        <div className="w-full pt-6 select-none shrink-0">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => setStep('role-select')}
+              className="p-2 hover:bg-gray-100 rounded-full transition-all active:scale-95"
+            >
+              <ArrowLeft className="w-6 h-6 text-gray-850" />
+            </button>
+            <h2 className="text-xl font-bold text-gray-900">Passenger Sign In</h2>
+          </div>
+          <p className="text-xs text-gray-400 font-medium ml-12 mt-1">Access your passenger account</p>
+        </div>
+
+        {/* Login Form */}
+        <form onSubmit={handleLogin} className="flex-1 flex flex-col justify-center gap-4 max-w-sm w-full mx-auto my-auto py-8">
+          {/* Mobile Number */}
+          <div className="bg-gray-50 rounded-2xl p-4 flex items-center gap-4 border border-gray-100 focus-within:border-[#00B14F] focus-within:bg-white transition-all">
+            <Phone className="w-5 h-5 text-gray-400" />
+            <input 
+              required
+              type="tel" 
+              placeholder="Mobile number"
+              className="bg-transparent border-none outline-none text-sm font-medium text-gray-905 w-full placeholder:text-gray-400"
+              value={loginForm.phoneNumber}
+              onChange={(e) => setLoginForm({...loginForm, phoneNumber: e.target.value})}
+            />
+          </div>
+
+          {/* Password */}
+          <div className="bg-gray-50 rounded-2xl p-4 flex items-center gap-4 border border-gray-100 focus-within:border-[#00B14F] focus-within:bg-white transition-all relative">
+            <Lock className="w-5 h-5 text-gray-400" />
+            <input 
+              required
+              type={showLoginPassword ? "text" : "password"} 
+              placeholder="Password"
+              className="bg-transparent border-none outline-none text-sm font-medium text-gray-905 w-full placeholder:text-gray-400 pr-10"
+              value={loginForm.password}
+              onChange={(e) => setLoginForm({...loginForm, password: e.target.value})}
+            />
+            <button 
+              type="button"
+              onClick={() => setShowLoginPassword(!showLoginPassword)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+            >
+              {showLoginPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+
+          {/* Button */}
+          <button 
+            type="submit"
+            disabled={authLoading}
+            className="w-full bg-[#00B14F] hover:bg-[#009241] text-white py-[18px] rounded-2xl font-bold text-base shadow-lg shadow-green-100 active:scale-95 transition-all mt-4 disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {authLoading ? <RefreshCw className="w-5 h-5 animate-spin" /> : 'Sign In'}
+          </button>
+        </form>
+
+        {/* Link */}
+        <div className="w-full text-center pb-8 shrink-0">
+          <button 
+            onClick={() => setStep('passenger-signup')}
+            className="text-xs font-semibold text-gray-400 cursor-pointer bg-transparent border-none outline-none"
+          >
+            Don't have an account? <span className="text-[#00B14F] hover:underline">Sign Up</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (step === 'tracking') {
     return <PassengerTracking appointmentId={bookingResult} onClose={() => { 
