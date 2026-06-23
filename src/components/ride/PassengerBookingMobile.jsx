@@ -1320,7 +1320,7 @@ const PassengerBookingMobile = ({ setCurrentPage }) => {
                       <img 
                         src={v.img} 
                         alt={v.name}
-                        className={`w-full h-full object-contain ${selectedVehicle === v.id ? 'brightness-100' : 'mix-blend-multiply opacity-80'}`} 
+                        className={`w-full h-full object-contain ${selectedVehicle === v.id ? 'brightness-100' : 'opacity-80 grayscale-[0.3]'}`} 
                       />
                     )}
                   </div>
@@ -1396,7 +1396,7 @@ const PassengerBookingMobile = ({ setCurrentPage }) => {
                       <img 
                         src={v.img} 
                         alt={v.name}
-                        className={`w-[140px] h-20 object-contain ${selectedVehicle === v.id ? 'brightness-100' : 'mix-blend-multiply opacity-80'}`} 
+                        className={`w-[140px] h-20 object-contain ${selectedVehicle === v.id ? 'brightness-100' : 'opacity-80 grayscale-[0.3]'}`} 
                       />
                     )}
                   </div>
