@@ -34,6 +34,7 @@ import SurveyPage from './components/queue/SurveyPage';
 import RidersManagement from './components/admin/RidersManagement';
 import RideScheduling from './components/admin/RideScheduling';
 import PassengerBookingMobile from './components/ride/PassengerBookingMobile';
+import OperatorPortal from './components/operator/OperatorPortal';
 
 
 
@@ -304,6 +305,7 @@ export default function RestaurantApp() {
       case 'queue-teller': return <QueueTellerPage setCurrentPage={setCurrentPage} />;
       case 'survey': return <SurveyPage setCurrentPage={setCurrentPage} />;
       case 'booking-mobile': return <PassengerBookingMobile setCurrentPage={setCurrentPage} />;
+      case 'operator': return <OperatorPortal setCurrentPage={setCurrentPage} />;
       default: return <HomePage setCurrentPage={setCurrentPage} />;
     }
   };
@@ -3293,11 +3295,10 @@ function Header({ currentPage, setCurrentPage, searchQuery, setSearchQuery, defe
             <span>Download</span>
           </button>
           <button onClick={() => { localStorage.setItem('adminActiveTab', 'settings'); setCurrentPage('admin'); }} className="p-2 hover:bg-[#262626]"><Settings className="w-5 h-5 text-[#c6c6c6]" /></button>
-          <button onClick={() => setCurrentPage('queue-teller')} className="bg-[#10b981] px-4 py-2 text-sm font-medium hover:bg-[#0353e9]">LOG IN</button>
         </div>
       </div>
       <div className="w-full h-[30px] bg-[#161616] flex items-center px-8 border-b border-[#393939]">
-        <p className="text-[10px] font-mono text-[#c6c6c6] uppercase tracking-[0.16px]">IBM Carbon v11 / Enterprise Queuing System</p>
+        <p className="text-[10px] font-mono text-[#c6c6c6] uppercase tracking-[0.16px]">IBM Carbon v11 / Teller Feedback</p>
       </div>
     </header>
   );
@@ -3307,8 +3308,33 @@ function Header({ currentPage, setCurrentPage, searchQuery, setSearchQuery, defe
 function HomePage({ setCurrentPage }) {
   return (
     <div>
+      {/* Hero Section */}
+      <section className="w-full bg-[#161616] relative">
+        <img src="assets/images/hero/hero1.PNG" alt="Hero" className="w-full h-auto object-cover object-center" />
+        
+        {/* Logo and Text Overlay at top part */}
+        <div className="absolute top-4 sm:top-8 w-full flex flex-col items-center gap-2 px-4 pointer-events-none z-10">
+          <img src="assets/images/hero/hero5.png" alt="Logo Overlay" className="w-[100px] h-[100px] drop-shadow-[0_4px_8px_rgba(0,0,0,0.5)] object-contain" />
+          <h2 className="text-white font-black text-center text-sm sm:text-lg md:text-2xl lg:text-3xl xl:text-4xl uppercase tracking-[0.1em] drop-shadow-[0_4px_4px_rgba(0,0,0,0.8)] leading-tight">
+            DOT-Accredited Tourist Land Transport Operator
+          </h2>
+        </div>
+
+        <div className="absolute bottom-4 sm:bottom-8 md:bottom-10 w-full flex flex-col items-center gap-4 sm:gap-6 px-4 z-10">
+          <button 
+            onClick={() => {
+              const el = document.getElementById('booking-form');
+              if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }}
+            className="px-10 md:px-14 py-4 md:py-5 bg-[#10B981] hover:bg-[#059669] text-white font-black text-sm uppercase tracking-[0.2em] shadow-2xl transition-all hover-lift btn-animated rounded-full whitespace-nowrap border-2 border-transparent hover:border-white/20"
+          >
+            Book Now
+          </button>
+        </div>
+      </section>
+
       {/* Booking Form Section */}
-      <section className="bg-[#f4f4f4] py-12 lg:py-20">
+      <section id="booking-form" className="bg-[#f4f4f4] py-12 lg:py-20">
         <div className="max-w-4xl mx-auto px-8">
           <div className="mb-12 text-center">
             <h2 className="text-5xl font-light text-[#161616] uppercase tracking-tighter">Booking Engine</h2>

@@ -26,14 +26,27 @@ app.use((req, res, next) => {
 });
 
 // ==================== FILE UPLOADS ====================
-const UPLOADS_DIR = path.join(__dirname, 'uploads');
-if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR);
+const { v2: cloudinary } = require('cloudinary');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
 
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, UPLOADS_DIR),
-  filename: (_req, file, cb) => {
+cloudinary.config({ 
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME, 
+  api_key: process.env.CLOUDINARY_API_KEY, 
+  api_secret: process.env.CLOUDINARY_API_SECRET 
+});
+
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: async (req, file) => {
+    const ext = path.extname(file.originalname).toLowerCase().substring(1);
     const unique = `${Date.now()}-${Math.round(Math.random() * 1e6)}`;
-    cb(null, unique + path.extname(file.originalname));
+    
+    return {
+      folder: 'queuing-system-uploads',
+      format: ext === 'pdf' ? undefined : ext, // avoid setting format for pdf or raw
+      resource_type: ext === 'pdf' ? 'raw' : 'auto',
+      public_id: unique
+    };
   },
 });
 
@@ -48,7 +61,9 @@ const upload = multer({
   },
 });
 
-// Serve uploaded files statically
+// Serve uploaded files statically (kept for backward compatibility with old local files)
+const UPLOADS_DIR = path.join(__dirname, 'uploads');
+if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR);
 app.use('/uploads', express.static(UPLOADS_DIR));
 
 // Upload endpoint
@@ -60,7 +75,8 @@ app.post('/api/staff/upload', (req, res) => {
     if (!req.file) {
       return res.status(400).json({ success: false, message: 'No file uploaded' });
     }
-    const url = `/uploads/${req.file.filename}`;
+    // Cloudinary returns the secure URL in file.path
+    const url = req.file.path;
     res.json({ success: true, url, originalName: req.file.originalname, mimeType: req.file.mimetype });
   });
 });

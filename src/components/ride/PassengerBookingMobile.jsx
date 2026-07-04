@@ -5,7 +5,7 @@ import {
   ArrowLeft, Heart, History, Star,
   Compass, Shield, Phone, MessageSquare,
   CarFront, Bus, Check, Mail, RefreshCw, Play, X, Flag, Plus, Ticket, SlidersHorizontal, CreditCard,
-  Lock, Eye, EyeOff, ClipboardList
+  Lock, Eye, EyeOff, ClipboardList, Briefcase
 } from 'lucide-react';
 import LiveTrackingMap from '../maps/LiveTrackingMap';
 import PassengerTracking from './PassengerTracking';
@@ -70,6 +70,16 @@ const PassengerBookingMobile = ({ setCurrentPage }) => {
     licenseNumber: ''
   });
   const [showDriverPassword, setShowDriverPassword] = useState(false);
+
+  const [operatorForm, setOperatorForm] = useState({
+    fullName: '',
+    email: '',
+    phoneNumber: '',
+    password: '',
+    confirmPassword: '',
+    companyName: ''
+  });
+  const [showOperatorPassword, setShowOperatorPassword] = useState(false);
 
   useEffect(() => {
     const savedBookingId = localStorage.getItem('active_booking_id');
@@ -511,6 +521,38 @@ const PassengerBookingMobile = ({ setCurrentPage }) => {
               </p>
             </div>
           </button>
+
+          {/* Operator Card */}
+          <button
+            onClick={() => setSelectedRole('operator')}
+            className={`w-full text-left p-6 rounded-3xl border-2 transition-all duration-300 relative flex flex-col gap-4 shadow-sm active:scale-[0.99] ${
+              selectedRole === 'operator' 
+                ? 'border-[#00B14F] bg-[#E1F5EE]/20 shadow-[#00B14F]/5' 
+                : 'border-gray-100 bg-white hover:border-gray-200'
+            }`}
+          >
+            {/* Checked badge */}
+            {selectedRole === 'operator' && (
+              <div className="absolute top-4 right-4 w-5 h-5 bg-[#00B14F] text-white rounded-full flex items-center justify-center shadow-md animate-in zoom-in-50 duration-200">
+                <Check className="w-3 h-3 stroke-[3]" />
+              </div>
+            )}
+
+            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-colors ${
+              selectedRole === 'operator' ? 'bg-[#00B14F] text-white' : 'bg-gray-100 text-gray-500'
+            }`}>
+              <ClipboardList className="w-7 h-7" />
+            </div>
+
+            <div>
+              <h3 className={`text-lg font-bold transition-colors ${
+                selectedRole === 'operator' ? 'text-[#00B14F]' : 'text-gray-800'
+              }`}>Operator</h3>
+              <p className="text-xs text-gray-400 font-medium leading-relaxed mt-1">
+                Manage fleet operations and oversee bookings and schedules.
+              </p>
+            </div>
+          </button>
         </div>
 
         {/* Buttons */}
@@ -519,6 +561,8 @@ const PassengerBookingMobile = ({ setCurrentPage }) => {
             onClick={() => {
               if (selectedRole === 'passenger') {
                 setStep('passenger-login');
+              } else if (selectedRole === 'operator') {
+                setCurrentPage?.('operator');
               } else {
                 setCurrentPage?.('rider');
               }
@@ -532,6 +576,8 @@ const PassengerBookingMobile = ({ setCurrentPage }) => {
             onClick={() => {
               if (selectedRole === 'passenger') {
                 setStep('passenger-signup');
+              } else if (selectedRole === 'operator') {
+                setStep('operator-signup');
               } else {
                 setStep('driver-signup');
               }
@@ -741,6 +787,182 @@ const PassengerBookingMobile = ({ setCurrentPage }) => {
             <button 
               type="button"
               onClick={() => setCurrentPage?.('rider')}
+              className="text-xs font-semibold text-gray-400 cursor-pointer bg-transparent border-none outline-none"
+            >
+              Already registered? <span className="text-[#00B14F] hover:underline">Sign In</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    );
+  }
+
+  if (step === 'operator-signup') {
+    const handleOperatorSignup = async (e) => {
+      e.preventDefault();
+      if (operatorForm.password !== operatorForm.confirmPassword) {
+        alert("Passwords do not match!");
+        return;
+      }
+      if (operatorForm.password.length < 6) {
+        alert("Password must be at least 6 characters!");
+        return;
+      }
+
+      setAuthLoading(true);
+      try {
+        // Mock server interaction for Operator registration
+        setTimeout(() => {
+          setAuthLoading(false);
+          const mockOperatorUser = {
+            id: 'OP-' + Math.floor(Math.random() * 10000),
+            full_name: operatorForm.fullName,
+            phone_number: operatorForm.phoneNumber,
+            company_name: operatorForm.companyName,
+            email: operatorForm.email
+          };
+          localStorage.setItem('operator_user', JSON.stringify(mockOperatorUser));
+          alert("Operator account created successfully! You can add your vehicles inside the portal.");
+          setCurrentPage?.('operator');
+        }, 1500);
+      } catch (err) {
+        console.error(err);
+        alert("Error connecting to server");
+        setAuthLoading(false);
+      }
+    };
+
+    return (
+      <div className="min-h-screen bg-white flex flex-col justify-between p-6 font-['DM_Sans',_sans-serif] animate-fadeIn text-gray-900 overflow-y-auto">
+        {/* Header */}
+        <div className="w-full pt-6 select-none shrink-0 mb-6">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => setStep('role-select')}
+              className="p-2 hover:bg-gray-100 rounded-full transition-all active:scale-95"
+            >
+              <ArrowLeft className="w-6 h-6 text-gray-800" />
+            </button>
+            <h2 className="text-xl font-bold text-gray-900">Operator Sign Up</h2>
+          </div>
+          <p className="text-xs text-gray-400 font-medium ml-12 mt-1">Register your fleet management account</p>
+        </div>
+
+        {/* Signup Form */}
+        <form onSubmit={handleOperatorSignup} className="flex-1 flex flex-col gap-5 max-w-sm w-full mx-auto pb-10">
+          
+          {/* Section 1: PERSONAL INFO */}
+          <div className="space-y-4">
+            <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Account Info</h3>
+            
+            {/* Full Name */}
+            <div className="bg-gray-50 rounded-2xl p-4 flex items-center gap-4 border border-gray-100 focus-within:border-[#00B14F] focus-within:bg-white transition-all">
+              <User className="w-5 h-5 text-gray-400" />
+              <input 
+                required
+                type="text" 
+                placeholder="Full name"
+                className="bg-transparent border-none outline-none text-sm font-medium text-gray-900 w-full placeholder:text-gray-400"
+                value={operatorForm.fullName}
+                onChange={(e) => setOperatorForm({...operatorForm, fullName: e.target.value})}
+              />
+            </div>
+
+            {/* Email Address */}
+            <div className="bg-gray-50 rounded-2xl p-4 flex items-center gap-4 border border-gray-100 focus-within:border-[#00B14F] focus-within:bg-white transition-all">
+              <Mail className="w-5 h-5 text-gray-400" />
+              <input 
+                type="email" 
+                placeholder="Email address"
+                className="bg-transparent border-none outline-none text-sm font-medium text-gray-900 w-full placeholder:text-gray-400"
+                value={operatorForm.email}
+                onChange={(e) => setOperatorForm({...operatorForm, email: e.target.value})}
+              />
+            </div>
+
+            {/* Mobile Number */}
+            <div className="bg-gray-50 rounded-2xl p-4 flex items-center gap-4 border border-gray-100 focus-within:border-[#00B14F] focus-within:bg-white transition-all">
+              <Phone className="w-5 h-5 text-gray-400" />
+              <input 
+                required
+                type="tel" 
+                placeholder="Mobile number"
+                className="bg-transparent border-none outline-none text-sm font-medium text-gray-900 w-full placeholder:text-gray-400"
+                value={operatorForm.phoneNumber}
+                onChange={(e) => setOperatorForm({...operatorForm, phoneNumber: e.target.value})}
+              />
+            </div>
+
+            {/* Password */}
+            <div className="bg-gray-50 rounded-2xl p-4 flex items-center gap-4 border border-gray-100 focus-within:border-[#00B14F] focus-within:bg-white transition-all relative">
+              <Lock className="w-5 h-5 text-gray-400" />
+              <input 
+                required
+                type={showOperatorPassword ? "text" : "password"} 
+                placeholder="Password (min. 6 characters)"
+                className="bg-transparent border-none outline-none text-sm font-medium text-gray-900 w-full placeholder:text-gray-400 pr-10"
+                value={operatorForm.password}
+                onChange={(e) => setOperatorForm({...operatorForm, password: e.target.value})}
+              />
+              <button 
+                type="button"
+                onClick={() => setShowOperatorPassword(!showOperatorPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+              >
+                {showOperatorPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+
+            {/* Confirm Password */}
+            <div className="bg-gray-50 rounded-2xl p-4 flex items-center gap-4 border border-gray-100 focus-within:border-[#00B14F] focus-within:bg-white transition-all">
+              <Lock className="w-5 h-5 text-gray-400" />
+              <input 
+                required
+                type="password" 
+                placeholder="Confirm password"
+                className="bg-transparent border-none outline-none text-sm font-medium text-gray-900 w-full placeholder:text-gray-400"
+                value={operatorForm.confirmPassword}
+                onChange={(e) => setOperatorForm({...operatorForm, confirmPassword: e.target.value})}
+              />
+            </div>
+          </div>
+
+          {/* Section 2: FLEET INFO */}
+          <div className="space-y-4 pt-2">
+            <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Fleet Info</h3>
+
+            {/* Company Name */}
+            <div className="bg-gray-50 rounded-2xl p-4 flex items-center gap-4 border border-gray-100 focus-within:border-[#00B14F] focus-within:bg-white transition-all">
+              <Briefcase className="w-5 h-5 text-gray-400" />
+              <input 
+                type="text" 
+                placeholder="Company / Fleet Name (Optional)"
+                className="bg-transparent border-none outline-none text-sm font-medium text-gray-900 w-full placeholder:text-gray-400"
+                value={operatorForm.companyName}
+                onChange={(e) => setOperatorForm({...operatorForm, companyName: e.target.value})}
+              />
+            </div>
+            
+            <div className="bg-[#E1F5EE] rounded-2xl p-4 flex gap-3 text-sm">
+              <Car className="w-5 h-5 text-[#00B14F] shrink-0" />
+              <p className="text-[#009241] font-medium leading-relaxed">You will be able to add and manage multiple vehicles and drivers from your Operator Portal after registration.</p>
+            </div>
+          </div>
+
+          {/* Button */}
+          <button 
+            type="submit"
+            disabled={authLoading}
+            className="w-full bg-[#00B14F] hover:bg-[#009241] text-white py-[18px] rounded-2xl font-bold text-base shadow-lg shadow-green-100 active:scale-95 transition-all mt-4 disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {authLoading ? <RefreshCw className="w-5 h-5 animate-spin" /> : 'Create Operator Account'}
+          </button>
+
+          {/* Sign In Link */}
+          <div className="w-full text-center mt-2 shrink-0">
+            <button 
+              type="button"
+              onClick={() => setCurrentPage?.('operator')}
               className="text-xs font-semibold text-gray-400 cursor-pointer bg-transparent border-none outline-none"
             >
               Already registered? <span className="text-[#00B14F] hover:underline">Sign In</span>
@@ -1205,12 +1427,6 @@ const PassengerBookingMobile = ({ setCurrentPage }) => {
       {/* 2. Floating Header Area (MATCHES PHOTO) */}
       {!destinationSelected ? (
         <div className="relative z-10 p-4 pt-12 flex flex-col gap-4">
-          <div className="flex justify-between items-start">
-            <button className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg pointer-events-auto active:scale-95 transition-all">
-              <Menu className="w-6 h-6 text-gray-700" />
-            </button>
-          </div>
-
           {/* Pickup Card */}
           <div className="bg-white/95 backdrop-blur-md p-4 rounded-2xl shadow-xl flex items-center gap-4 w-full self-center pointer-events-auto border border-white/20 animate-in slide-in-from-top-4 duration-500">
             <div className="flex flex-col items-center shrink-0">
@@ -1286,22 +1502,27 @@ const PassengerBookingMobile = ({ setCurrentPage }) => {
       {!destinationSelected ? (
         <div 
           className={`fixed left-0 right-0 bottom-0 z-30 transition-all duration-500 ease-in-out ${
-            sheetState === 'minimized' ? 'translate-y-[calc(100%-80px)]' : 
-            sheetState === 'medium' ? 'translate-y-[calc(100%-290px)]' : 'translate-y-0'
+            sheetState === 'minimized' ? 'translate-y-[calc(100%-80px)]' : 'translate-y-0'
           }`}
         >
           {/* Handle & Vehicle Tray (HORIZONTAL) */}
           <div className="bg-white/95 backdrop-blur-2xl rounded-t-2xl shadow-[0_-20px_50px_rgba(0,0,0,0.15)] border-t border-white/40 p-4">
             <div 
-              className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6 cursor-pointer"
+              className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-2 cursor-pointer"
               onClick={() => setSheetState(sheetState === 'minimized' ? 'medium' : 'minimized')}
             />
+            <p className="text-center text-sm font-bold text-gray-800 mb-4">
+              Tap to get a ride to your destination
+            </p>
             
             <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2 px-2">
               {vehicles.map((v) => (
                 <button
                   key={v.id}
-                  onClick={() => setSelectedVehicle(v.id)}
+                  onClick={() => {
+                    setSelectedVehicle(v.id);
+                    setIsSearching(true);
+                  }}
                   className={`flex flex-col items-center gap-1 p-3 min-w-[150px] rounded-2xl transition-all duration-300 ${
                     selectedVehicle === v.id 
                       ? 'bg-gray-100 text-gray-900 scale-105' 
@@ -1336,16 +1557,6 @@ const PassengerBookingMobile = ({ setCurrentPage }) => {
             </div>
           </div>
 
-          {/* Search Input Area */}
-          <div className="bg-white h-[80vh] px-6 pt-1 pb-20 border-t border-gray-50">
-            <div 
-              className="bg-gray-100 rounded-2xl p-4 flex items-center gap-4 mb-8 shadow-inner border border-gray-200/50 cursor-pointer active:scale-[0.98] transition-all"
-              onClick={() => setIsSearching(true)}
-            >
-              <Search className="w-5 h-5 text-gray-400" />
-              <div className="text-base font-medium text-gray-400">Where to & for how...</div>
-            </div>
-          </div>
         </div>
       ) : (
         <div 
@@ -1377,7 +1588,10 @@ const PassengerBookingMobile = ({ setCurrentPage }) => {
               ) : vehicles.map((v) => (
                 <button
                   key={v.id}
-                  onClick={() => setSelectedVehicle(v.id)}
+                  onClick={() => {
+                    setSelectedVehicle(v.id);
+                    setIsSearching(true);
+                  }}
                   className={`w-full flex items-center gap-4 p-3 rounded-2xl transition-all duration-300 ${
                     selectedVehicle === v.id 
                       ? 'bg-gray-100 text-gray-900 shadow-sm' 
