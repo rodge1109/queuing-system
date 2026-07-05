@@ -500,10 +500,10 @@ function AppointmentForm() {
                   }`}
                 >
                   {/* Service Icon/Photo Container */}
-                  <div className="h-48 w-full bg-gray-50 flex items-center justify-center relative overflow-hidden">
+                  <div className="h-72 w-full bg-gray-50 flex items-center justify-center relative overflow-hidden">
                     <div className="absolute inset-0 bg-gradient-to-br from-white/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                    <div className="w-32 h-32 flex items-center justify-center text-5xl transform group-hover:scale-110 group-hover:-translate-y-2 transition-all duration-500 ease-out z-10 drop-shadow-xl">
-                      <ServiceIconRender iconName={service.icon} className="w-20 h-20 object-contain" />
+                    <div className="w-52 h-52 flex items-center justify-center text-5xl transform group-hover:scale-110 group-hover:-translate-y-2 transition-all duration-500 ease-out z-10 drop-shadow-xl">
+                      <ServiceIconRender iconName={service.icon} className="w-36 h-36 object-contain" />
                     </div>
                     {/* Category Tag */}
                     <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 text-[8px] font-black uppercase tracking-[2px] text-[#525252] border border-gray-100 shadow-sm">
@@ -523,7 +523,7 @@ function AppointmentForm() {
                     </div>
                     
                     <p className="text-[11px] text-[#525252] leading-relaxed mb-6 line-clamp-3 font-medium opacity-80">
-                      "{service.description || 'Experience our professional and dedicated healthcare service tailored to your specific needs.'}"
+                      "{service.description || 'Enjoy a safe, comfortable, and reliable ride with our professional drivers. Book your preferred vehicle and travel with confidence.'}"
                     </p>
                     
                     <div className="mt-auto pt-4 border-t border-gray-50 flex items-center justify-between">

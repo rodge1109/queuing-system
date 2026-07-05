@@ -556,7 +556,7 @@ export default function RestaurantApp() {
           border-color: #047857 !important;
         }
       `}</style>
-      <div className={`min-h-screen ${currentPage === 'rider' ? 'bg-transparent' : 'bg-white'} ${['admin', 'rider', 'booking-mobile'].includes(currentPage) ? 'p-0 flex flex-col' : 'pb-16 md:pb-0 pt-[70px]'}`}>
+      <div className={`min-h-screen ${currentPage === 'rider' ? 'bg-transparent' : 'bg-white'} ${['admin', 'rider', 'booking-mobile'].includes(currentPage) ? 'p-0 flex flex-col' : 'pt-[70px]'}`}>
         {!['admin', 'rider', 'booking-mobile'].includes(currentPage) && (
           <Header
             currentPage={currentPage}
@@ -584,77 +584,7 @@ export default function RestaurantApp() {
           />
         )}
 
-        {/* Mobile Bottom Navigation - Hide on Admin and Rider */}
-        {!['admin', 'rider', 'booking-mobile'].includes(currentPage) && (
-          <nav className="fixed bottom-0 left-0 right-0 bg-[#F5F3F5] border-t border-[#F5F3F5] md:hidden z-50 pb-safe">
-            <div className="flex justify-around items-center py-2">
-              <div className="relative">
-                <button
-                  onClick={() => setShowLoginMenu(!showLoginMenu)}
-                  className={`flex flex-col items-center px-4 py-1 ${showLoginMenu ? 'text-[#10b981]' : 'text-[#302B27]'}`}
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
-                  </svg>
-                  <span className="text-xs font-medium">Login</span>
-                </button>
-                {showLoginMenu && (
-                  <>
-                    <div className="fixed inset-0 z-40" onClick={() => setShowLoginMenu(false)} />
-                    <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-white rounded-0 shadow-lg border border-gray-200 py-2 w-44 z-50">
-                      <button
-                        onClick={() => { setCurrentPage('queue-teller'); setShowLoginMenu(false); }}
-                        className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 flex items-center gap-2"
-                      >
-                        <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                        </svg>
-                        Teller Station
-                      </button>
-                      <button
-                        onClick={() => { setCurrentPage('admin'); setShowLoginMenu(false); }}
-                        className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 flex items-center gap-2"
-                      >
-                        <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                        Admin Panel
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-              <button
-                onClick={() => setCurrentPage('queue')}
-                className={`flex flex-col items-center px-4 py-1 ${currentPage === 'queue' ? 'text-[#302B27]' : 'text-[#302B27]'}`}
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                </svg>
-                <span className="text-xs font-medium">Queue</span>
-              </button>
-              <button
-                onClick={() => setCurrentPage('queue-display')}
-                className={`flex flex-col items-center px-4 py-1 ${currentPage === 'queue-display' ? 'text-[#10b981]' : 'text-[#302B27]'}`}
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 4h14a2 2 0 012 2v7H3V6a2 2 0 012-2z" />
-                </svg>
-                <span className="text-xs font-medium">Display</span>
-              </button>
-              <button
-                onClick={() => setCurrentPage('queue-teller')}
-                className={`flex flex-col items-center px-4 py-1 ${currentPage === 'queue-teller' ? 'text-[#10b981]' : 'text-[#302B27]'}`}
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                </svg>
-                <span className="text-xs font-medium">Teller</span>
-              </button>
-            </div>
-          </nav>
-        )}
+
         {!['admin', 'rider', 'booking-mobile'].includes(currentPage) && (
           <div className="bg-[#1c1917] border-t border-[#333] p-4 text-center mt-auto flex flex-col gap-2">
             <button
