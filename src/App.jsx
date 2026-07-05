@@ -9,11 +9,11 @@ const ServiceIconRender = ({ iconName, className }) => {
 
   if (iconName && (iconName.startsWith('http') || iconName.startsWith('/uploads')) && !imageError) {
     return (
-      <img 
-        src={iconName} 
-        alt="Icon" 
-        className={className || "w-8 h-8 object-contain"} 
-        onError={() => setImageError(true)} 
+      <img
+        src={iconName}
+        alt="Icon"
+        className={className || "w-8 h-8 object-contain"}
+        onError={() => setImageError(true)}
       />
     );
   }
@@ -556,7 +556,7 @@ export default function RestaurantApp() {
           border-color: #047857 !important;
         }
       `}</style>
-      <div className={`min-h-screen ${currentPage === 'rider' ? 'bg-transparent' : 'bg-white'} ${['admin', 'rider', 'booking-mobile'].includes(currentPage) ? 'p-0 flex flex-col' : 'pb-16 md:pb-0 pt-[100px]'}`}>
+      <div className={`min-h-screen ${currentPage === 'rider' ? 'bg-transparent' : 'bg-white'} ${['admin', 'rider', 'booking-mobile'].includes(currentPage) ? 'p-0 flex flex-col' : 'pb-16 md:pb-0 pt-[70px]'}`}>
         {!['admin', 'rider', 'booking-mobile'].includes(currentPage) && (
           <Header
             currentPage={currentPage}
@@ -2304,246 +2304,245 @@ function AdminDashboard({ setCurrentPage }) {
                 {!selectedCalendarDate ? (
                   <>
                     {/* Legend */}
-                <div className="px-6 py-3 bg-[#f9fafb] border-b border-[#e0e0e0] flex flex-wrap gap-4 items-center">
-                  {[
-                    { color: 'bg-[#24a148]', label: 'Confirmed' },
-                    { color: 'bg-yellow-400', label: 'Pending' },
-                    { color: 'bg-[#161616]', label: 'Completed' },
-                    { color: 'bg-red-400', label: 'Cancelled' },
-                    { color: 'bg-red-100 border border-red-300', label: 'Blocked Day' },
-                  ].map(({ color, label }) => (
-                    <div key={label} className="flex items-center gap-1.5">
-                      <span className={`w-2.5 h-2.5 force-circle ${color}`}></span>
-                      <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{label}</span>
+                    <div className="px-6 py-3 bg-[#f9fafb] border-b border-[#e0e0e0] flex flex-wrap gap-4 items-center">
+                      {[
+                        { color: 'bg-[#24a148]', label: 'Confirmed' },
+                        { color: 'bg-yellow-400', label: 'Pending' },
+                        { color: 'bg-[#161616]', label: 'Completed' },
+                        { color: 'bg-red-400', label: 'Cancelled' },
+                        { color: 'bg-red-100 border border-red-300', label: 'Blocked Day' },
+                      ].map(({ color, label }) => (
+                        <div key={label} className="flex items-center gap-1.5">
+                          <span className={`w-2.5 h-2.5 force-circle ${color}`}></span>
+                          <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{label}</span>
+                        </div>
+                      ))}
+                      <div className="ml-auto text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                        {calendarData.appointments?.length || 0} bookings this month
+                      </div>
                     </div>
-                  ))}
-                  <div className="ml-auto text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                    {calendarData.appointments?.length || 0} bookings this month
-                  </div>
-                </div>
 
-                {/* Day Headers */}
-                <div className="grid grid-cols-7 border-b border-[#e0e0e0]">
-                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, i) => (
-                    <div key={day} className={`py-3 text-center text-[10px] font-black uppercase tracking-[2px] ${i === 0 || i === 6 ? 'text-gray-300' : 'text-[#525252]'}`}>
-                      {day}
+                    {/* Day Headers */}
+                    <div className="grid grid-cols-7 border-b border-[#e0e0e0]">
+                      {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, i) => (
+                        <div key={day} className={`py-3 text-center text-[10px] font-black uppercase tracking-[2px] ${i === 0 || i === 6 ? 'text-gray-300' : 'text-[#525252]'}`}>
+                          {day}
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
 
-                {/* Calendar Grid */}
-                <div className="grid grid-cols-7">
-                  {(() => {
-                    const firstDay = new Date(calendarYear, calendarMonth - 1, 1).getDay();
-                    const daysInMonth = new Date(calendarYear, calendarMonth, 0).getDate();
-                    const todayStr = new Date().toISOString().split('T')[0];
-                    const days = [];
+                    {/* Calendar Grid */}
+                    <div className="grid grid-cols-7">
+                      {(() => {
+                        const firstDay = new Date(calendarYear, calendarMonth - 1, 1).getDay();
+                        const daysInMonth = new Date(calendarYear, calendarMonth, 0).getDate();
+                        const todayStr = new Date().toISOString().split('T')[0];
+                        const days = [];
 
-                    // Empty leading cells
-                    for (let i = 0; i < firstDay; i++) {
-                      days.push(<div key={`empty-${i}`} className="min-h-[110px] bg-[#fafafa] border-b border-r border-[#f0f0f0]" />);
-                    }
+                        // Empty leading cells
+                        for (let i = 0; i < firstDay; i++) {
+                          days.push(<div key={`empty-${i}`} className="min-h-[110px] bg-[#fafafa] border-b border-r border-[#f0f0f0]" />);
+                        }
 
-                    for (let day = 1; day <= daysInMonth; day++) {
-                      const dateStr = `${calendarYear}-${String(calendarMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                      const dayApts = calendarData.appointments?.filter(a => {
-                        const d = (a.preferred_date || '').slice(0, 10);
-                        return d === dateStr;
-                      }) || [];
-                      const isBlocked = calendarData.blockedDates?.some(b => b.blocked_date === dateStr);
-                      const isToday = dateStr === todayStr;
-                      const isWeekend = (new Date(dateStr).getDay() === 0 || new Date(dateStr).getDay() === 6);
+                        for (let day = 1; day <= daysInMonth; day++) {
+                          const dateStr = `${calendarYear}-${String(calendarMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                          const dayApts = calendarData.appointments?.filter(a => {
+                            const d = (a.preferred_date || '').slice(0, 10);
+                            return d === dateStr;
+                          }) || [];
+                          const isBlocked = calendarData.blockedDates?.some(b => b.blocked_date === dateStr);
+                          const isToday = dateStr === todayStr;
+                          const isWeekend = (new Date(dateStr).getDay() === 0 || new Date(dateStr).getDay() === 6);
 
-                      // Group by status for icons
-                      const confirmed = dayApts.filter(a => a.status === 'confirmed');
-                      const pending = dayApts.filter(a => a.status === 'pending');
-                      const completed = dayApts.filter(a => a.status === 'completed');
-                      const cancelled = dayApts.filter(a => a.status === 'cancelled');
+                          // Group by status for icons
+                          const confirmed = dayApts.filter(a => a.status === 'confirmed');
+                          const pending = dayApts.filter(a => a.status === 'pending');
+                          const completed = dayApts.filter(a => a.status === 'completed');
+                          const cancelled = dayApts.filter(a => a.status === 'cancelled');
 
-                      days.push(
-                        <div
-                          key={day}
-                          onClick={() => setSelectedCalendarDate(dateStr)}
-                          className={`min-h-[110px] border-b border-r border-[#e0e0e0] p-2 relative transition-all group cursor-pointer
+                          days.push(
+                            <div
+                              key={day}
+                              onClick={() => setSelectedCalendarDate(dateStr)}
+                              className={`min-h-[110px] border-b border-r border-[#e0e0e0] p-2 relative transition-all group cursor-pointer
                             ${isBlocked ? 'bg-red-50' :
-                              isToday ? 'bg-[#f0fdf4]' :
-                                isWeekend ? 'bg-[#fafafa]' : 'bg-white'}
+                                  isToday ? 'bg-[#f0fdf4]' :
+                                    isWeekend ? 'bg-[#fafafa]' : 'bg-white'}
                             hover:bg-[#f0fdf4]`}
-                        >
-                          {/* Day Number */}
-                          <div className={`w-7 h-7 force-circle flex items-center justify-center text-[12px] font-black mb-1.5 transition-all
+                            >
+                              {/* Day Number */}
+                              <div className={`w-7 h-7 force-circle flex items-center justify-center text-[12px] font-black mb-1.5 transition-all
                             ${isToday
-                              ? 'bg-[#24a148] text-white shadow-md'
-                              : isBlocked
-                                ? 'text-red-400'
-                                : 'text-[#161616] group-hover:bg-[#24a148] group-hover:text-white'
-                            }`}>
-                            {day}
-                          </div>
+                                  ? 'bg-[#24a148] text-white shadow-md'
+                                  : isBlocked
+                                    ? 'text-red-400'
+                                    : 'text-[#161616] group-hover:bg-[#24a148] group-hover:text-white'
+                                }`}>
+                                {day}
+                              </div>
 
-                          {/* Blocked Label */}
-                          {isBlocked && (
-                            <div className="text-[9px] font-black text-red-400 uppercase tracking-widest mb-1">🚫 Closed</div>
-                          )}
+                              {/* Blocked Label */}
+                              {isBlocked && (
+                                <div className="text-[9px] font-black text-red-400 uppercase tracking-widest mb-1">🚫 Closed</div>
+                              )}
 
-                          {/* Booking Icons */}
-                          {dayApts.length > 0 && !isBlocked && (
-                            <div className="space-y-0.5">
-                              {/* Show up to 3 individual entries */}
-                              {dayApts.slice(0, 3).map((apt, idx) => {
-                                const dotColor =
-                                  apt.status === 'confirmed' ? 'bg-[#24a148]' :
-                                    apt.status === 'pending' ? 'bg-yellow-400' :
-                                      apt.status === 'completed' ? 'bg-[#161616]' :
-                                        apt.status === 'cancelled' ? 'bg-red-400' : 'bg-gray-300';
+                              {/* Booking Icons */}
+                              {dayApts.length > 0 && !isBlocked && (
+                                <div className="space-y-0.5">
+                                  {/* Show up to 3 individual entries */}
+                                  {dayApts.slice(0, 3).map((apt, idx) => {
+                                    const dotColor =
+                                      apt.status === 'confirmed' ? 'bg-[#24a148]' :
+                                        apt.status === 'pending' ? 'bg-yellow-400' :
+                                          apt.status === 'completed' ? 'bg-[#161616]' :
+                                            apt.status === 'cancelled' ? 'bg-red-400' : 'bg-gray-300';
 
-                                const icon =
-                                  apt.status === 'confirmed' ? '✓' :
-                                    apt.status === 'pending' ? '◷' :
-                                      apt.status === 'completed' ? '●' :
-                                        apt.status === 'cancelled' ? '✕' : '·';
+                                    const icon =
+                                      apt.status === 'confirmed' ? '✓' :
+                                        apt.status === 'pending' ? '◷' :
+                                          apt.status === 'completed' ? '●' :
+                                            apt.status === 'cancelled' ? '✕' : '·';
 
-                                return (
-                                  <div
-                                    key={idx}
-                                    title={`${apt.full_name} · ${apt.preferred_time} · ${apt.status}`}
-                                    className={`flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-bold cursor-default truncate
+                                    return (
+                                      <div
+                                        key={idx}
+                                        title={`${apt.full_name} · ${apt.preferred_time} · ${apt.status}`}
+                                        className={`flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-bold cursor-default truncate
                                       ${apt.status === 'confirmed' ? 'bg-[#f0fdf4] text-[#24a148]' :
-                                        apt.status === 'pending' ? 'bg-yellow-50 text-yellow-700' :
-                                          apt.status === 'completed' ? 'bg-[#f4f4f4] text-[#161616]' :
-                                            apt.status === 'cancelled' ? 'bg-red-50 text-red-500' : 'bg-gray-50 text-gray-500'
-                                      }`}
-                                  >
-                                    <span className={`w-1.5 h-1.5 force-circle flex-shrink-0 ${dotColor}`}></span>
-                                    <span className="truncate">{apt.preferred_time?.split(' ')[0]} {apt.full_name?.split(' ')[0]}</span>
-                                  </div>
-                                );
-                              })}
+                                            apt.status === 'pending' ? 'bg-yellow-50 text-yellow-700' :
+                                              apt.status === 'completed' ? 'bg-[#f4f4f4] text-[#161616]' :
+                                                apt.status === 'cancelled' ? 'bg-red-50 text-red-500' : 'bg-gray-50 text-gray-500'
+                                          }`}
+                                      >
+                                        <span className={`w-1.5 h-1.5 force-circle flex-shrink-0 ${dotColor}`}></span>
+                                        <span className="truncate">{apt.preferred_time?.split(' ')[0]} {apt.full_name?.split(' ')[0]}</span>
+                                      </div>
+                                    );
+                                  })}
 
-                              {/* +N more */}
-                              {dayApts.length > 3 && (
-                                <div className="text-[9px] font-black text-[#24a148] px-1 uppercase tracking-wide">
-                                  +{dayApts.length - 3} more
+                                  {/* +N more */}
+                                  {dayApts.length > 3 && (
+                                    <div className="text-[9px] font-black text-[#24a148] px-1 uppercase tracking-wide">
+                                      +{dayApts.length - 3} more
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Total dot indicator in top-right if has bookings */}
+                              {dayApts.length > 0 && (
+                                <div className="absolute top-1.5 right-1.5 flex items-center gap-0.5">
+                                  {confirmed.length > 0 && <span className="w-2 h-2 force-circle bg-[#24a148] block" title={`${confirmed.length} confirmed`}></span>}
+                                  {pending.length > 0 && <span className="w-2 h-2 force-circle bg-yellow-400 block" title={`${pending.length} pending`}></span>}
+                                  {completed.length > 0 && <span className="w-2 h-2 force-circle bg-[#161616] block" title={`${completed.length} completed`}></span>}
+                                  {cancelled.length > 0 && <span className="w-2 h-2 force-circle bg-red-400 block" title={`${cancelled.length} cancelled`}></span>}
                                 </div>
                               )}
                             </div>
-                          )}
+                          );
+                        }
+                        return days;
+                      })()}
+                    </div>
+                  </>
+                ) : (
+                  <div className="overflow-y-auto bg-white flex-1 flex flex-col">
+                    {(() => {
+                      let dayApts = calendarData.appointments?.filter(a => (a.preferred_date || '').slice(0, 10) === selectedCalendarDate) || [];
+                      if (dayApts.length === 0) {
+                        return (
+                          <div className="flex flex-col items-center justify-center flex-1 min-h-[300px] opacity-50">
+                            <Calendar className="w-16 h-16 mb-4 text-gray-300" />
+                            <p className="text-center text-gray-500 uppercase font-black tracking-widest text-xs">No schedule for this date</p>
+                          </div>
+                        );
+                      }
 
-                          {/* Total dot indicator in top-right if has bookings */}
-                          {dayApts.length > 0 && (
-                            <div className="absolute top-1.5 right-1.5 flex items-center gap-0.5">
-                              {confirmed.length > 0 && <span className="w-2 h-2 force-circle bg-[#24a148] block" title={`${confirmed.length} confirmed`}></span>}
-                              {pending.length > 0 && <span className="w-2 h-2 force-circle bg-yellow-400 block" title={`${pending.length} pending`}></span>}
-                              {completed.length > 0 && <span className="w-2 h-2 force-circle bg-[#161616] block" title={`${completed.length} completed`}></span>}
-                              {cancelled.length > 0 && <span className="w-2 h-2 force-circle bg-red-400 block" title={`${cancelled.length} cancelled`}></span>}
-                            </div>
-                          )}
+                      // Sort chronologically by time
+                      dayApts = dayApts.sort((a, b) => {
+                        const timeA = new Date(`2000/01/01 ${a.preferred_time}`).getTime();
+                        const timeB = new Date(`2000/01/01 ${b.preferred_time}`).getTime();
+                        return (timeA || 0) - (timeB || 0);
+                      });
+
+                      return (
+                        <div className="w-full overflow-x-auto">
+                          <table className="w-full text-left border-collapse text-xs">
+                            <thead>
+                              <tr className="bg-[#f4f4f4] border-b border-[#e0e0e0]">
+                                <th className="px-4 py-2.5 font-bold uppercase tracking-widest text-gray-500 text-[9px]">Trip ID</th>
+                                <th className="px-4 py-2.5 font-bold uppercase tracking-widest text-gray-500 text-[9px]">Passenger</th>
+                                <th className="px-4 py-2.5 font-bold uppercase tracking-widest text-gray-500 text-[9px]">Driver / Vehicle</th>
+                                <th className="px-4 py-2.5 font-bold uppercase tracking-widest text-gray-500 text-[9px]">Route (Pickup &rarr; Drop)</th>
+                                <th className="px-4 py-2.5 font-bold uppercase tracking-widest text-gray-500 text-[9px]">Fare</th>
+                                <th className="px-4 py-2.5 font-bold uppercase tracking-widest text-gray-500 text-[9px]">Status</th>
+                                <th className="px-4 py-2.5 font-bold uppercase tracking-widest text-gray-500 text-[9px]">Schedule</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {dayApts.map((apt) => {
+                                const isAssigned = !!apt.rider_id && apt.transport_status !== 'unassigned';
+                                return (
+                                  <tr key={apt.id} className="border-b border-gray-100 hover:bg-gray-50/50 transition-all duration-200">
+                                    <td className="px-4 py-2 font-mono font-bold text-gray-900">
+                                      #{apt.id}
+                                    </td>
+                                    <td className="px-4 py-2">
+                                      <div className="font-bold text-gray-900">{apt.full_name || 'Unknown Passenger'}</div>
+                                      <div className="text-[10px] text-gray-400">{apt.phone_number || 'No Phone'}</div>
+                                    </td>
+                                    <td className="px-4 py-2">
+                                      {apt.status?.toLowerCase() === 'cancelled' || apt.transport_status?.toLowerCase() === 'cancelled' ? (
+                                        <span className="text-gray-500 font-semibold uppercase text-[10px] bg-gray-50 px-2 py-0.5 border border-gray-200 rounded-sm">Cancelled</span>
+                                      ) : isAssigned && apt.rider_name ? (
+                                        <>
+                                          <div className="font-bold text-gray-900">{apt.rider_name}</div>
+                                          <div className="text-[10px] text-gray-400">
+                                            {apt.vehicle_type || 'Vehicle'} • {apt.plate_number || 'No Plate'}
+                                          </div>
+                                        </>
+                                      ) : (
+                                        <span className="text-red-500 font-semibold uppercase text-[10px] bg-red-50 px-2 py-0.5 border border-red-100 rounded-sm">Unassigned</span>
+                                      )}
+                                    </td>
+                                    <td className="px-4 py-2 max-w-[240px]">
+                                      <div className="text-gray-900 truncate" title={apt.pickup_location}>
+                                        <span className="text-green-600 font-bold mr-1">P:</span>{apt.pickup_location || 'Not specified'}
+                                      </div>
+                                      <div className="text-gray-500 truncate mt-0.5" title={apt.destination_location}>
+                                        <span className="text-blue-500 font-bold mr-1">D:</span>{apt.destination_location || 'Not specified'}
+                                      </div>
+                                    </td>
+                                    <td className="px-4 py-2 font-mono font-bold text-gray-900">
+                                      PHP {parseFloat(apt.total_amount || 0).toFixed(2)}
+                                    </td>
+                                    <td className="px-4 py-2">
+                                      <span className={`px-2.5 py-1 text-[9px] font-semibold uppercase tracking-wider rounded-sm ${apt.transport_status?.toLowerCase() === 'completed' || apt.status?.toLowerCase() === 'completed' ? 'bg-green-50 text-green-700 border border-green-200' :
+                                        apt.transport_status?.toLowerCase() === 'cancelled' || apt.status?.toLowerCase() === 'cancelled' ? 'bg-red-50 text-red-700 border border-red-200' :
+                                          apt.transport_status?.toLowerCase() === 'sos' ? 'bg-red-600 text-white font-bold animate-pulse' :
+                                            (!isAssigned && (apt.status?.toLowerCase() === 'pending' || apt.transport_status?.toLowerCase() === 'unassigned')) ? 'bg-yellow-50 text-yellow-700 border border-yellow-200 animate-pulse' :
+                                              'bg-blue-50 text-blue-700 border border-blue-200'
+                                        }`}>
+                                        {apt.status?.toLowerCase() === 'cancelled' ? 'cancelled' :
+                                          apt.status?.toLowerCase() === 'completed' ? 'completed' :
+                                            (apt.transport_status?.toLowerCase() !== 'unassigned' && apt.transport_status) ? apt.transport_status :
+                                              apt.status || 'unassigned'}
+                                      </span>
+                                    </td>
+                                    <td className="px-4 py-2 text-gray-500 font-medium whitespace-nowrap">
+                                      <div className="font-semibold text-gray-900">{apt.preferred_date ? new Date(apt.preferred_date).toLocaleDateString() : 'N/A'}</div>
+                                      <div className="text-[10px] text-gray-400">{apt.preferred_time || 'N/A'}</div>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
                         </div>
                       );
-                    }
-                    return days;
-                  })()}
-                </div>
-              </>
-            ) : (
-              <div className="overflow-y-auto bg-white flex-1 flex flex-col">
-                {(() => {
-                  let dayApts = calendarData.appointments?.filter(a => (a.preferred_date || '').slice(0, 10) === selectedCalendarDate) || [];
-                  if (dayApts.length === 0) {
-                    return (
-                      <div className="flex flex-col items-center justify-center flex-1 min-h-[300px] opacity-50">
-                        <Calendar className="w-16 h-16 mb-4 text-gray-300" />
-                        <p className="text-center text-gray-500 uppercase font-black tracking-widest text-xs">No schedule for this date</p>
-                      </div>
-                    );
-                  }
-                  
-                  // Sort chronologically by time
-                  dayApts = dayApts.sort((a, b) => {
-                    const timeA = new Date(`2000/01/01 ${a.preferred_time}`).getTime();
-                    const timeB = new Date(`2000/01/01 ${b.preferred_time}`).getTime();
-                    return (timeA || 0) - (timeB || 0);
-                  });
-
-                  return (
-                    <div className="w-full overflow-x-auto">
-                      <table className="w-full text-left border-collapse text-xs">
-                        <thead>
-                          <tr className="bg-[#f4f4f4] border-b border-[#e0e0e0]">
-                            <th className="px-4 py-2.5 font-bold uppercase tracking-widest text-gray-500 text-[9px]">Trip ID</th>
-                            <th className="px-4 py-2.5 font-bold uppercase tracking-widest text-gray-500 text-[9px]">Passenger</th>
-                            <th className="px-4 py-2.5 font-bold uppercase tracking-widest text-gray-500 text-[9px]">Driver / Vehicle</th>
-                            <th className="px-4 py-2.5 font-bold uppercase tracking-widest text-gray-500 text-[9px]">Route (Pickup &rarr; Drop)</th>
-                            <th className="px-4 py-2.5 font-bold uppercase tracking-widest text-gray-500 text-[9px]">Fare</th>
-                            <th className="px-4 py-2.5 font-bold uppercase tracking-widest text-gray-500 text-[9px]">Status</th>
-                            <th className="px-4 py-2.5 font-bold uppercase tracking-widest text-gray-500 text-[9px]">Schedule</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {dayApts.map((apt) => {
-                            const isAssigned = !!apt.rider_id && apt.transport_status !== 'unassigned';
-                            return (
-                              <tr key={apt.id} className="border-b border-gray-100 hover:bg-gray-50/50 transition-all duration-200">
-                                <td className="px-4 py-2 font-mono font-bold text-gray-900">
-                                  #{apt.id}
-                                </td>
-                                <td className="px-4 py-2">
-                                  <div className="font-bold text-gray-900">{apt.full_name || 'Unknown Passenger'}</div>
-                                  <div className="text-[10px] text-gray-400">{apt.phone_number || 'No Phone'}</div>
-                                </td>
-                                <td className="px-4 py-2">
-                                  {apt.status?.toLowerCase() === 'cancelled' || apt.transport_status?.toLowerCase() === 'cancelled' ? (
-                                    <span className="text-gray-500 font-semibold uppercase text-[10px] bg-gray-50 px-2 py-0.5 border border-gray-200 rounded-sm">Cancelled</span>
-                                  ) : isAssigned && apt.rider_name ? (
-                                    <>
-                                      <div className="font-bold text-gray-900">{apt.rider_name}</div>
-                                      <div className="text-[10px] text-gray-400">
-                                        {apt.vehicle_type || 'Vehicle'} • {apt.plate_number || 'No Plate'}
-                                      </div>
-                                    </>
-                                  ) : (
-                                    <span className="text-red-500 font-semibold uppercase text-[10px] bg-red-50 px-2 py-0.5 border border-red-100 rounded-sm">Unassigned</span>
-                                  )}
-                                </td>
-                                <td className="px-4 py-2 max-w-[240px]">
-                                  <div className="text-gray-900 truncate" title={apt.pickup_location}>
-                                    <span className="text-green-600 font-bold mr-1">P:</span>{apt.pickup_location || 'Not specified'}
-                                  </div>
-                                  <div className="text-gray-500 truncate mt-0.5" title={apt.destination_location}>
-                                    <span className="text-blue-500 font-bold mr-1">D:</span>{apt.destination_location || 'Not specified'}
-                                  </div>
-                                </td>
-                                <td className="px-4 py-2 font-mono font-bold text-gray-900">
-                                  PHP {parseFloat(apt.total_amount || 0).toFixed(2)}
-                                </td>
-                                <td className="px-4 py-2">
-                                  <span className={`px-2.5 py-1 text-[9px] font-semibold uppercase tracking-wider rounded-sm ${
-                                    apt.transport_status?.toLowerCase() === 'completed' || apt.status?.toLowerCase() === 'completed' ? 'bg-green-50 text-green-700 border border-green-200' :
-                                    apt.transport_status?.toLowerCase() === 'cancelled' || apt.status?.toLowerCase() === 'cancelled' ? 'bg-red-50 text-red-700 border border-red-200' :
-                                    apt.transport_status?.toLowerCase() === 'sos' ? 'bg-red-600 text-white font-bold animate-pulse' :
-                                    (!isAssigned && (apt.status?.toLowerCase() === 'pending' || apt.transport_status?.toLowerCase() === 'unassigned')) ? 'bg-yellow-50 text-yellow-700 border border-yellow-200 animate-pulse' :
-                                    'bg-blue-50 text-blue-700 border border-blue-200'
-                                  }`}>
-                                    {apt.status?.toLowerCase() === 'cancelled' ? 'cancelled' : 
-                                     apt.status?.toLowerCase() === 'completed' ? 'completed' : 
-                                     (apt.transport_status?.toLowerCase() !== 'unassigned' && apt.transport_status) ? apt.transport_status : 
-                                     apt.status || 'unassigned'}
-                                  </span>
-                                </td>
-                                <td className="px-4 py-2 text-gray-500 font-medium whitespace-nowrap">
-                                  <div className="font-semibold text-gray-900">{apt.preferred_date ? new Date(apt.preferred_date).toLocaleDateString() : 'N/A'}</div>
-                                  <div className="text-[10px] text-gray-400">{apt.preferred_time || 'N/A'}</div>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  );
-                })()}
-              </div>
-            )}
+                    })()}
+                  </div>
+                )}
               </div>
             )}
 
@@ -2614,7 +2613,7 @@ function AdminDashboard({ setCurrentPage }) {
                             <h3 className="text-xs font-black uppercase tracking-widest text-[#10b981] mb-1">Daily Earnings (Z-Reading)</h3>
                             <p className="text-[10px] text-gray-400 font-bold uppercase">Date: {reportEarnings.date || reportStartDate}</p>
                           </div>
-                          <button 
+                          <button
                             onClick={() => {
                               const printWindow = window.open('', '', 'width=400,height=600');
                               printWindow.document.write(`
@@ -2629,14 +2628,14 @@ function AdminDashboard({ setCurrentPage }) {
                                   <h2 style="text-align:center;margin-bottom:5px;">Z-READING SUMMARY</h2>
                                   <p style="text-align:center;margin-top:0;">Date: ${reportEarnings.date}</p>
                                   <div class="line"></div>
-                                  <div class="row"><span>Cash/Direct Payments:</span> <span>PHP ${parseFloat(reportEarnings.cash?.total||0).toFixed(2)}</span></div>
-                                  <div class="row"><span>Transactions (Cash):</span> <span>${reportEarnings.cash?.count||0}</span></div>
+                                  <div class="row"><span>Cash/Direct Payments:</span> <span>PHP ${parseFloat(reportEarnings.cash?.total || 0).toFixed(2)}</span></div>
+                                  <div class="row"><span>Transactions (Cash):</span> <span>${reportEarnings.cash?.count || 0}</span></div>
                                   <div class="line"></div>
-                                  <div class="row"><span>Corporate Payments:</span> <span>PHP ${parseFloat(reportEarnings.corporate?.total||0).toFixed(2)}</span></div>
-                                  <div class="row"><span>Transactions (Corp):</span> <span>${reportEarnings.corporate?.count||0}</span></div>
+                                  <div class="row"><span>Corporate Payments:</span> <span>PHP ${parseFloat(reportEarnings.corporate?.total || 0).toFixed(2)}</span></div>
+                                  <div class="row"><span>Transactions (Corp):</span> <span>${reportEarnings.corporate?.count || 0}</span></div>
                                   <div class="line"></div>
-                                  <div class="row bold" style="font-size:14px;"><span>GRAND TOTAL:</span> <span>PHP ${parseFloat(reportEarnings.grandTotal||0).toFixed(2)}</span></div>
-                                  <div class="row bold"><span>Total Transactions:</span> <span>${reportEarnings.totalTransactions||0}</span></div>
+                                  <div class="row bold" style="font-size:14px;"><span>GRAND TOTAL:</span> <span>PHP ${parseFloat(reportEarnings.grandTotal || 0).toFixed(2)}</span></div>
+                                  <div class="row bold"><span>Total Transactions:</span> <span>${reportEarnings.totalTransactions || 0}</span></div>
                                   <div class="line"></div>
                                   <p style="text-align:center;margin-top:20px;">*** END OF REPORT ***</p>
                                 </body></html>
@@ -2653,17 +2652,17 @@ function AdminDashboard({ setCurrentPage }) {
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
                           <div className="p-4 border border-gray-800 bg-gray-900/50">
                             <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Cash / Direct</p>
-                            <p className="text-2xl font-black text-white tracking-tighter">₱{parseFloat(reportEarnings.cash?.total || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
+                            <p className="text-2xl font-black text-white tracking-tighter">₱{parseFloat(reportEarnings.cash?.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                             <p className="text-[9px] text-gray-400 uppercase mt-1">{reportEarnings.cash?.count || 0} Transactions</p>
                           </div>
                           <div className="p-4 border border-gray-800 bg-gray-900/50">
                             <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Corporate</p>
-                            <p className="text-2xl font-black text-white tracking-tighter">₱{parseFloat(reportEarnings.corporate?.total || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
+                            <p className="text-2xl font-black text-white tracking-tighter">₱{parseFloat(reportEarnings.corporate?.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                             <p className="text-[9px] text-gray-400 uppercase mt-1">{reportEarnings.corporate?.count || 0} Transactions</p>
                           </div>
                           <div className="p-4 border border-[#10b981] bg-[#10b981]/10">
                             <p className="text-[10px] font-bold text-[#10b981] uppercase tracking-widest mb-1">Total Daily Revenue</p>
-                            <p className="text-3xl font-black text-[#10b981] tracking-tighter">₱{parseFloat(reportEarnings.grandTotal || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
+                            <p className="text-3xl font-black text-[#10b981] tracking-tighter">₱{parseFloat(reportEarnings.grandTotal || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                             <p className="text-[9px] text-gray-400 uppercase mt-1">{reportEarnings.totalTransactions || 0} Total Transactions</p>
                           </div>
                         </div>
@@ -2774,12 +2773,11 @@ function AdminDashboard({ setCurrentPage }) {
                                     PHP {parseFloat(trip.total_amount || 0).toFixed(2)}
                                   </td>
                                   <td className="px-4 py-4">
-                                    <span className={`px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider ${
-                                      trip.transport_status === 'completed' ? 'bg-green-50 text-green-700 border border-green-200' :
+                                    <span className={`px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider ${trip.transport_status === 'completed' ? 'bg-green-50 text-green-700 border border-green-200' :
                                       trip.transport_status === 'cancelled' ? 'bg-red-50 text-red-700 border border-red-200' :
-                                      trip.transport_status === 'sos' ? 'bg-red-600 text-white font-bold animate-pulse' :
-                                      'bg-blue-50 text-blue-700 border border-blue-200'
-                                    }`}>
+                                        trip.transport_status === 'sos' ? 'bg-red-600 text-white font-bold animate-pulse' :
+                                          'bg-blue-50 text-blue-700 border border-blue-200'
+                                      }`}>
                                       {trip.transport_status}
                                     </span>
                                   </td>
@@ -3257,10 +3255,6 @@ function Header({ currentPage, setCurrentPage, searchQuery, setSearchQuery, defe
   if (currentPage === 'admin') return null;
   const tabs = [
     { id: 'home', label: 'Home' },
-    { id: 'queue', label: 'Queue' },
-    { id: 'queue-display', label: 'Display' },
-    { id: 'queue-teller', label: 'Teller' },
-    { id: 'survey', label: 'Feedback' }
   ];
 
   const handleInstallClick = async () => {
@@ -3275,10 +3269,10 @@ function Header({ currentPage, setCurrentPage, searchQuery, setSearchQuery, defe
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 h-[100px] bg-[#161616] text-white">
+    <header className="fixed top-0 left-0 right-0 z-50 h-[70px] bg-[#161616] text-white">
       <div className="w-full px-8 h-[70px] flex items-center justify-between border-b border-[#393939]">
         <div className="flex items-center space-x-8">
-          <h1 className="text-xl font-bold uppercase tracking-tight cursor-pointer" onClick={() => setCurrentPage('home')}>KINGS <span className="font-light">TRANSPORT</span></h1>
+          <h1 className="text-xl font-bold uppercase tracking-tight cursor-pointer" onClick={() => setCurrentPage('home')}>KINGS <span className="font-light">TOURIST TRANSPORT</span></h1>
           <nav className="hidden lg:flex items-center space-x-1">
             {tabs.map(t => (
               <button key={t.id} onClick={() => setCurrentPage(t.id)} className={`px-4 py-6 text-sm font-medium transition-all border-b-2 ${currentPage === t.id ? 'border-[#10b981] text-white' : 'border-transparent text-[#c6c6c6] hover:text-white'}`}>{t.label}</button>
@@ -3286,7 +3280,25 @@ function Header({ currentPage, setCurrentPage, searchQuery, setSearchQuery, defe
           </nav>
         </div>
         <div className="flex items-center space-x-4">
-          <button 
+          <a href="tel:09177958798" className="hidden sm:flex items-center gap-2 text-[#c6c6c6] hover:text-white text-sm font-semibold tracking-wider transition-all">
+            <svg className="w-4 h-4 text-[#10b981] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+            </svg>
+            <span>0917 795 8798</span>
+          </a>
+          <a href="https://wa.me/639959143064" target="_blank" rel="noopener noreferrer" className="hidden sm:flex items-center gap-2 text-[#c6c6c6] hover:text-[#25D366] text-sm font-semibold tracking-wider transition-all">
+            <svg className="w-4 h-4 text-[#25D366] flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+            </svg>
+            <span>+63 995 914 3064</span>
+          </a>
+          <a href="mailto:info@kingstouristtransport.com" className="hidden lg:flex items-center gap-2 text-[#c6c6c6] hover:text-white text-sm font-semibold tracking-wider transition-all">
+            <svg className="w-4 h-4 text-[#10b981] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+            <span>info@kingstouristtransport.com</span>
+          </a>
+          <button
             onClick={handleInstallClick}
             className="flex items-center gap-2 border border-[#393939] hover:bg-[#262626] text-white px-4 py-2 text-xs font-semibold uppercase tracking-wider transition-all"
             title="Download Kings Transport App"
@@ -3297,9 +3309,7 @@ function Header({ currentPage, setCurrentPage, searchQuery, setSearchQuery, defe
           <button onClick={() => { localStorage.setItem('adminActiveTab', 'settings'); setCurrentPage('admin'); }} className="p-2 hover:bg-[#262626]"><Settings className="w-5 h-5 text-[#c6c6c6]" /></button>
         </div>
       </div>
-      <div className="w-full h-[30px] bg-[#161616] flex items-center px-8 border-b border-[#393939]">
-        <p className="text-[10px] font-mono text-[#c6c6c6] uppercase tracking-[0.16px]">IBM Carbon v11 / Teller Feedback</p>
-      </div>
+
     </header>
   );
 }
@@ -3311,7 +3321,7 @@ function HomePage({ setCurrentPage }) {
       {/* Hero Section */}
       <section className="w-full bg-[#161616] relative">
         <img src="assets/images/hero/hero1.PNG" alt="Hero" className="w-full h-auto object-cover object-center" />
-        
+
         {/* Logo and Text Overlay at top part */}
         <div className="absolute top-4 sm:top-8 w-full flex flex-col items-center gap-2 px-4 pointer-events-none z-10">
           <img src="assets/images/hero/hero5.png" alt="Logo Overlay" className="w-[100px] h-[100px] drop-shadow-[0_4px_8px_rgba(0,0,0,0.5)] object-contain" />
@@ -3321,7 +3331,7 @@ function HomePage({ setCurrentPage }) {
         </div>
 
         <div className="absolute bottom-4 sm:bottom-8 md:bottom-10 w-full flex flex-col items-center gap-4 sm:gap-6 px-4 z-10">
-          <button 
+          <button
             onClick={() => {
               const el = document.getElementById('booking-form');
               if (el) el.scrollIntoView({ behavior: 'smooth' });
@@ -3331,14 +3341,20 @@ function HomePage({ setCurrentPage }) {
             Book Now
           </button>
         </div>
+
+        {/* Kings Logo — bottom-left watermark */}
+        <div className="absolute bottom-4 sm:bottom-8 left-4 sm:left-8 pointer-events-none z-10">
+          <div className="bg-white rounded-full p-1 shadow-lg drop-shadow-[0_4px_8px_rgba(0,0,0,0.4)]">
+            <img src="assets/images/hero/kinglogo.png" alt="Kings Transport Logo" className="w-[70px] sm:w-[100px] h-[70px] sm:h-[100px] object-contain" />
+          </div>
+        </div>
       </section>
 
       {/* Booking Form Section */}
       <section id="booking-form" className="bg-[#f4f4f4] py-12 lg:py-20">
         <div className="max-w-4xl mx-auto px-8">
           <div className="mb-12 text-center">
-            <h2 className="text-5xl font-light text-[#161616] uppercase tracking-tighter">Booking Engine</h2>
-            <p className="text-[#525252] mt-2 text-sm uppercase tracking-widest font-bold opacity-60">Complete the steps below to schedule your visit</p>
+            <p className="text-[#525252] mt-2 text-sm tracking-widest font-bold opacity-60">To book a service, select your preferred vehicle, provide the required booking details, choose your schedule, and submit your reservation. Once your booking is confirmed, you will receive a confirmation with your rental details.</p>
           </div>
           <AppointmentForm />
         </div>
@@ -3357,7 +3373,7 @@ function HomePage({ setCurrentPage }) {
                   <h4 className="text-[20px] font-semibold text-[#f4f4f4] uppercase tracking-wider">KINGS <span className="font-light">TRANSPORT</span></h4>
                 </div>
                 <p className="text-[#c6c6c6] text-sm leading-relaxed">
-                  Enterprise-grade queuing and scheduling solution built for modern medical facilities. Corporate precision in every interaction.
+                  Your trusted DOT-accredited tourist land transport operator. We deliver safe, reliable, and comfortable travel experiences — from airport transfers to scenic tours — with professionalism in every journey.
                 </p>
                 <div className="flex space-x-2 mt-8">
                   <a href="#" className="w-10 h-10 bg-[#262626] hover:bg-[#10b981] flex items-center justify-center text-white transition-all">
@@ -3375,7 +3391,7 @@ function HomePage({ setCurrentPage }) {
               <div>
                 <h4 className="text-[#f4f4f4] font-semibold mb-6 uppercase text-[12px] tracking-[0.32px]">Address</h4>
                 <div className="text-[#c6c6c6] text-sm space-y-1">
-                  <p>San Vicente</p>
+                  <p>Solid Homes Subdivision, Taytayan</p>
                   <p>Bogo City, Cebu</p>
                   <p>Philippines 6010</p>
                 </div>
@@ -3388,13 +3404,13 @@ function HomePage({ setCurrentPage }) {
                     <svg className="w-4 h-4 text-[#10b981]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                     </svg>
-                    +63 927 623 0491
+                    0917 795 8798
                   </p>
                   <p className="flex items-center gap-2">
                     <svg className="w-4 h-4 text-[#10b981]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                     </svg>
-                    rodge.tonacao@gmail.com
+                    info@kingstouristtransport.com
                   </p>
                 </div>
               </div>
@@ -3413,9 +3429,8 @@ function HomePage({ setCurrentPage }) {
             {/* Footer Bottom */}
             <div className="border-t border-[#393939] mt-16 pt-8 text-center">
               <p className="text-[#6f6f6f] text-xs uppercase tracking-widest leading-loose">
-                2026 Roger Tonacao |0927 623 0491 | All rights reserved. |
-                <button onClick={() => setCurrentPage('my-appointment')} className="hover:text-[#10b981] transition-all ml-1">My Appointment</button> |
-                <button onClick={() => setCurrentPage('admin')} className="hover:text-[#10b981] transition-all ml-1">Admin</button>
+                2026 Developed by Roger Tonacao | 0927 6230491 | All rights reserved.
+
               </p>
             </div>
           </div>
@@ -5554,9 +5569,8 @@ function TripMonitoring({ trips, stats, riders, incidents, onRefresh }) {
 
       {/* OVERLAY LAYER 3: Trip Details — Slide-in from right, slide-out on close */}
       <div
-        className={`absolute top-0 right-0 h-full w-[400px] z-30 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-          selectedTrip ? 'translate-x-0' : 'translate-x-full'
-        }`}
+        className={`absolute top-0 right-0 h-full w-[400px] z-30 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${selectedTrip ? 'translate-x-0' : 'translate-x-full'
+          }`}
       >
         {displayedTrip && (
           <TripDetailOverlay
@@ -7819,7 +7833,7 @@ function PricingFareSettings() {
     };
 
     try {
-      const url = editingRoute 
+      const url = editingRoute
         ? `/api/admin/predefined-routes/${editingRoute.id}`
         : '/api/admin/predefined-routes';
       const method = editingRoute ? 'PUT' : 'POST';
