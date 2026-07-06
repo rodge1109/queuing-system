@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { 
-  ShoppingCart, Search, Settings, Check, ChevronRight, ChevronLeft, 
+import {
+  ShoppingCart, Search, Settings, Check, ChevronRight, ChevronLeft,
   MapPin, Clock, Phone, Mail, Star, Store, CreditCard, Lock, ArrowRight, User, Calendar, Users,
   Car, Truck, Map as MapIcon, Navigation, Stethoscope, Syringe, Pill, HeartPulse, Activity, Hospital
 } from 'lucide-react';
 import TransportMap from '../maps/TransportMap';
 import LocationAutocomplete from '../common/LocationAutocomplete';
 
-const LucideIcons = { 
-  ShoppingCart, Search, Settings, Check, ChevronRight, ChevronLeft, 
+const LucideIcons = {
+  ShoppingCart, Search, Settings, Check, ChevronRight, ChevronLeft,
   MapPin, Clock, Phone, Mail, Star, Store, CreditCard, Lock, ArrowRight, User, Calendar, Users,
   Car, Truck, Map: MapIcon, MapIcon, Navigation, Stethoscope, Syringe, Pill, HeartPulse, Activity, Hospital
 };
@@ -18,11 +18,11 @@ const ServiceIconRender = ({ iconName, className }) => {
 
   if (iconName && (iconName.startsWith('http') || iconName.startsWith('/uploads')) && !imageError) {
     return (
-      <img 
-        src={iconName} 
-        alt="Icon" 
-        className={className || "w-full h-full object-contain"} 
-        onError={() => setImageError(true)} 
+      <img
+        src={iconName}
+        alt="Icon"
+        className={className || "w-full h-full object-contain"}
+        onError={() => setImageError(true)}
       />
     );
   }
@@ -69,6 +69,30 @@ function AppointmentForm() {
   const [selectedRoute, setSelectedRoute] = useState(null);
   const [taxRate, setTaxRate] = useState(12);
   const formTopRef = useRef(null);
+
+  const todayObj = new Date();
+  const [currentMonth, setCurrentMonth] = useState(todayObj.getMonth());
+  const [currentYear, setCurrentYear] = useState(todayObj.getFullYear());
+
+  const handlePrevMonth = () => {
+    setCurrentMonth(prev => {
+      if (prev === 0) {
+        setCurrentYear(y => y - 1);
+        return 11;
+      }
+      return prev - 1;
+    });
+  };
+
+  const handleNextMonth = () => {
+    setCurrentMonth(prev => {
+      if (prev === 11) {
+        setCurrentYear(y => y + 1);
+        return 0;
+      }
+      return prev + 1;
+    });
+  };
 
   // Auto-scroll to top of form when step changes
   useEffect(() => {
@@ -147,8 +171,8 @@ function AppointmentForm() {
       if (selectedRoute && selectedRoute.prices) {
         const matched = selectedRoute.prices.find(p => {
           return p.service_type.toLowerCase() === selectedService.name.toLowerCase() ||
-                 selectedService.name.toLowerCase().includes(p.service_type.toLowerCase()) ||
-                 p.service_type.toLowerCase().includes(selectedService.name.toLowerCase());
+            selectedService.name.toLowerCase().includes(p.service_type.toLowerCase()) ||
+            p.service_type.toLowerCase().includes(selectedService.name.toLowerCase());
         });
         if (matched) {
           routePrice = parseFloat(matched.price);
@@ -313,16 +337,16 @@ function AppointmentForm() {
       <div className="bg-white border border-gray-100 shadow-2xl animate-fadeIn max-w-2xl mx-auto overflow-hidden">
         {/* Success Header */}
         <div className="bg-gradient-to-br from-[#24a148] to-[#1e8a3d] p-12 text-center text-white relative overflow-hidden">
-           <div className="relative z-10">
-              <div className="text-white flex items-center justify-center mx-auto mb-6 animate-bounceIn">
-                <Check size={64} strokeWidth={4} />
-              </div>
-              <h3 className="text-4xl font-black uppercase tracking-tighter mb-3">Booking Secured!</h3>
-              <p className="text-green-50 text-sm font-medium uppercase tracking-[3px] opacity-80">Reference ID: #{confirmedAppointment.id}</p>
-           </div>
-           {/* Abstract shapes */}
-           <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/5 rounded-full blur-2xl"></div>
-           <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-black/5 rounded-full blur-2xl"></div>
+          <div className="relative z-10">
+            <div className="text-white flex items-center justify-center mx-auto mb-6 animate-bounceIn">
+              <Check size={64} strokeWidth={4} />
+            </div>
+            <h3 className="text-4xl font-black uppercase tracking-tighter mb-3">Booking Secured!</h3>
+            <p className="text-green-50 text-sm font-medium uppercase tracking-[3px] opacity-80">Reference ID: #{confirmedAppointment.id}</p>
+          </div>
+          {/* Abstract shapes */}
+          <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/5 rounded-full blur-2xl"></div>
+          <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-black/5 rounded-full blur-2xl"></div>
         </div>
 
         {/* Confirmation Content */}
@@ -336,65 +360,65 @@ function AppointmentForm() {
           {/* Receipt-style Details */}
           <div className="bg-gray-50 border-2 border-dashed border-gray-200 p-8 relative">
             <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-white px-4 py-1 text-[9px] font-black text-gray-400 uppercase tracking-widest border border-gray-100">Official Booking Receipt</div>
-            
+
             <div className="space-y-6">
-               <div className="flex justify-between items-center pb-4 border-b border-gray-200/50">
-                  <div className="space-y-1">
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Service Item</p>
-                    <p className="text-xl font-bold text-gray-900 uppercase tracking-tighter">{selectedService?.name}</p>
-                  </div>
-                  <div className="text-right space-y-1">
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Assigned Specialist</p>
-                    <p className="text-sm font-bold text-gray-800">{selectedStaff?.name}</p>
-                  </div>
-               </div>
+              <div className="flex justify-between items-center pb-4 border-b border-gray-200/50">
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Service Item</p>
+                  <p className="text-xl font-bold text-gray-900 uppercase tracking-tighter">{selectedService?.name}</p>
+                </div>
+                <div className="text-right space-y-1">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Assigned Specialist</p>
+                  <p className="text-sm font-bold text-gray-800">{selectedStaff?.name}</p>
+                </div>
+              </div>
 
-               <div className="grid grid-cols-2 gap-8">
-                  <div className="space-y-1">
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Appointment Date</p>
-                    <p className="text-base font-bold text-gray-900">
-                      {formData.preferredDate ? new Date(formData.preferredDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '---'}
-                    </p>
-                  </div>
-                  <div className="space-y-1 text-right">
-                    <p className="text-[10px] font-black text-[#24a148] uppercase tracking-widest">Scheduled Time</p>
-                    <p className="text-2xl font-black text-[#24a148]">{formData.preferredTime}</p>
-                  </div>
-               </div>
+              <div className="grid grid-cols-2 gap-8">
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Appointment Date</p>
+                  <p className="text-base font-bold text-gray-900">
+                    {formData.preferredDate ? new Date(formData.preferredDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '---'}
+                  </p>
+                </div>
+                <div className="space-y-1 text-right">
+                  <p className="text-[10px] font-black text-[#24a148] uppercase tracking-widest">Scheduled Time</p>
+                  <p className="text-2xl font-black text-[#24a148]">{formData.preferredTime}</p>
+                </div>
+              </div>
 
-               <div className="pt-6 border-t border-gray-200 flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-[#24a148] rounded-full animate-pulse"></div>
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Payment Status: {paymentMethod === 'local' ? 'Pending (Pay at Clinic)' : 'Paid / Authorized'}</span>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Total Amount</p>
-                    <p className="text-2xl font-black text-gray-900 font-mono">₱{calculateFees().total.toFixed(2)}</p>
-                  </div>
-               </div>
+              <div className="pt-6 border-t border-gray-200 flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-[#24a148] rounded-full animate-pulse"></div>
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Payment Status: {paymentMethod === 'local' ? 'Pending (Pay at Clinic)' : 'Paid / Authorized'}</span>
+                </div>
+                <div className="text-right">
+                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Total Amount</p>
+                  <p className="text-2xl font-black text-gray-900 font-mono">₱{calculateFees().total.toFixed(2)}</p>
+                </div>
+              </div>
             </div>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 pt-4">
-             <button 
-              onClick={() => window.location.reload()} 
+            <button
+              onClick={() => window.location.reload()}
               className="flex-1 py-5 bg-[#161616] text-white text-[12px] font-black uppercase tracking-[3px] hover:bg-black transition-all shadow-xl active:scale-95"
-             >
-               Book Another
-             </button>
-             <button 
-              onClick={() => window.print()} 
+            >
+              Book Another
+            </button>
+            <button
+              onClick={() => window.print()}
               className="flex-1 py-5 border-2 border-gray-200 text-gray-900 text-[12px] font-black uppercase tracking-[3px] hover:bg-gray-50 transition-all active:scale-95 flex items-center justify-center gap-3"
-             >
-               Print Receipt
-             </button>
+            >
+              Print Receipt
+            </button>
           </div>
 
           <div className="text-center">
-             <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest opacity-60">
-               Please arrive 15 minutes before your scheduled time. 
-               <br />Thank you for choosing our services!
-             </p>
+            <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest opacity-60">
+              Please arrive 15 minutes before your scheduled time.
+              <br />Thank you for choosing our services!
+            </p>
           </div>
         </div>
       </div>
@@ -402,18 +426,18 @@ function AppointmentForm() {
   }
 
   return (
-    <div ref={formTopRef} className="bg-white border border-[#e0e0e0] shadow-sm overflow-hidden flex flex-col min-h-[700px] scroll-mt-24">
+    <div ref={formTopRef} className="overflow-hidden flex flex-col min-h-[700px] scroll-mt-24">
       {/* Horizontal Stepper Top */}
       <div className="w-full bg-[#f4f4f4] border-b border-[#e0e0e0] p-8 md:p-12">
         <div className="max-w-4xl mx-auto relative">
           {/* Progress Line Background */}
           <div className="absolute top-5 left-0 w-full h-1 bg-gray-200 -z-0"></div>
-          
+
           {/* Active Progress Line */}
-          <div 
+          <div
             className="absolute top-5 left-0 h-1 bg-[#24a148] transition-all duration-500 ease-in-out -z-0"
-            style={{ 
-              width: `${(steps.findIndex(s => s.id === step) / (steps.length - 1)) * 100}%` 
+            style={{
+              width: `${(steps.findIndex(s => s.id === step) / (steps.length - 1)) * 100}%`
             }}
           ></div>
 
@@ -421,7 +445,7 @@ function AppointmentForm() {
             {steps.map((s, idx) => {
               const isActive = step === s.id;
               const isCompleted = steps.findIndex(stepObj => stepObj.id === step) > idx;
-              
+
               return (
                 <div key={s.id} className="flex flex-col items-center group cursor-pointer" onClick={() => {
                   // Only allow jumping back to completed steps
@@ -429,20 +453,19 @@ function AppointmentForm() {
                     setStep(s.id);
                   }
                 }}>
-                  <div className={`w-10 h-10 rounded-full force-circle flex items-center justify-center border-4 transition-all duration-300 ${
-                    isActive 
-                    ? 'bg-[#24a148] border-[#24a148] shadow-lg scale-110' 
-                    : isCompleted 
-                    ? 'bg-[#24a148] border-[#24a148] text-white' 
-                    : 'bg-white border-gray-200 text-[#525252]'
-                  }`}>
+                  <div className={`w-10 h-10 rounded-full force-circle flex items-center justify-center border-4 transition-all duration-300 ${isActive
+                      ? 'bg-[#24a148] border-[#24a148] shadow-lg scale-110'
+                      : isCompleted
+                        ? 'bg-[#24a148] border-[#24a148] text-white'
+                        : 'bg-white border-gray-200 text-[#525252]'
+                    }`}>
                     {isCompleted ? (
                       <Check className="w-5 h-5 text-white" />
                     ) : (
                       <span className={`text-xs font-black ${isActive ? 'text-white' : 'text-[#525252]'}`}>{idx + 1}</span>
                     )}
                   </div>
-                  
+
                   <div className="mt-4 text-center hidden md:block">
                     <p className={`text-[9px] font-black uppercase tracking-widest mb-1 ${isActive ? 'text-[#24a148]' : 'text-gray-400'}`}>
                       Step {idx + 1}
@@ -451,7 +474,7 @@ function AppointmentForm() {
                       {s.label}
                     </p>
                   </div>
-                  
+
                   {/* Mobile Label */}
                   {isActive && (
                     <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 md:hidden">
@@ -472,8 +495,8 @@ function AppointmentForm() {
         {step === 'service' && (
           <div className="animate-fadeIn">
             <h3 className="text-3xl font-light text-[#161616] mb-2 uppercase tracking-tighter">Choose Service</h3>
-            <p className="text-gray-500 mb-12 text-sm">Select the clinical or transport service you require.</p>
-            
+            <p className="text-gray-500 mb-12 text-sm">Select the transport service you require.</p>
+
             <div className="flex gap-4 mb-8 overflow-x-auto pb-4 scrollbar-hide">
               {['All', ...new Set(liveServices.filter(s => s.is_active !== false).map(s => s.category).filter(Boolean))].map(cat => (
                 <button
@@ -493,11 +516,10 @@ function AppointmentForm() {
                 <button
                   key={service.id}
                   onClick={() => { setSelectedService(service); setStep('datetime'); }}
-                  className={`relative group flex flex-col bg-white border-2 transition-all duration-500 overflow-hidden ${
-                    selectedService?.id === service.id 
-                    ? 'border-[#24a148] shadow-2xl shadow-green-100 -translate-y-2' 
-                    : 'border-gray-100 hover:border-gray-300 hover:shadow-xl hover:-translate-y-1'
-                  }`}
+                  className={`relative group flex flex-col bg-white border-2 transition-all duration-500 overflow-hidden ${selectedService?.id === service.id
+                      ? 'border-[#24a148] shadow-2xl shadow-green-100 -translate-y-2'
+                      : 'border-gray-100 hover:border-gray-300 hover:shadow-xl hover:-translate-y-1'
+                    }`}
                 >
                   {/* Service Icon/Photo Container */}
                   <div className="h-72 w-full bg-gray-50 flex items-center justify-center relative overflow-hidden">
@@ -521,11 +543,11 @@ function AppointmentForm() {
                         {service.price}
                       </div>
                     </div>
-                    
+
                     <p className="text-[11px] text-[#525252] leading-relaxed mb-6 line-clamp-3 font-medium opacity-80">
                       "{service.description || 'Enjoy a safe, comfortable, and reliable ride with our professional drivers. Book your preferred vehicle and travel with confidence.'}"
                     </p>
-                    
+
                     <div className="mt-auto pt-4 border-t border-gray-50 flex items-center justify-between">
                       <div className="flex items-center gap-4 text-[9px] font-black text-gray-400 uppercase tracking-widest">
                         <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-[#24a148]" /> {service.duration || '30M'}</span>
@@ -553,7 +575,7 @@ function AppointmentForm() {
           <div className="animate-fadeIn">
             <h3 className="text-3xl font-light text-[#161616] mb-2 uppercase tracking-tighter">Select Staff</h3>
             <p className="text-gray-500 mb-12 text-sm">Choose a preferred specialist or select 'Any Staff' for faster booking.</p>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {staffMembers.map(staff => (
                 <button
@@ -573,7 +595,7 @@ function AppointmentForm() {
                 </button>
               ))}
             </div>
-            
+
             <button onClick={() => setStep('service')} className="mt-12 text-[#24a148] font-bold uppercase text-[11px] flex items-center gap-2 hover:underline tracking-widest">
               <ChevronLeft className="w-3 h-3" /> Back to Services
             </button>
@@ -583,18 +605,84 @@ function AppointmentForm() {
         {step === 'datetime' && (
           <div className="animate-fadeIn">
             <h3 className="text-3xl font-light text-[#161616] mb-8 uppercase tracking-tighter">Date & Time</h3>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
               <div className="space-y-4">
-                <label className="block text-[9px] font-bold text-[#525252] uppercase tracking-widest">Select Date</label>
-                <input
-                  type="date"
-                  name="preferredDate"
-                  min={new Date().toISOString().split('T')[0]}
-                  value={formData.preferredDate}
-                  onChange={handleChange}
-                  className="w-full bg-[#f4f4f4] border-0 border-b border-gray-300 p-2.5 text-[12px] text-black focus:outline-none focus:border-[#24a148] focus:ring-0"
-                />
+                <label className="block text-[9px] font-bold text-[#525252] uppercase tracking-widest mb-2">Select Date</label>
+                {(() => {
+                  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+                  const firstDayIndex = new Date(currentYear, currentMonth, 1).getDay();
+                  const today = new Date();
+                  
+                  return (
+                    <div className="bg-white border border-[#e0e0e0] p-5 shadow-sm rounded-lg">
+                      <div className="flex justify-between items-center mb-6">
+                        <button 
+                          type="button" 
+                          onClick={handlePrevMonth}
+                          disabled={currentYear === today.getFullYear() && currentMonth === today.getMonth()}
+                          className="p-2 hover:bg-gray-100 rounded transition-all disabled:opacity-30 disabled:pointer-events-none"
+                        >
+                          <ChevronLeft className="w-4 h-4 text-gray-600" />
+                        </button>
+                        <h4 className="text-[11px] font-black uppercase tracking-[2px] text-[#161616]">
+                          {new Date(currentYear, currentMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                        </h4>
+                        <button 
+                          type="button" 
+                          onClick={handleNextMonth}
+                          className="p-2 hover:bg-gray-100 rounded transition-all"
+                        >
+                          <ChevronRight className="w-4 h-4 text-gray-600" />
+                        </button>
+                      </div>
+                      
+                      <div className="grid grid-cols-7 gap-1 text-center mb-2">
+                        {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((day, idx) => (
+                          <div key={idx} className="text-[9px] font-black uppercase text-gray-400 tracking-wider py-1">
+                            {day}
+                          </div>
+                        ))}
+                      </div>
+                      
+                      <div className="grid grid-cols-7 gap-1">
+                        {Array.from({ length: firstDayIndex }).map((_, idx) => (
+                          <div key={`empty-${idx}`} className="p-2"></div>
+                        ))}
+                        
+                        {Array.from({ length: daysInMonth }).map((_, idx) => {
+                          const dayNum = idx + 1;
+                          const cellDateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+                          const cellDate = new Date(currentYear, currentMonth, dayNum);
+                          const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+                          const isPast = cellDate < todayStart;
+                          const isSelected = formData.preferredDate === cellDateStr;
+                          
+                          return (
+                            <button
+                              key={`day-${dayNum}`}
+                              type="button"
+                              disabled={isPast}
+                              onClick={() => setFormData(prev => ({ ...prev, preferredDate: cellDateStr }))}
+                              className={`p-2 text-[11px] font-mono font-bold transition-all relative rounded ${
+                                isSelected
+                                  ? 'bg-[#24a148] text-white shadow-md'
+                                  : isPast
+                                    ? 'text-gray-300 cursor-not-allowed opacity-40'
+                                    : 'text-gray-800 hover:bg-gray-100 hover:text-black'
+                              }`}
+                            >
+                              {dayNum}
+                              {!isPast && !isSelected && cellDateStr === today.toISOString().split('T')[0] && (
+                                <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-[#24a148] rounded-full"></span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               <div className="space-y-4">
@@ -644,7 +732,7 @@ function AppointmentForm() {
         {step === 'details' && (
           <div className="animate-fadeIn">
             <h3 className="text-3xl font-light text-[#161616] mb-8 uppercase tracking-tighter">Your Information</h3>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
               <div className="space-y-1">
                 <label className="block text-[9px] font-bold text-[#525252] uppercase tracking-widest">Full Name</label>
@@ -654,7 +742,7 @@ function AppointmentForm() {
                   value={formData.fullName}
                   onChange={handleChange}
                   placeholder="John Doe"
-                  className="w-full bg-[#f4f4f4] border-0 border-b border-gray-300 p-2.5 text-[12px] text-black focus:outline-none focus:border-[#24a148] focus:ring-0"
+                  className="w-full bg-[#f4f4f4] border border-gray-500 p-2.5 text-[12px] text-black focus:outline-none focus:border-[#24a148] focus:ring-0"
                 />
               </div>
               <div className="space-y-1">
@@ -665,7 +753,7 @@ function AppointmentForm() {
                   value={formData.phoneNumber}
                   onChange={handleChange}
                   placeholder="+63 900 000 0000"
-                  className="w-full bg-[#f4f4f4] border-0 border-b border-gray-300 p-2.5 text-[12px] text-black focus:outline-none focus:border-[#24a148] focus:ring-0"
+                  className="w-full bg-[#f4f4f4] border border-gray-500 p-2.5 text-[12px] text-black focus:outline-none focus:border-[#24a148] focus:ring-0"
                 />
               </div>
               <div className="space-y-1">
@@ -676,7 +764,7 @@ function AppointmentForm() {
                   value={formData.email}
                   onChange={handleChange}
                   placeholder="john@example.com"
-                  className="w-full bg-[#f4f4f4] border-0 border-b border-gray-300 p-2.5 text-[12px] text-black focus:outline-none focus:border-[#24a148] focus:ring-0"
+                  className="w-full bg-[#f4f4f4] border border-gray-500 p-2.5 text-[12px] text-black focus:outline-none focus:border-[#24a148] focus:ring-0"
                 />
               </div>
               <div className="space-y-1">
@@ -687,7 +775,7 @@ function AppointmentForm() {
                   value={formData.agentCode}
                   onChange={handleChange}
                   placeholder="Optional"
-                  className="w-full bg-[#f4f4f4] border-0 border-b border-gray-300 p-2.5 text-[12px] text-black focus:outline-none focus:border-[#24a148] focus:ring-0"
+                  className="w-full bg-[#f4f4f4] border border-gray-500 p-2.5 text-[12px] text-black focus:outline-none focus:border-[#24a148] focus:ring-0"
                 />
               </div>
             </div>
@@ -702,7 +790,7 @@ function AppointmentForm() {
                     const route = predefinedRoutes.find(r => r.id === routeId);
                     if (route) {
                       setSelectedRoute(route);
-                      
+
                       let pLat = parseFloat(route.pickup_lat);
                       let pLng = parseFloat(route.pickup_lng);
                       let dLat = parseFloat(route.destination_lat);
@@ -761,7 +849,7 @@ function AppointmentForm() {
                       setSelectedRoute(null);
                     }
                   }}
-                  className="w-full bg-white border border-gray-300 p-2.5 text-[12px] text-black focus:outline-none focus:border-[#24a148] focus:ring-0 uppercase font-medium"
+                  className="w-full bg-white border border-gray-500 p-2.5 text-[12px] text-black focus:outline-none focus:border-[#24a148] focus:ring-0 uppercase font-medium"
                 >
                   <option value="">-- Choose a Predefined Route (Or search custom below) --</option>
                   {predefinedRoutes.map(r => (
@@ -839,7 +927,7 @@ function AppointmentForm() {
                 onChange={handleChange}
                 rows={2}
                 placeholder="Any specific concerns..."
-                className="w-full bg-[#f4f4f4] border-0 border-b border-gray-300 p-2.5 text-[12px] text-black focus:outline-none focus:border-[#24a148] focus:ring-0 mt-1 resize-none h-14"
+                className="w-full bg-[#f4f4f4] border border-gray-500 p-2.5 text-[12px] text-black focus:outline-none focus:border-[#24a148] focus:ring-0 mt-1 resize-none h-14"
               ></textarea>
             </div>
 
@@ -861,8 +949,8 @@ function AppointmentForm() {
         {step === 'summary' && (
           <div className="animate-fadeIn space-y-10">
             <div className="py-12 border-b border-gray-100 text-center">
-               <h3 className="text-4xl font-black uppercase tracking-tighter mb-2 text-black text-center">Review & Confirm</h3>
-               <p className="text-black text-sm font-bold uppercase tracking-[4px] text-center">Finalize your clinical or transport booking</p>
+              <h3 className="text-4xl font-black uppercase tracking-tighter mb-2 text-black text-center">Review & Confirm</h3>
+              <p className="text-black text-sm font-bold uppercase tracking-[4px] text-center">Finalize your clinical or transport booking</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -870,7 +958,7 @@ function AppointmentForm() {
               <div className="bg-white border border-gray-100 p-8 shadow-sm relative group hover:shadow-xl transition-all duration-500">
                 <div className="flex items-center gap-4 mb-6">
                   <div className="w-14 h-14 bg-green-50 text-[#24a148] rounded-full flex items-center justify-center shadow-inner text-2xl overflow-hidden">
-                      <ServiceIconRender iconName={selectedService?.icon} className="w-10 h-10 object-contain" />
+                    <ServiceIconRender iconName={selectedService?.icon} className="w-10 h-10 object-contain" />
                   </div>
                   <div>
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-[2px]">Selected Service</p>
@@ -933,7 +1021,7 @@ function AppointmentForm() {
                       <span className="font-mono font-bold text-gray-700">₱{calculateFees().subtotal.toFixed(2)}</span>
                     </div>
                   )}
-                  
+
                   <div className="flex justify-between items-center py-4 border-t border-gray-200 mt-6">
                     <span className="text-xs font-black text-gray-400 uppercase tracking-widest">Government Tax ({taxRate}%)</span>
                     <span className="font-mono font-bold text-[#24a148]">₱{calculateFees().tax.toFixed(2)}</span>
@@ -956,37 +1044,35 @@ function AppointmentForm() {
                 <div className="bg-white border border-gray-100 p-8 shadow-sm flex-1">
                   <h4 className="text-xs font-black text-gray-900 uppercase tracking-[2px] mb-8 border-b border-gray-200 pb-4">Secure Payment Method</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {[
-                        { id: 'local', label: 'Pay Locally', icon: <Store className="w-5 h-5" />, desc: 'At the counter' },
-                        { id: 'paypal', label: 'PayPal', icon: <CreditCard className="w-5 h-5" />, desc: 'Instant check' },
-                        { id: 'stripe', label: 'Stripe', icon: <Lock className="w-5 h-5" />, desc: 'Card payment' },
-                        { id: 'corporate', label: 'Corporate', icon: <Users size={20} />, desc: 'Direct billing' },
-                      ].map(method => (
-                        <button
-                          key={method.id}
-                          onClick={() => setPaymentMethod(method.id)}
-                          className={`group p-6 border-2 text-left transition-all relative overflow-hidden h-full ${
-                            paymentMethod === method.id 
-                            ? 'border-[#24a148] bg-green-50/30' 
+                    {[
+                      { id: 'local', label: 'Pay Locally', icon: <Store className="w-5 h-5" />, desc: 'At the counter' },
+                      { id: 'paypal', label: 'PayPal', icon: <CreditCard className="w-5 h-5" />, desc: 'Instant check' },
+                      { id: 'stripe', label: 'Stripe', icon: <Lock className="w-5 h-5" />, desc: 'Card payment' },
+                      { id: 'corporate', label: 'Corporate', icon: <Users size={20} />, desc: 'Direct billing' },
+                    ].map(method => (
+                      <button
+                        key={method.id}
+                        onClick={() => setPaymentMethod(method.id)}
+                        className={`group p-6 border-2 text-left transition-all relative overflow-hidden h-full ${paymentMethod === method.id
+                            ? 'border-[#24a148] bg-green-50/30'
                             : 'border-gray-100 hover:border-gray-300 bg-white'
                           }`}
-                        >
-                          <div className={`mb-4 w-10 h-10 rounded-full flex items-center justify-center transition-all ${
-                            paymentMethod === method.id ? 'bg-[#24a148] text-white' : 'bg-gray-100 text-gray-400 group-hover:bg-gray-800 group-hover:text-white'
+                      >
+                        <div className={`mb-4 w-10 h-10 rounded-full flex items-center justify-center transition-all ${paymentMethod === method.id ? 'bg-[#24a148] text-white' : 'bg-gray-100 text-gray-400 group-hover:bg-gray-800 group-hover:text-white'
                           }`}>
-                            {method.icon}
+                          {method.icon}
+                        </div>
+                        <p className={`text-[10px] font-black uppercase tracking-widest ${paymentMethod === method.id ? 'text-[#24a148]' : 'text-gray-900'}`}>
+                          {method.label}
+                        </p>
+                        <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest opacity-60">{method.desc}</p>
+                        {paymentMethod === method.id && (
+                          <div className="absolute bottom-0 right-0 w-8 h-8 bg-[#24a148] flex items-center justify-center translate-x-4 translate-y-4 rotate-45">
+                            <Check size={10} className="text-white -rotate-45 -translate-x-1 -translate-y-1" />
                           </div>
-                          <p className={`text-[10px] font-black uppercase tracking-widest ${paymentMethod === method.id ? 'text-[#24a148]' : 'text-gray-900'}`}>
-                            {method.label}
-                          </p>
-                          <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest opacity-60">{method.desc}</p>
-                          {paymentMethod === method.id && (
-                            <div className="absolute bottom-0 right-0 w-8 h-8 bg-[#24a148] flex items-center justify-center translate-x-4 translate-y-4 rotate-45">
-                               <Check size={10} className="text-white -rotate-45 -translate-x-1 -translate-y-1" />
-                            </div>
-                          )}
-                        </button>
-                      ))}
+                        )}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
@@ -999,11 +1085,11 @@ function AppointmentForm() {
                       <div className="space-y-4">
                         <div>
                           <label className="block text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2 opacity-70">Client Account Number</label>
-                          <input 
+                          <input
                             type="text"
                             placeholder="ENTER CORP-ID-XXXX"
                             value={formData.corporateAccountNumber || ''}
-                            onChange={(e) => setFormData({...formData, corporateAccountNumber: e.target.value})}
+                            onChange={(e) => setFormData({ ...formData, corporateAccountNumber: e.target.value })}
                             className="w-full bg-gray-50 border border-gray-200 p-4 text-base font-mono text-gray-900 placeholder:text-gray-300 focus:outline-none focus:border-blue-500 transition-all uppercase tracking-widest"
                           />
                         </div>
@@ -1019,14 +1105,14 @@ function AppointmentForm() {
             </div>
 
             <div className="pt-10 flex flex-col md:flex-row justify-between items-center gap-6 border-t border-gray-100">
-              <button 
-                onClick={() => setStep('details')} 
+              <button
+                onClick={() => setStep('details')}
                 className="group text-gray-400 font-black uppercase text-[11px] flex items-center gap-3 hover:text-black transition-colors tracking-widest"
               >
-                <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" /> 
+                <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
                 Refine Details
               </button>
-              
+
               <button
                 disabled={isSubmitting}
                 onClick={handleSubmit}
@@ -1037,11 +1123,10 @@ function AppointmentForm() {
                 <div className="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
               </button>
             </div>
-            
+
             {submitStatus.message && (
-              <div className={`p-6 text-center text-xs font-black uppercase tracking-[2px] shadow-lg border-l-8 ${
-                submitStatus.type === 'error' ? 'bg-red-50 text-red-600 border-red-600' : 'bg-green-50 text-[#24a148] border-[#24a148]'
-              }`}>
+              <div className={`p-6 text-center text-xs font-black uppercase tracking-[2px] shadow-lg border-l-8 ${submitStatus.type === 'error' ? 'bg-red-50 text-red-600 border-red-600' : 'bg-green-50 text-[#24a148] border-[#24a148]'
+                }`}>
                 {submitStatus.message}
               </div>
             )}

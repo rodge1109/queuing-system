@@ -41,7 +41,7 @@ const LocationAutocomplete = ({ value, onChange, onSelect, placeholder, classNam
           onFocus={() => { if (suggestions.length > 0) setShow(true); }}
           onBlur={() => setTimeout(() => setShow(false), 200)}
           placeholder={placeholder}
-          className={className || "w-full bg-[#f4f4f4] border-0 border-b border-gray-300 p-2.5 text-[12px] text-black focus:outline-none focus:border-[#24a148] focus:ring-0"}
+          className={className || "w-full bg-[#f4f4f4] border border-gray-500 p-2.5 text-[12px] text-black focus:outline-none focus:border-[#24a148] focus:ring-0"}
         />
         {loading && (
           <div className="absolute right-3 top-1/2 -translate-y-1/2">

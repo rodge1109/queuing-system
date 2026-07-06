@@ -3255,7 +3255,7 @@ function HomePage({ setCurrentPage }) {
         {/* Logo and Text Overlay at top part */}
         <div className="absolute top-4 sm:top-8 w-full flex flex-col items-center gap-2 px-4 pointer-events-none z-10">
           <img src="assets/images/hero/hero5.png" alt="Logo Overlay" className="w-[100px] h-[100px] drop-shadow-[0_4px_8px_rgba(0,0,0,0.5)] object-contain" />
-          <h2 className="text-white font-black text-center text-sm sm:text-lg md:text-2xl lg:text-3xl xl:text-4xl uppercase tracking-[0.1em] drop-shadow-[0_4px_4px_rgba(0,0,0,0.8)] leading-tight">
+          <h2 className="text-white font-black text-center text-xs sm:text-lg md:text-2xl lg:text-3xl xl:text-4xl uppercase tracking-[0.1em] drop-shadow-[0_4px_4px_rgba(0,0,0,0.8)] leading-tight relative -top-[5px] sm:top-0">
             DOT-Accredited Tourist Land Transport Operator
           </h2>
         </div>
