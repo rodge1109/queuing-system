@@ -2080,6 +2080,17 @@ function AdminDashboard({ setCurrentPage }) {
                           <div className="min-w-0">
                             <p className="text-[#161616] font-bold text-[12px] truncate uppercase tracking-tight">{apt.full_name}</p>
                             <p className="text-gray-400 text-[10px] truncate font-mono">{apt.phone_number}</p>
+                            {apt.proof_of_payment && (
+                              <button
+                                onClick={() => {
+                                  const win = window.open();
+                                  win.document.write(`<iframe src="${apt.proof_of_payment}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`);
+                                }}
+                                className="text-[#24a148] hover:text-[#1e8a3d] hover:underline text-[9px] font-black uppercase tracking-wider block mt-1"
+                              >
+                                View Proof of Payment
+                              </button>
+                            )}
                           </div>
 
                           {/* Service */}

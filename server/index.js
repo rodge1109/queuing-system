@@ -513,7 +513,8 @@ app.post('/api/appointments', async (req, res) => {
       destLng,
       totalAmount,
       paymentMethod,
-      corporateAccountNumber
+      corporateAccountNumber,
+      proofOfPayment
     } = req.body;
 
     // Validate required fields
@@ -603,9 +604,9 @@ app.post('/api/appointments', async (req, res) => {
         preferred_time, notes, cancel_token, specialist_id, agent_code, 
         pickup_location, destination_location,
         pickup_lat, pickup_lng, dest_lat, dest_lng,
-        total_amount, corporate_account_id, payment_method
+        total_amount, corporate_account_id, payment_method, proof_of_payment
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
       RETURNING *
     `;
 
@@ -628,7 +629,8 @@ app.post('/api/appointments', async (req, res) => {
       destLng || null,
       validatedAmount,
       corporateAccountId,
-      paymentMethod || 'cash'
+      paymentMethod || 'cash',
+      proofOfPayment || null
     ];
     const result = await pool.query(query, values);
 
@@ -4248,6 +4250,7 @@ const initClinicSettings = async () => {
     await pool.query('ALTER TABLE appointments ADD COLUMN IF NOT EXISTS agent_code VARCHAR(50)');
     await pool.query('ALTER TABLE appointments ADD COLUMN IF NOT EXISTS pickup_location TEXT');
     await pool.query('ALTER TABLE appointments ADD COLUMN IF NOT EXISTS destination_location TEXT');
+    await pool.query('ALTER TABLE appointments ADD COLUMN IF NOT EXISTS proof_of_payment TEXT');
     
     // Performance indexes
     await pool.query('CREATE INDEX IF NOT EXISTS idx_appointments_date ON appointments(preferred_date)');

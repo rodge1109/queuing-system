@@ -45,7 +45,9 @@ function AppointmentForm() {
     pickupLocation: '',
     destinationLocation: '',
     pickupCoords: null,
-    destCoords: null
+    destCoords: null,
+    proofOfPayment: '',
+    corporateAccountNumber: ''
   });
   const [confirmedAppointment, setConfirmedAppointment] = useState(null);
   const [mapAction, setMapAction] = useState(null);
@@ -259,6 +261,20 @@ function AppointmentForm() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData(prev => ({
+          ...prev,
+          proofOfPayment: reader.result
+        }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleLocationSelect = useCallback((pickup, dest, dist) => {
     if (pickup && pickup.address) {
       setFormData(prev => ({
@@ -357,49 +373,205 @@ function AppointmentForm() {
             </p>
           </div>
 
-          {/* Receipt-style Details */}
-          <div className="bg-gray-50 border-2 border-dashed border-gray-200 p-8 relative">
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-white px-4 py-1 text-[9px] font-black text-gray-400 uppercase tracking-widest border border-gray-100">Official Booking Receipt</div>
+        {/* Print styling override */}
+        <style dangerouslySetInnerHTML={{__html: `
+          @media print {
+            @page {
+              margin: 15mm;
+              size: auto;
+            }
+            /* Reset parent wrappers to clear centring/offsets and margins */
+            html, body {
+              background: white !important;
+            }
+            html, body, #root, #root div:not(.print-receipt-card *), #booking-form, #booking-form div:not(.print-receipt-card *) {
+              position: static !important;
+              transform: none !important;
+              filter: none !important;
+              animation: none !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              display: block !important;
+              height: auto !important;
+              min-height: 0 !important;
+              max-height: none !important;
+              width: 100% !important;
+              background: transparent !important;
+              box-shadow: none !important;
+              border: none !important;
+            }
+            /* Hide the Hero section, main site header, footer, and form description header */
+            header,
+            section:not(#booking-form), 
+            footer, 
+            #booking-form > div > div.mb-12,
+            .print-hidden {
+              display: none !important;
+            }
+            
+            /* Hide all page content by default */
+            body * {
+              visibility: hidden !important;
+            }
+            
+            /* Make only the receipt card and its children visible */
+            .print-receipt-card, .print-receipt-card * {
+              visibility: visible !important;
+            }
+            
+            /* Re-style the receipt card container */
+            .print-receipt-card {
+              display: block !important;
+              position: relative !important;
+              margin: 0 auto !important;
+              padding: 0 !important;
+              border: none !important;
+              box-shadow: none !important;
+              background: white !important;
+              width: 100% !important;
+              max-width: 680px !important;
+            }
+            
+            /* Force grids and flexboxes to display correctly inside receipt */
+            .print-receipt-card .grid {
+              display: grid !important;
+            }
+            .print-receipt-card .grid-cols-2 {
+              grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            }
+            .print-receipt-card .flex {
+              display: flex !important;
+            }
+            .print-receipt-card .justify-between {
+              justify-content: space-between !important;
+            }
+            .print-receipt-card .items-center {
+              align-items: center !important;
+            }
+            .print-receipt-card .hidden {
+              display: none !important;
+            }
+            .print-receipt-card .print\\:block {
+              display: block !important;
+            }
+            
+            /* Keep vertical spacing tight to fit exactly on one page */
+            .print-receipt-card .space-y-6 > * + * {
+              margin-top: 12px !important;
+            }
+            .print-receipt-card .space-y-4 > * + * {
+              margin-top: 8px !important;
+            }
+            .print-receipt-card .pb-4 {
+              padding-bottom: 8px !important;
+              margin-bottom: 8px !important;
+            }
+            .print-receipt-card .mb-6 {
+              margin-bottom: 12px !important;
+            }
+          }
+        `}} />
 
-            <div className="space-y-6">
-              <div className="flex justify-between items-center pb-4 border-b border-gray-200/50">
-                <div className="space-y-1">
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Service Item</p>
-                  <p className="text-xl font-bold text-gray-900 uppercase tracking-tighter">{selectedService?.name}</p>
-                </div>
-                <div className="text-right space-y-1">
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Assigned Specialist</p>
-                  <p className="text-sm font-bold text-gray-800">{selectedStaff?.name}</p>
+        {/* Receipt-style Details */}
+        <div className="print-receipt-card bg-gray-50 border-2 border-dashed border-gray-200 p-6 relative">
+          <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-white px-4 py-1 text-[9px] font-black text-gray-400 uppercase tracking-widest border border-gray-100 print:hidden">Official Booking Receipt</div>
+
+          <div className="space-y-4">
+            {/* Header info for printed version */}
+            <div className="hidden print:block border-b-2 border-[#161616] pb-4 mb-6">
+              <h1 className="text-2xl font-black uppercase tracking-wider text-[#161616]">KINGS TRANSPORT</h1>
+              <p className="text-[10px] text-gray-500 uppercase tracking-widest">DOT-Accredited Tourist Land Transport Operator</p>
+              <p className="text-[9px] text-gray-400 font-mono mt-1">Receipt Ref: #{confirmedAppointment.id} | Printed: {new Date().toLocaleString()}</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-6 pb-4 border-b border-gray-200/50">
+              <div className="space-y-1">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Client Name</p>
+                <p className="text-sm font-bold text-gray-900 uppercase tracking-tight">{formData.fullName}</p>
+              </div>
+              <div className="text-right space-y-1">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Phone & Email</p>
+                <p className="text-sm font-mono font-bold text-gray-800">{formData.phoneNumber}</p>
+                <p className="text-[10px] text-gray-500 font-mono">{formData.email}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-6 pb-4 border-b border-gray-200/50">
+              <div className="space-y-1">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Service Booked</p>
+                <p className="text-base font-bold text-gray-900 uppercase tracking-tight">{selectedService?.name}</p>
+              </div>
+              <div className="text-right space-y-1">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Assigned Driver/Specialist</p>
+                <p className="text-sm font-bold text-gray-800">{selectedStaff?.name}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-6 pb-4 border-b border-gray-200/50">
+              <div className="space-y-1">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Appointment Date</p>
+                <p className="text-sm font-bold text-gray-900">
+                  {formData.preferredDate ? new Date(formData.preferredDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '---'}
+                </p>
+              </div>
+              <div className="text-right space-y-1">
+                <p className="text-[10px] font-black text-[#24a148] uppercase tracking-widest">Scheduled Time</p>
+                <p className="text-xl font-black text-[#24a148]">{formData.preferredTime}</p>
+              </div>
+            </div>
+
+            {/* Transport Route Details if category is TRANSPORT */}
+            {selectedService?.category?.trim().toUpperCase() === 'TRANSPORT' && (formData.pickupLocation || formData.destinationLocation) && (
+              <div className="pb-4 border-b border-gray-200/50 space-y-3">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Route Details</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-gray-800 bg-white p-4 border border-gray-100">
+                  <div>
+                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-0.5">Pickup</span>
+                    <span className="font-bold">{formData.pickupLocation}</span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-0.5">Dropoff</span>
+                    <span className="font-bold">{formData.destinationLocation}</span>
+                  </div>
+                  {distance > 0 && (
+                    <div className="col-span-full pt-2 border-t border-gray-50 flex justify-between items-center text-[10px] font-black text-gray-500 uppercase tracking-wider">
+                      <span>Total Estimated Distance</span>
+                      <span className="text-gray-950 font-mono">{distance.toFixed(2)} km</span>
+                    </div>
+                  )}
                 </div>
               </div>
+            )}
 
-              <div className="grid grid-cols-2 gap-8">
-                <div className="space-y-1">
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Appointment Date</p>
-                  <p className="text-base font-bold text-gray-900">
-                    {formData.preferredDate ? new Date(formData.preferredDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '---'}
-                  </p>
+            {/* Payment Summary breakdown */}
+            <div className="pt-2 space-y-2">
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Payment Details</p>
+              <div className="space-y-1.5 text-xs">
+                <div className="flex justify-between items-center text-gray-500 font-medium">
+                  <span>Base Rate</span>
+                  <span className="font-mono">₱{calculateFees().subtotal.toFixed(2)}</span>
                 </div>
-                <div className="space-y-1 text-right">
-                  <p className="text-[10px] font-black text-[#24a148] uppercase tracking-widest">Scheduled Time</p>
-                  <p className="text-2xl font-black text-[#24a148]">{formData.preferredTime}</p>
+                <div className="flex justify-between items-center text-gray-500 font-medium">
+                  <span>Government Tax ({taxRate}%)</span>
+                  <span className="font-mono">₱{calculateFees().tax.toFixed(2)}</span>
                 </div>
-              </div>
-
-              <div className="pt-6 border-t border-gray-200 flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-[#24a148] rounded-full animate-pulse"></div>
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Payment Status: {paymentMethod === 'local' ? 'Pending (Pay at Clinic)' : 'Paid / Authorized'}</span>
-                </div>
-                <div className="text-right">
-                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Total Amount</p>
-                  <p className="text-2xl font-black text-gray-900 font-mono">₱{calculateFees().total.toFixed(2)}</p>
+                <div className="flex justify-between items-center pt-3 border-t border-gray-200 text-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                      Payment Status: {paymentMethod === 'local' ? 'Pending' : 'Paid / Authorized'}
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Total Paid/Due</span>
+                    <span className="text-xl font-black text-gray-900 font-mono">₱{calculateFees().total.toFixed(2)}</span>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
+        </div>
 
-          <div className="flex flex-col sm:flex-row gap-4 pt-4">
+          <div className="flex flex-col sm:flex-row gap-4 pt-4 print:hidden">
             <button
               onClick={() => window.location.reload()}
               className="flex-1 py-5 bg-[#161616] text-white text-[12px] font-black uppercase tracking-[3px] hover:bg-black transition-all shadow-xl active:scale-95"
@@ -414,7 +586,7 @@ function AppointmentForm() {
             </button>
           </div>
 
-          <div className="text-center">
+          <div className="text-center print:hidden">
             <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest opacity-60">
               Please arrive 15 minutes before your scheduled time.
               <br />Thank you for choosing our services!
@@ -1043,37 +1215,105 @@ function AppointmentForm() {
               <div className="space-y-8 flex flex-col">
                 <div className="bg-white border border-gray-100 p-8 shadow-sm flex-1">
                   <h4 className="text-xs font-black text-gray-900 uppercase tracking-[2px] mb-8 border-b border-gray-200 pb-4">Secure Payment Method</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {[
-                      { id: 'local', label: 'Pay Locally', icon: <Store className="w-5 h-5" />, desc: 'At the counter' },
-                      { id: 'paypal', label: 'PayPal', icon: <CreditCard className="w-5 h-5" />, desc: 'Instant check' },
-                      { id: 'stripe', label: 'Stripe', icon: <Lock className="w-5 h-5" />, desc: 'Card payment' },
-                      { id: 'corporate', label: 'Corporate', icon: <Users size={20} />, desc: 'Direct billing' },
-                    ].map(method => (
-                      <button
-                        key={method.id}
-                        onClick={() => setPaymentMethod(method.id)}
-                        className={`group p-6 border-2 text-left transition-all relative overflow-hidden h-full ${paymentMethod === method.id
-                            ? 'border-[#24a148] bg-green-50/30'
-                            : 'border-gray-100 hover:border-gray-300 bg-white'
-                          }`}
-                      >
-                        <div className={`mb-4 w-10 h-10 rounded-full flex items-center justify-center transition-all ${paymentMethod === method.id ? 'bg-[#24a148] text-white' : 'bg-gray-100 text-gray-400 group-hover:bg-gray-800 group-hover:text-white'
-                          }`}>
-                          {method.icon}
-                        </div>
-                        <p className={`text-[10px] font-black uppercase tracking-widest ${paymentMethod === method.id ? 'text-[#24a148]' : 'text-gray-900'}`}>
-                          {method.label}
-                        </p>
-                        <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest opacity-60">{method.desc}</p>
-                        {paymentMethod === method.id && (
-                          <div className="absolute bottom-0 right-0 w-8 h-8 bg-[#24a148] flex items-center justify-center translate-x-4 translate-y-4 rotate-45">
-                            <Check size={10} className="text-white -rotate-45 -translate-x-1 -translate-y-1" />
+                  <div className="space-y-4">
+                    <label className="block text-[9px] font-bold text-[#525252] uppercase tracking-widest">Select Payment Method</label>
+                    <select
+                      value={paymentMethod}
+                      onChange={(e) => {
+                        setPaymentMethod(e.target.value);
+                        setFormData(prev => ({ ...prev, proofOfPayment: '' }));
+                      }}
+                      className="w-full bg-white border border-gray-500 p-3 text-[12px] text-black focus:outline-none focus:border-[#24a148] focus:ring-0 uppercase font-black tracking-wider"
+                    >
+                      <option value="local">💵 Pay Locally (At the counter)</option>
+                      <option value="gcash">📱 GCash</option>
+                      <option value="paymaya">📱 PayMaya</option>
+                      <option value="credit">💳 Credit Card / Bank Deposit</option>
+                      <option value="paypal">💳 PayPal</option>
+                      <option value="corporate">🏢 Corporate Billing</option>
+                    </select>
+                  </div>
+
+                  {(paymentMethod === 'gcash' || paymentMethod === 'paymaya' || paymentMethod === 'credit') && (
+                    <div className="mt-6 border-t border-gray-100 pt-6 animate-fadeIn">
+                      <div className="bg-gray-50 border border-dashed border-gray-300 p-6 rounded-lg mb-6">
+                        <h5 className="text-[10px] font-black text-gray-900 uppercase tracking-widest mb-3">
+                          Payment Instructions
+                        </h5>
+                        
+                        {paymentMethod === 'gcash' && (
+                          <div className="space-y-2 text-xs text-gray-600">
+                            <p>Please send the exact total amount of <strong className="text-gray-900">₱{calculateFees().total.toFixed(2)}</strong> to our official GCash account:</p>
+                            <div className="bg-white p-3 border border-gray-200 font-mono font-bold text-gray-900 text-sm flex justify-between items-center">
+                              <span>GCash: 0917-123-4567</span>
+                              <span className="text-[9px] text-[#24a148] uppercase tracking-widest font-black">Active</span>
+                            </div>
+                            <p className="text-[10px] text-gray-400">Account Name: KINGS TRANSPORT SERVICE</p>
                           </div>
                         )}
-                      </button>
-                    ))}
-                  </div>
+
+                        {paymentMethod === 'paymaya' && (
+                          <div className="space-y-2 text-xs text-gray-600">
+                            <p>Please send the exact total amount of <strong className="text-gray-900">₱{calculateFees().total.toFixed(2)}</strong> to our official PayMaya account:</p>
+                            <div className="bg-white p-3 border border-gray-200 font-mono font-bold text-gray-900 text-sm flex justify-between items-center">
+                              <span>PayMaya: 0917-765-4321</span>
+                              <span className="text-[9px] text-[#24a148] uppercase tracking-widest font-black">Active</span>
+                            </div>
+                            <p className="text-[10px] text-gray-400">Account Name: KINGS TRANSPORT SERVICE</p>
+                          </div>
+                        )}
+
+                        {paymentMethod === 'credit' && (
+                          <div className="space-y-2 text-xs text-gray-600">
+                            <p>Please deposit the exact total amount of <strong className="text-gray-900">₱{calculateFees().total.toFixed(2)}</strong> to our BDO Bank Account:</p>
+                            <div className="bg-white p-3 border border-gray-200 font-mono text-gray-900 text-xs space-y-1">
+                              <p><strong className="text-gray-500 font-bold uppercase tracking-wider text-[9px]">Bank:</strong> Banco de Oro (BDO)</p>
+                              <p><strong className="text-gray-500 font-bold uppercase tracking-wider text-[9px]">Account Number:</strong> 00123-456-7890</p>
+                              <p><strong className="text-gray-500 font-bold uppercase tracking-wider text-[9px]">Account Name:</strong> Kings Tourist Land Transport</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="space-y-4">
+                        <label className="block text-[9px] font-bold text-gray-400 uppercase tracking-widest">
+                          Upload Image of Proof of Payment <span className="text-red-500">*</span>
+                        </label>
+                        
+                        <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-6 bg-gray-50 hover:bg-gray-100/50 transition-all relative">
+                          {formData.proofOfPayment ? (
+                            <div className="w-full flex flex-col items-center space-y-3">
+                              <img 
+                                src={formData.proofOfPayment} 
+                                alt="Proof of Payment Preview" 
+                                className="max-h-48 object-contain rounded-md border border-gray-200 animate-fadeIn" 
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setFormData(prev => ({ ...prev, proofOfPayment: '' }))}
+                                className="text-red-500 hover:text-red-700 text-[10px] font-bold uppercase tracking-widest hover:underline"
+                              >
+                                Remove Image
+                              </button>
+                            </div>
+                          ) : (
+                            <label className="cursor-pointer flex flex-col items-center space-y-2 w-full py-4">
+                              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
+                              <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Select Proof Image</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={handleFileChange}
+                                className="hidden"
+                              />
+                            </label>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {paymentMethod === 'corporate' && (
@@ -1090,7 +1330,7 @@ function AppointmentForm() {
                             placeholder="ENTER CORP-ID-XXXX"
                             value={formData.corporateAccountNumber || ''}
                             onChange={(e) => setFormData({ ...formData, corporateAccountNumber: e.target.value })}
-                            className="w-full bg-gray-50 border border-gray-200 p-4 text-base font-mono text-gray-900 placeholder:text-gray-300 focus:outline-none focus:border-blue-500 transition-all uppercase tracking-widest"
+                            className="w-full bg-gray-50 border border-gray-500 p-4 text-base font-mono text-gray-900 placeholder:text-gray-300 focus:outline-none focus:border-blue-500 transition-all uppercase tracking-widest"
                           />
                         </div>
                         <p className="text-[10px] text-gray-500 italic font-medium leading-tight">
@@ -1114,9 +1354,13 @@ function AppointmentForm() {
               </button>
 
               <button
-                disabled={isSubmitting}
+                disabled={
+                  isSubmitting || 
+                  ((paymentMethod === 'gcash' || paymentMethod === 'paymaya' || paymentMethod === 'credit') && !formData.proofOfPayment) || 
+                  (paymentMethod === 'corporate' && !formData.corporateAccountNumber)
+                }
                 onClick={handleSubmit}
-                className="w-full md:w-auto py-5 px-20 bg-[#24a148] text-white text-[14px] font-black uppercase tracking-[3px] shadow-2xl hover:bg-[#1e8a3d] hover:shadow-green-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-6 group relative overflow-hidden"
+                className="w-full md:w-auto py-5 px-20 bg-[#24a148] text-white text-[14px] font-black uppercase tracking-[3px] shadow-2xl hover:bg-[#1e8a3d] hover:shadow-green-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-6 group relative overflow-hidden disabled:opacity-50"
               >
                 <span className="relative z-10">{isSubmitting ? 'Authenticating...' : 'Confirm & Schedule Appointment'}</span>
                 {!isSubmitting && <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform relative z-10" />}
