@@ -96,8 +96,14 @@ function AppointmentForm() {
     });
   };
 
+  const isFirstRender = useRef(true);
+
   // Auto-scroll to top of form when step changes
   useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
     if (formTopRef.current) {
       // Small delay to ensure DOM has updated
       setTimeout(() => {
