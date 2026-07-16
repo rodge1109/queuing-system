@@ -19,6 +19,7 @@ const RiderPortal = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [requests, setRequests] = useState([]);
+  const [declinedJobs, setDeclinedJobs] = useState([]);
   const [activeJob, setActiveJob] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -717,7 +718,7 @@ const RiderPortal = () => {
                 </div>
               ) : (
                 <div className="grid gap-4">
-                  {requests.map(req => (
+                  {requests.filter(req => !declinedJobs.includes(req.id)).map(req => (
                     <div key={req.id} className="bg-white/40 backdrop-blur-md rounded-2xl p-4 shadow-sm border border-white/40 hover:bg-white/60 transition-all active:scale-[0.98]">
                       <div className="flex flex-col mb-4 gap-1">
                         <div className="flex items-center gap-2">
@@ -726,7 +727,10 @@ const RiderPortal = () => {
                         </div>
                         <div className="flex items-center gap-4 mt-1">
                           <h4 className="text-2xl font-black text-gray-900 tracking-tighter truncate">PHP {parseFloat(req.total_amount).toFixed(2)}</h4>
-                          <button onClick={() => acceptJob(req.id)} className="bg-gray-900 text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-gray-200 hover:bg-[#00B14F] hover:shadow-green-100 transition-all shrink-0">Accept</button>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button onClick={() => setDeclinedJobs([...declinedJobs, req.id])} className="bg-red-50 text-red-500 px-4 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-red-100 transition-all">Decline</button>
+                            <button onClick={() => acceptJob(req.id)} className="bg-gray-900 text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-gray-200 hover:bg-[#00B14F] hover:shadow-green-100 transition-all">Accept</button>
+                          </div>
                         </div>
                       </div>
                       <div className="flex flex-col gap-2 text-gray-500 mb-3 bg-gray-50 p-3 rounded-2xl">
@@ -739,6 +743,12 @@ const RiderPortal = () => {
                           <p className="text-xs font-bold truncate text-gray-700">{req.destination_location}</p>
                         </div>
                       </div>
+                      {req.notes && (
+                        <div className="bg-yellow-50 rounded-xl p-3 mb-3 border border-yellow-100">
+                          <p className="text-[10px] font-black text-yellow-600 uppercase tracking-widest mb-1">Notes from passenger</p>
+                          <p className="text-xs font-medium text-gray-700">{req.notes}</p>
+                        </div>
+                      )}
                       <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-gray-400 px-1">
                         <div className="flex items-center gap-1.5"><Car className="w-3.5 h-3.5 shrink-0" /> <span>{req.service_type}</span></div>
                         <div className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 shrink-0" /> <span>Now</span></div>

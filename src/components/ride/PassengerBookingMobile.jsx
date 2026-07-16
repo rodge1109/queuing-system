@@ -5,7 +5,7 @@ import {
   ArrowLeft, Heart, History, Star,
   Compass, Shield, Phone, MessageSquare,
   CarFront, Bus, Check, Mail, RefreshCw, Play, X, Flag, Plus, Ticket, SlidersHorizontal, CreditCard,
-  Lock, Eye, EyeOff, ClipboardList, Briefcase
+  Lock, Eye, EyeOff, ClipboardList, Briefcase, Smartphone, Wallet, Banknote
 } from 'lucide-react';
 import LiveTrackingMap from '../maps/LiveTrackingMap';
 import PassengerTracking from './PassengerTracking';
@@ -157,7 +157,8 @@ const PassengerBookingMobile = ({ setCurrentPage }) => {
     phoneNumber: passenger ? passenger.phone_number : '',
     email: passenger ? passenger.email || '' : '',
     paymentMethod: 'Cash',
-    corporateAccountId: ''
+    corporateAccountId: '',
+    driverInstructions: ''
   });
   const [corporateValid, setCorporateValid] = useState(null); // null, 'loading', 'valid', 'invalid'
 
@@ -375,7 +376,7 @@ const PassengerBookingMobile = ({ setCurrentPage }) => {
         paymentMethod: formData.paymentMethod,
         routeId: selectedRoute?.id || null,
         distanceKm: distanceKm || 0,
-        notes: `Mobile Booking - ${vehicles.find(v => v.id === selectedVehicle)?.name || selectedVehicle}${formData.paymentMethod === 'Corporate' ? ' [Corp: ' + formData.corporateAccountId + ']' : ''}`
+        notes: `Mobile Booking - ${vehicles.find(v => v.id === selectedVehicle)?.name || selectedVehicle}${formData.paymentMethod === 'Corporate' ? ' [Corp: ' + formData.corporateAccountId + ']' : ''}${formData.driverInstructions ? ' | Instruction: ' + formData.driverInstructions : ''}`
       };
 
       const res = await fetch('/api/appointments', {
@@ -457,11 +458,11 @@ const PassengerBookingMobile = ({ setCurrentPage }) => {
         </div>
 
         {/* Roles List */}
-        <div className="flex-1 flex flex-col justify-center gap-6 max-w-sm w-full mx-auto my-auto py-8">
+        <div className="flex-1 flex flex-col justify-center gap-4 max-w-sm w-full mx-auto my-auto py-4">
           {/* Passenger Card */}
           <button
             onClick={() => setSelectedRole('passenger')}
-            className={`w-full text-left p-6 rounded-3xl border-2 transition-all duration-300 relative flex flex-col gap-4 shadow-sm active:scale-[0.99] ${
+            className={`w-full text-left p-5 rounded-3xl border-2 transition-all duration-300 relative flex flex-col gap-3 shadow-sm active:scale-[0.99] ${
               selectedRole === 'passenger' 
                 ? 'border-[#00B14F] bg-[#E1F5EE]/20 shadow-[#00B14F]/5' 
                 : 'border-gray-100 bg-white hover:border-gray-200'
@@ -474,10 +475,10 @@ const PassengerBookingMobile = ({ setCurrentPage }) => {
               </div>
             )}
             
-            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-colors ${
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors ${
               selectedRole === 'passenger' ? 'bg-[#00B14F] text-white' : 'bg-gray-100 text-gray-500'
             }`}>
-              <User className="w-7 h-7" />
+              <User className="w-6 h-6" />
             </div>
 
             <div>
@@ -493,7 +494,7 @@ const PassengerBookingMobile = ({ setCurrentPage }) => {
           {/* Driver Card */}
           <button
             onClick={() => setSelectedRole('driver')}
-            className={`w-full text-left p-6 rounded-3xl border-2 transition-all duration-300 relative flex flex-col gap-4 shadow-sm active:scale-[0.99] ${
+            className={`w-full text-left p-5 rounded-3xl border-2 transition-all duration-300 relative flex flex-col gap-3 shadow-sm active:scale-[0.99] ${
               selectedRole === 'driver' 
                 ? 'border-[#00B14F] bg-[#E1F5EE]/20 shadow-[#00B14F]/5' 
                 : 'border-gray-100 bg-white hover:border-gray-200'
@@ -506,10 +507,10 @@ const PassengerBookingMobile = ({ setCurrentPage }) => {
               </div>
             )}
 
-            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-colors ${
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors ${
               selectedRole === 'driver' ? 'bg-[#00B14F] text-white' : 'bg-gray-100 text-gray-500'
             }`}>
-              <Car className="w-7 h-7" />
+              <Car className="w-6 h-6" />
             </div>
 
             <div>
@@ -525,7 +526,7 @@ const PassengerBookingMobile = ({ setCurrentPage }) => {
           {/* Operator Card */}
           <button
             onClick={() => setSelectedRole('operator')}
-            className={`w-full text-left p-6 rounded-3xl border-2 transition-all duration-300 relative flex flex-col gap-4 shadow-sm active:scale-[0.99] ${
+            className={`w-full text-left p-5 rounded-3xl border-2 transition-all duration-300 relative flex flex-col gap-3 shadow-sm active:scale-[0.99] ${
               selectedRole === 'operator' 
                 ? 'border-[#00B14F] bg-[#E1F5EE]/20 shadow-[#00B14F]/5' 
                 : 'border-gray-100 bg-white hover:border-gray-200'
@@ -538,10 +539,10 @@ const PassengerBookingMobile = ({ setCurrentPage }) => {
               </div>
             )}
 
-            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-colors ${
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors ${
               selectedRole === 'operator' ? 'bg-[#00B14F] text-white' : 'bg-gray-100 text-gray-500'
             }`}>
-              <ClipboardList className="w-7 h-7" />
+              <ClipboardList className="w-6 h-6" />
             </div>
 
             <div>
@@ -1289,6 +1290,19 @@ const PassengerBookingMobile = ({ setCurrentPage }) => {
             </div>
           </div>
 
+          <div className="space-y-1.5 pt-4">
+            <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-[0.2em] ml-2">Notes to Driver</label>
+            <div className="bg-gray-50 rounded-2xl p-4 flex gap-4 border border-gray-100 focus-within:border-blue-500 transition-all">
+              <MessageSquare className="w-5 h-5 text-gray-400 shrink-0 mt-1" />
+              <textarea 
+                placeholder="E.g., Wait near the entrance..."
+                className="bg-transparent border-none outline-none text-base font-medium text-gray-900 w-full placeholder:text-gray-300 resize-none h-20"
+                value={formData.driverInstructions}
+                onChange={(e) => setFormData({...formData, driverInstructions: e.target.value})}
+              />
+            </div>
+          </div>
+
           <div className="space-y-1.5 pt-4 border-t border-gray-100">
             <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-[0.2em] ml-2">Payment Method</label>
             <div className="grid grid-cols-2 gap-4">
@@ -1297,7 +1311,7 @@ const PassengerBookingMobile = ({ setCurrentPage }) => {
                 className={`p-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition-all ${formData.paymentMethod === 'Cash' ? 'border-blue-500 bg-blue-50/50' : 'border-gray-100 bg-gray-50'}`}
               >
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center ${formData.paymentMethod === 'Cash' ? 'bg-blue-100 text-blue-600' : 'bg-gray-200 text-gray-500'}`}>
-                  <CreditCard className="w-5 h-5" />
+                  <Banknote className="w-5 h-5" />
                 </div>
                 <span className={`text-xs font-bold ${formData.paymentMethod === 'Cash' ? 'text-blue-700' : 'text-gray-500'}`}>Cash</span>
               </button>
@@ -1309,6 +1323,33 @@ const PassengerBookingMobile = ({ setCurrentPage }) => {
                   <Shield className="w-5 h-5" />
                 </div>
                 <span className={`text-xs font-bold ${formData.paymentMethod === 'Corporate' ? 'text-blue-700' : 'text-gray-500'}`}>Corporate</span>
+              </button>
+              <button 
+                onClick={() => { setFormData({...formData, paymentMethod: 'GCash', corporateAccountId: ''}); setCorporateValid(null); }}
+                className={`p-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition-all ${formData.paymentMethod === 'GCash' ? 'border-blue-500 bg-blue-50/50' : 'border-gray-100 bg-gray-50'}`}
+              >
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${formData.paymentMethod === 'GCash' ? 'bg-blue-100 text-blue-600' : 'bg-gray-200 text-gray-500'}`}>
+                  <Smartphone className="w-5 h-5" />
+                </div>
+                <span className={`text-xs font-bold ${formData.paymentMethod === 'GCash' ? 'text-blue-700' : 'text-gray-500'}`}>GCash</span>
+              </button>
+              <button 
+                onClick={() => { setFormData({...formData, paymentMethod: 'Maya Account', corporateAccountId: ''}); setCorporateValid(null); }}
+                className={`p-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition-all ${formData.paymentMethod === 'Maya Account' ? 'border-blue-500 bg-blue-50/50' : 'border-gray-100 bg-gray-50'}`}
+              >
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${formData.paymentMethod === 'Maya Account' ? 'bg-blue-100 text-blue-600' : 'bg-gray-200 text-gray-500'}`}>
+                  <Wallet className="w-5 h-5" />
+                </div>
+                <span className={`text-xs font-bold ${formData.paymentMethod === 'Maya Account' ? 'text-blue-700' : 'text-gray-500'}`}>Maya</span>
+              </button>
+              <button 
+                onClick={() => { setFormData({...formData, paymentMethod: 'Credit Card', corporateAccountId: ''}); setCorporateValid(null); }}
+                className={`col-span-2 p-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition-all ${formData.paymentMethod === 'Credit Card' ? 'border-blue-500 bg-blue-50/50' : 'border-gray-100 bg-gray-50'}`}
+              >
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${formData.paymentMethod === 'Credit Card' ? 'bg-blue-100 text-blue-600' : 'bg-gray-200 text-gray-500'}`}>
+                  <CreditCard className="w-5 h-5" />
+                </div>
+                <span className={`text-xs font-bold ${formData.paymentMethod === 'Credit Card' ? 'text-blue-700' : 'text-gray-500'}`}>Credit Card</span>
               </button>
             </div>
           </div>
@@ -1357,6 +1398,27 @@ const PassengerBookingMobile = ({ setCurrentPage }) => {
                   <Check className="w-3 h-3" /> Valid corporate account.
                 </p>
               )}
+            </div>
+          )}
+
+          {formData.paymentMethod === 'GCash' && (
+            <div className="bg-blue-50 rounded-xl p-4 animate-in slide-in-from-top-2 duration-300 border border-blue-100 mt-4">
+              <p className="text-xs font-bold text-blue-800 mb-1">GCash Payment Instructions</p>
+              <p className="text-xs text-blue-600 leading-relaxed">Please send the exact amount to the driver's GCash number. The driver will provide their QR code or number upon pickup or drop-off.</p>
+            </div>
+          )}
+
+          {formData.paymentMethod === 'Maya Account' && (
+            <div className="bg-blue-50 rounded-xl p-4 animate-in slide-in-from-top-2 duration-300 border border-blue-100 mt-4">
+              <p className="text-xs font-bold text-blue-800 mb-1">Maya Account Instructions</p>
+              <p className="text-xs text-blue-600 leading-relaxed">Please scan the driver's Maya QR code or transfer the amount to their mobile number during the ride.</p>
+            </div>
+          )}
+
+          {formData.paymentMethod === 'Credit Card' && (
+            <div className="bg-blue-50 rounded-xl p-4 animate-in slide-in-from-top-2 duration-300 border border-blue-100 mt-4">
+              <p className="text-xs font-bold text-blue-800 mb-1">Credit Card Instructions</p>
+              <p className="text-xs text-blue-600 leading-relaxed">Our driver carries a mobile POS terminal. You can tap or swipe your card safely at the end of your trip.</p>
             </div>
           )}
 
@@ -1449,13 +1511,13 @@ const PassengerBookingMobile = ({ setCurrentPage }) => {
           </div>
         </div>
       ) : (
-        <div className="relative z-10 p-4 pt-12 flex flex-col gap-4 pointer-events-none">
+        <div className="relative z-10 p-4 pt-6 flex flex-col gap-3 pointer-events-none">
           {/* Route Summary Header */}
-          <div className="bg-white rounded-2xl shadow-2xl p-4 space-y-4 pointer-events-auto animate-in slide-in-from-top-10 duration-500 border border-gray-100">
+          <div className="bg-white rounded-2xl shadow-2xl p-3 space-y-2 pointer-events-auto animate-in slide-in-from-top-10 duration-500 border border-gray-100">
             {/* Pickup Row */}
-            <div className="flex items-center gap-4">
-              <div className="w-8 h-8 bg-black/5 rounded-full flex items-center justify-center">
-                <User className="w-4 h-4 text-gray-900" />
+            <div className="flex items-center gap-3">
+              <div className="w-6 h-6 bg-black/5 rounded-full flex items-center justify-center">
+                <User className="w-3 h-3 text-gray-900" />
               </div>
               <div className="flex-1">
                 <p className="text-sm font-semibold text-gray-900 line-clamp-2 leading-tight">{pickup}</p>
@@ -1463,11 +1525,11 @@ const PassengerBookingMobile = ({ setCurrentPage }) => {
               </div>
             </div>
             {/* Divider Line */}
-            <div className="absolute left-[34px] top-[60px] w-[2px] h-[30px] bg-gray-100" />
+            <div className="absolute left-[23px] top-[48px] w-[1.5px] h-[20px] bg-gray-100" />
             {/* Destination Row */}
-            <div className="flex items-center gap-4">
-              <div className="w-8 h-8 bg-black/5 rounded-full flex items-center justify-center">
-                <Flag className="w-4 h-4 text-gray-900" />
+            <div className="flex items-center gap-3">
+              <div className="w-6 h-6 bg-black/5 rounded-full flex items-center justify-center">
+                <Flag className="w-3 h-3 text-gray-900" />
               </div>
               <div className="flex-1">
                 <p className="text-sm font-semibold text-gray-900 line-clamp-2 leading-tight">{destination}</p>
@@ -1516,12 +1578,17 @@ const PassengerBookingMobile = ({ setCurrentPage }) => {
             </p>
             
             <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2 px-2">
-              {vehicles.map((v) => (
+              {vehicles.filter(v => !selectedVehicle || v.id === selectedVehicle).map((v) => (
                 <button
                   key={v.id}
                   onClick={() => {
-                    setSelectedVehicle(v.id);
-                    setIsSearching(true);
+                    if (selectedVehicle === v.id) {
+                      setSelectedVehicle(null);
+                      setIsSearching(false);
+                    } else {
+                      setSelectedVehicle(v.id);
+                      setIsSearching(true);
+                    }
                   }}
                   className={`flex flex-col items-center gap-1 p-3 min-w-[150px] rounded-2xl transition-all duration-300 ${
                     selectedVehicle === v.id 
@@ -1585,12 +1652,17 @@ const PassengerBookingMobile = ({ setCurrentPage }) => {
                 <div className="flex justify-center p-4">
                   <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
                 </div>
-              ) : vehicles.map((v) => (
+              ) : vehicles.filter(v => !selectedVehicle || v.id === selectedVehicle).map((v) => (
                 <button
                   key={v.id}
                   onClick={() => {
-                    setSelectedVehicle(v.id);
-                    setIsSearching(true);
+                    if (selectedVehicle === v.id) {
+                      setSelectedVehicle(null);
+                      setIsSearching(false);
+                    } else {
+                      setSelectedVehicle(v.id);
+                      setIsSearching(true);
+                    }
                   }}
                   className={`w-full flex items-center gap-4 p-3 rounded-2xl transition-all duration-300 ${
                     selectedVehicle === v.id 
@@ -1648,7 +1720,7 @@ const PassengerBookingMobile = ({ setCurrentPage }) => {
                 onClick={() => setStep('details')}
                 className="flex-1 bg-[#00B14F] hover:bg-[#009241] text-white h-14 rounded-2xl font-semibold text-lg flex items-center justify-center active:scale-95 transition-all"
               >
-                Find a driver
+                Continue
               </button>
 
               <button className="w-14 h-14 bg-gray-50 border border-gray-100 rounded-2xl flex items-center justify-center shadow-sm active:scale-90 transition-all">
