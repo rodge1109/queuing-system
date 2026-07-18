@@ -26,19 +26,28 @@
           .then(reg => console.log('Service Worker registered', reg))
           .catch(err => console.error('Service Worker registration failed', err));
       });
-    }
-
-    // Prevent iOS Safari from zooming the entire page when pinching
+    // Prevent iOS Safari from zooming the entire page when pinching OUTSIDE the map
     document.addEventListener('gesturestart', function(e) {
-      e.preventDefault();
+      if (!e.target.closest('.leaflet-container')) {
+        e.preventDefault();
+      }
     });
+
+    // Prevent multi-touch zoom on UI elements
+    document.addEventListener('touchmove', function(e) {
+      if (e.touches && e.touches.length > 1 && !e.target.closest('.leaflet-container')) {
+        e.preventDefault();
+      }
+    }, { passive: false });
     
-    // Prevent double-tap to zoom
+    // Prevent double-tap to zoom on UI elements
     let lastTouchEnd = 0;
     document.addEventListener('touchend', function (event) {
       const now = (new Date()).getTime();
       if (now - lastTouchEnd <= 300) {
-        event.preventDefault();
+        if (!event.target.closest('.leaflet-container')) {
+          event.preventDefault();
+        }
       }
       lastTouchEnd = now;
     }, false);
