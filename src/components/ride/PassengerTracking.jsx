@@ -13,7 +13,9 @@ import {
   ArrowRight,
   Car,
   X,
-  Play
+  Play,
+  Mic,
+  Flag
 } from 'lucide-react';
 import LiveTrackingMap from '../maps/LiveTrackingMap';
 
@@ -28,6 +30,7 @@ const PassengerTracking = ({ appointmentId, token, onClose }) => {
   const [hoverRating, setHoverRating] = useState(0);
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isSafetyCenterOpen, setIsSafetyCenterOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
@@ -185,42 +188,65 @@ const PassengerTracking = ({ appointmentId, token, onClose }) => {
         />
       </div>
 
-      {/* Status Header */}
-      <div className="p-4 bg-white/90 backdrop-blur-md shadow-sm fixed top-0 left-0 right-0 z-[60] pointer-events-auto border-b border-gray-100 max-w-md mx-auto">
-          <div className="flex items-center gap-4">
-            <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-full transition-colors bg-white">
-              <X size={18} className="text-gray-600" />
-            </button>
-            <div className="flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full ${trip.transport_status === 'sos' ? 'bg-red-500 animate-pulse' : 'bg-[#00B14F]'}`}></div>
-              <span className="text-[10px] font-bold text-gray-900 uppercase tracking-widest">
-                {trip.transport_status.replace(/_/g, ' ')}
-              </span>
-            </div>
-          </div>
-      </div>
 
-      <div className="relative z-10 px-4 pt-[80px] pointer-events-none mt-4">
-        <div className="bg-white/90 backdrop-blur-sm p-3 rounded-xl border border-white shadow-lg flex items-center gap-3">
-          <Shield size={16} className="text-[#00B14F]" />
-          <span className="text-[10px] font-bold text-gray-800 uppercase tracking-tight">Your trip is protected by King's Safety Insurance</span>
-        </div>
-      </div>
+
+
 
       {/* Bottom Content Area */}
       <div 
         className="fixed bottom-0 left-0 right-0 w-full z-30 bg-white/95 backdrop-blur-2xl rounded-t-[32px] shadow-[0_-20px_50px_rgba(0,0,0,0.15)] border-t border-white/40 pointer-events-auto flex flex-col"
       >
+        {/* Safety Center Floating Badge & Popup */}
+        {isMatched && !isCompleted && (
+          <div className="absolute -top-12 left-4 z-50 flex flex-col items-start">
+            {isSafetyCenterOpen && (
+              <div className="absolute bottom-full mb-3 left-0 w-[calc(100vw-32px)] max-w-[416px] bg-white rounded-2xl shadow-xl p-4 border border-gray-100 animate-in fade-in slide-in-from-bottom-2 duration-200">
+                <h4 className="text-[17px] font-bold text-gray-900 mb-4 tracking-tight">Tools to keep you safe</h4>
+                <div className="flex flex-col gap-4 mb-4">
+                  <button className="flex items-center gap-3 text-[15px] font-bold text-gray-800 hover:text-black text-left w-full">
+                    <Mic size={20} className="text-gray-900" /> Record ride audio
+                  </button>
+                  <button className="flex items-center gap-3 text-[15px] font-bold text-gray-800 hover:text-black text-left w-full">
+                    <Share2 size={20} className="text-gray-900" /> Share live location
+                  </button>
+                  <button className="flex items-center gap-3 text-[15px] font-bold text-gray-800 hover:text-black text-left w-full">
+                    <Flag size={20} className="text-gray-900" /> Report incident
+                  </button>
+                  <button className="flex items-center gap-3 text-[15px] font-bold text-red-500 hover:text-red-600 text-left w-full">
+                    <Phone size={20} className="fill-red-500" /> SOS call to Police
+                  </button>
+                </div>
+                <div className="flex justify-end pt-2">
+                  <button 
+                    onClick={() => setIsSafetyCenterOpen(false)}
+                    className="bg-[#00B14F] text-white px-5 py-2 rounded-full text-[14px] font-bold active:scale-95 transition-all"
+                  >
+                    Got it
+                  </button>
+                </div>
+                <div className="absolute -bottom-2 left-6 w-4 h-4 bg-white border-b border-r border-gray-100 rotate-45"></div>
+              </div>
+            )}
+            
+            <button 
+              onClick={() => setIsSafetyCenterOpen(!isSafetyCenterOpen)}
+              className="bg-white px-3.5 py-2 rounded-full flex items-center gap-1.5 shadow-md border border-gray-100 text-[#085041] hover:bg-gray-50 active:scale-95 transition-all"
+            >
+              <Shield size={16} />
+              <span className="text-sm font-bold text-[#085041]">Safety Centre</span>
+            </button>
+          </div>
+        )}
         {/* Drag Handle Area */}
         <div 
-          className="pt-6 pb-4 px-6 flex justify-center cursor-pointer"
+          className="pt-3 pb-2 px-6 flex justify-center cursor-pointer"
           onClick={() => setIsMinimized(!isMinimized)}
         >
           <div className="w-16 h-1.5 bg-gray-300 rounded-full"></div>
         </div>
 
         {/* Content Wrapper */}
-        <div className={`transition-all duration-500 ease-in-out overflow-hidden ${isMinimized ? 'max-h-0 opacity-0' : 'max-h-[800px] opacity-100'}`}>
+        <div className={`transition-all duration-500 ease-in-out ${isMinimized ? 'max-h-0 opacity-0 overflow-hidden' : 'max-h-[30vh] overflow-y-auto opacity-100'}`}>
           <div className="px-6 pb-6">
 
         {isCompleted ? (
@@ -312,19 +338,19 @@ const PassengerTracking = ({ appointmentId, token, onClose }) => {
           </div>
         ) : !isMatched ? (
           /* Searching Screen */
-          <div className="text-center py-8">
-            <div className="relative w-20 h-20 mx-auto mb-6">
+          <div className="text-center pt-2 pb-8">
+            <div className="relative w-20 h-20 mx-auto mb-[19px]">
               <div className="absolute inset-0 border-4 border-[#00B14F]/20 rounded-full"></div>
               <div className="absolute inset-0 border-4 border-[#00B14F] border-t-transparent rounded-full animate-spin"></div>
               <div className="absolute inset-0 flex items-center justify-center">
                 <Search size={24} className="text-[#00B14F]" />
               </div>
             </div>
-            <h2 className="text-xl font-bold text-gray-900 mb-2">Finding your driver</h2>
-            <p className="text-gray-500 text-sm mb-6">We're connecting you with the nearest available rider.</p>
+            <h2 className="text-xl font-bold text-gray-900 mb-[3px]">Finding your driver</h2>
+            <p className="text-gray-500 text-sm mb-2">We're connecting you with the nearest available rider.</p>
             <button 
               onClick={handleCancelRequest}
-              className="px-6 py-4 bg-red-50 text-red-600 rounded-2xl font-bold w-full active:scale-95 transition-all"
+              className="px-8 py-2.5 bg-[#00B14F] text-white rounded-full font-bold active:scale-95 transition-all shadow-lg shadow-green-100"
             >
               Cancel Request
             </button>
@@ -333,83 +359,73 @@ const PassengerTracking = ({ appointmentId, token, onClose }) => {
 
           /* Active Trip Screen (Matched or On Trip) */
           <>
-            <div className="bg-[#E1F5EE] rounded-2xl p-4 flex justify-between items-center mb-6">
+            <div className="bg-[#E1F5EE] rounded-3xl p-4 flex justify-between items-center mb-4">
               <div>
-                <p className="text-[10px] text-[#0F6E56] font-bold uppercase tracking-wider mb-1">
+                <p className="text-xl font-black text-black mb-0.5">
                   {isOnTrip ? 'ETA to destination' : 'Driver is arriving'}
                 </p>
-                <p className="text-3xl font-black text-[#085041] tracking-tighter">3 mins</p>
+                <div className="flex flex-col mt-1">
+                  <p className="text-[9px] text-black font-black uppercase tracking-widest">{isOnTrip ? 'Dropoff' : 'Pickup'}</p>
+                  <p className="text-[11px] font-bold text-black truncate max-w-[220px]">{isOnTrip ? trip.destination_location : trip.pickup_location}</p>
+                </div>
               </div>
-              <div className="text-right">
-                <p className="text-[10px] text-[#1D9E75] font-bold uppercase">{trip.service_type}</p>
-                <span className="inline-block mt-1 px-2 py-1 bg-white border border-[#5DCAA5] rounded-lg text-xs font-black text-[#085041]">
-                  {trip.plate_number || 'ABC 1234'}
-                </span>
+              <div className="text-right flex flex-col items-end justify-center">
+                <p className="text-base font-black text-black tracking-wider mb-0.5">3 mins</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-4 mb-6 pb-6 border-b border-gray-100">
-              <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center relative">
-                <User size={32} className="text-gray-300" />
-                <div className="absolute -bottom-1 -right-1 bg-white p-1 rounded-full shadow-sm border border-gray-50 flex items-center gap-0.5">
-                  <Star size={10} className="text-amber-500 fill-amber-500" />
-                  <span className="text-[10px] font-bold">4.9</span>
+            <div className="flex flex-col gap-4 mb-4 pb-4 border-b border-gray-100">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center relative shrink-0">
+                  <img src={trip.rider_photo || "https://images.unsplash.com/photo-1531891437562-4301cf35b7e4?w=150&h=150&fit=crop"} alt="Driver" className="w-full h-full rounded-full object-cover shadow-sm" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-bold text-black leading-tight mb-1">{trip.rider_name || 'Assigned Driver'}</p>
+                  <div className="flex items-center gap-1">
+                    <Star size={12} className="text-amber-500 fill-amber-500" />
+                    <span className="text-xs font-bold text-black">4.9</span>
+                  </div>
+                </div>
+                <div className="text-right shrink-0 flex flex-col items-end">
+                  <span className="inline-block text-[22px] font-black text-black tracking-tighter mb-0.5">
+                    {trip.plate_number || 'ABC-1235'}
+                  </span>
+                  <p className="text-[10px] font-bold text-black uppercase tracking-wider text-right">{trip.vehicle_details || 'Silver Toyota Vios'}</p>
                 </div>
               </div>
-              <div className="flex-1">
-                <p className="text-base font-bold text-gray-900">{trip.rider_name || 'Assigned Driver'}</p>
-                <p className="text-xs text-gray-400">Silver Toyota Vios</p>
-              </div>
-              <div className="flex gap-2">
+              
+              <div className="flex gap-3 w-full">
                 {trip.rider_phone ? (
                   <a 
                     href={`tel:${trip.rider_phone}`}
-                    className="w-10 h-10 bg-gray-50 text-gray-600 rounded-full flex items-center justify-center hover:bg-[#E1F5EE] transition-colors animate-[pulse_3s_infinite]"
-                    title="Call Driver"
+                    className="flex-1 py-3 bg-gray-50 text-black rounded-2xl flex items-center justify-center gap-2 hover:bg-[#E1F5EE] transition-colors font-bold text-[10px] uppercase tracking-widest"
                   >
-                    <Phone size={18} />
+                    <Phone size={14} /> Call Driver
                   </a>
                 ) : (
                   <button 
                     onClick={() => alert("Driver's phone number is not available.")}
-                    className="w-10 h-10 bg-gray-50 text-gray-300 rounded-full flex items-center justify-center cursor-not-allowed"
-                    title="Phone number not available"
+                    className="flex-1 py-3 bg-gray-50 text-gray-400 rounded-2xl flex items-center justify-center gap-2 cursor-not-allowed font-bold text-[10px] uppercase tracking-widest"
                   >
-                    <Phone size={18} />
+                    <Phone size={14} /> No Phone
                   </button>
                 )}
                 <button 
                   onClick={() => setIsChatOpen(true)}
-                  className="w-10 h-10 bg-gray-50 text-gray-600 rounded-full flex items-center justify-center hover:bg-[#E1F5EE] transition-colors relative"
+                  className="flex-1 py-3 bg-gray-50 text-black rounded-2xl flex items-center justify-center gap-2 hover:bg-[#E1F5EE] transition-colors font-bold text-[10px] uppercase tracking-widest relative"
                 >
-                  <MessageSquare size={18} />
+                  <MessageSquare size={14} /> Message Driver
                   {hasUnreadMessages && (
-                    <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full"></span>
+                    <span className="absolute top-2.5 right-4 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
                   )}
                 </button>
               </div>
             </div>
 
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-[#00B14F] rounded-full"></div>
-                <div className="flex-1">
-                  <p className="text-[10px] text-gray-400 font-bold uppercase">Pickup</p>
-                  <p className="text-sm font-medium text-gray-800 truncate">{trip.pickup_location}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-[#E24B4A] rounded-full"></div>
-                <div className="flex-1">
-                  <p className="text-[10px] text-gray-400 font-bold uppercase">Drop-off</p>
-                  <p className="text-sm font-medium text-gray-800 truncate">{trip.destination_location}</p>
-                </div>
-              </div>
-            </div>
 
-            <div className="mt-8 flex gap-3">
-              <button className="flex-1 py-4 bg-gray-50 text-gray-500 rounded-2xl text-xs font-bold uppercase tracking-widest">Share Trip</button>
-              <button className="flex-1 py-4 bg-red-50 text-red-500 rounded-2xl text-xs font-bold uppercase tracking-widest">Emergency</button>
+
+            <div className="mt-4">
+              <button className="w-full py-4 bg-gray-50 text-gray-500 rounded-2xl text-xs font-bold uppercase tracking-widest active:scale-95 transition-all">Share Trip</button>
             </div>
           </>
         )}

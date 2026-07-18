@@ -605,18 +605,6 @@ const RiderPortal = () => {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <button 
-                  onClick={(e) => { e.stopPropagation(); setIsChatOpen(true); }}
-                  className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center text-blue-500 relative"
-                >
-                  <MessageSquare className="w-4 h-4" />
-                  <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border-2 border-white" />
-                </button>
-                {(activeJob.phone_number || activeJob.contact_number || activeJob.phone) && (
-                  <a href={`tel:${activeJob.phone_number || activeJob.contact_number || activeJob.phone}`} onClick={e => e.stopPropagation()} className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center text-[#00B14F]">
-                    <Phone className="w-4 h-4" />
-                  </a>
-                )}
                 <ChevronRight className={`w-5 h-5 text-gray-300 transition-transform ${sheetState === 'expanded' ? 'rotate-[-90deg]' : 'rotate-90'}`} />
               </div>
             </div>
@@ -639,65 +627,63 @@ const RiderPortal = () => {
         </div>
 
         {/* Content Area */}
-        <div className="bg-white/70 backdrop-blur-2xl h-[60vh] overflow-y-auto overflow-x-hidden no-scrollbar px-4 pb-32 border-t border-white/20">
+        <div className="bg-white/95 backdrop-blur-2xl h-[45vh] overflow-y-auto overflow-x-hidden no-scrollbar px-4 pb-20 border-t border-gray-100 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
           {activeJob ? (
-            <div className="py-6 space-y-6">
-              <div className="flex gap-4">
-                <div className="flex flex-col items-center pt-1">
-                  <div className="w-4 h-4 rounded-full border-4 border-[#00B14F] bg-white z-10" />
-                  <div className="w-0.5 h-16 bg-gray-100 border-dashed border-l-2 my-1" />
-                  <div className="w-4 h-4 rounded-full border-4 border-red-500 bg-white z-10" />
+            <div className="py-4 space-y-4">
+              <div className="flex gap-3">
+                <div className="flex flex-col items-center pt-1.5">
+                  <div className="w-3.5 h-3.5 rounded-full border-4 border-[#00B14F] bg-white z-10 shrink-0" />
+                  <div className="w-0.5 flex-1 bg-gray-200 my-0.5 rounded-full" />
+                  <div className="w-3.5 h-3.5 rounded-full border-4 border-red-500 bg-white z-10 shrink-0" />
                 </div>
-                <div className="flex flex-col gap-10 flex-1">
-                  <div>
-                    <p className="text-[10px] font-black text-gray-400 uppercase mb-1 tracking-widest">Pick up</p>
-                    <p className="text-sm font-bold text-gray-900 leading-tight">{activeJob.pickup_location}</p>
+                <div className="flex flex-col justify-between flex-1 py-0.5">
+                  <div className="mb-3">
+                    <p className="text-[9px] font-black text-gray-400 uppercase mb-0.5 tracking-widest">Pick up</p>
+                    <p className="text-sm font-bold text-gray-900 leading-tight line-clamp-1">{activeJob.pickup_location}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] font-black text-gray-400 uppercase mb-1 tracking-widest">Drop off</p>
-                    <p className="text-sm font-bold text-gray-900 leading-tight">{activeJob.destination_location}</p>
+                    <p className="text-[9px] font-black text-gray-400 uppercase mb-0.5 tracking-widest">Drop off</p>
+                    <p className="text-sm font-bold text-gray-900 leading-tight line-clamp-1">{activeJob.destination_location}</p>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white/40 backdrop-blur-md rounded-2xl p-4 flex items-center justify-between border border-white/40">
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-sm text-gray-400 border border-gray-100"><User className="w-7 h-7" /></div>
+              <div className="bg-gray-50 rounded-2xl p-3 flex items-center justify-between border border-gray-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm text-gray-400 border border-gray-100"><User className="w-5 h-5" /></div>
                   <div>
-                    <p className="text-base font-black text-gray-900 leading-none mb-2">{activeJob.full_name}</p>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-black text-[#00B14F] uppercase tracking-widest">Standard Booking</span>
-                    </div>
+                    <p className="text-sm font-black text-gray-900 leading-none mb-1">{activeJob.full_name}</p>
+                    <span className="text-[9px] font-black text-[#00B14F] uppercase tracking-widest">Standard Booking</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
                   <button 
                     onClick={() => setIsChatOpen(true)}
-                    className="w-12 h-12 bg-blue-500 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-blue-100 active:scale-90 transition-all"
+                    className="w-10 h-10 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center hover:bg-blue-100 transition-all"
                   >
-                    <MessageSquare className="w-5 h-5" />
+                    <MessageSquare className="w-4 h-4" />
                   </button>
                   {(activeJob.phone_number || activeJob.contact_number || activeJob.phone) && (
                     <a 
                       href={`tel:${activeJob.phone_number || activeJob.contact_number || activeJob.phone}`}
-                      className="w-12 h-12 bg-[#00B14F] text-white rounded-2xl flex items-center justify-center shadow-lg shadow-green-100 active:scale-90 transition-all"
+                      className="w-10 h-10 bg-[#E1F5EE] text-[#00B14F] rounded-full flex items-center justify-center hover:bg-[#00B14F] hover:text-white transition-all"
                     >
-                      <Phone className="w-5 h-5" />
+                      <Phone className="w-4 h-4" />
                     </a>
                   )}
-                  <div className="text-right">
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Fare</p>
-                    <p className="text-xl font-black text-[#00B14F] tracking-tighter">PHP {activeJob.total_amount}</p>
+                  <div className="text-right ml-2">
+                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Fare</p>
+                    <p className="text-base font-black text-black tracking-tighter">PHP {activeJob.total_amount}</p>
                   </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-3 pt-4">
-                {activeJob.transport_status === 'accepted' && <button onClick={() => updateStatus('on_way_to_pickup')} className="w-full bg-gray-900 text-white py-5 rounded-2xl font-black text-xs tracking-widest uppercase shadow-lg shadow-gray-200 active:scale-95 transition-all">Start Journey to Pickup</button>}
-                {activeJob.transport_status === 'on_way_to_pickup' && <button onClick={() => updateStatus('arrived_at_pickup')} className="w-full bg-[#00B14F] text-white py-5 rounded-2xl font-black text-xs tracking-widest uppercase shadow-lg shadow-green-100 active:scale-95 transition-all">I Have Arrived</button>}
-                {activeJob.transport_status === 'arrived_at_pickup' && <button onClick={() => updateStatus('picked_up')} className="w-full bg-[#00B14F] text-white py-5 rounded-2xl font-black text-xs tracking-widest uppercase shadow-lg shadow-green-100 active:scale-95 transition-all">Passenger is Onboard</button>}
-                {activeJob.transport_status === 'picked_up' && <button onClick={() => updateStatus('completed')} className="w-full bg-gray-900 text-white py-5 rounded-2xl font-black text-xs tracking-widest uppercase shadow-lg shadow-gray-100 active:scale-95 transition-all">Confirm Drop-off</button>}
-                {!sosActive && <button onClick={triggerSOS} className="w-full mt-2 flex items-center justify-center gap-2 text-red-600 py-4 rounded-2xl font-black text-[10px] tracking-widest uppercase border-2 border-red-50 active:bg-red-50 transition-all"><Shield className="w-4 h-4" /> Emergency SOS</button>}
+              <div className="grid grid-cols-1 gap-2 pt-2">
+                {activeJob.transport_status === 'accepted' && <button onClick={() => updateStatus('on_way_to_pickup')} className="w-full bg-gray-900 text-white py-3.5 rounded-full font-black text-[11px] tracking-widest uppercase hover:bg-gray-800 transition-all">Start Journey to Pickup</button>}
+                {activeJob.transport_status === 'on_way_to_pickup' && <button onClick={() => updateStatus('arrived_at_pickup')} className="w-full bg-[#00B14F] text-white py-3.5 rounded-full font-black text-[11px] tracking-widest uppercase hover:bg-[#009241] transition-all">I Have Arrived</button>}
+                {activeJob.transport_status === 'arrived_at_pickup' && <button onClick={() => updateStatus('picked_up')} className="w-full bg-[#00B14F] text-white py-3.5 rounded-full font-black text-[11px] tracking-widest uppercase hover:bg-[#009241] transition-all">Passenger is Onboard</button>}
+                {activeJob.transport_status === 'picked_up' && <button onClick={() => updateStatus('completed')} className="w-full bg-gray-900 text-white py-3.5 rounded-full font-black text-[11px] tracking-widest uppercase hover:bg-gray-800 transition-all">Confirm Drop-off</button>}
+                {!sosActive && <button onClick={triggerSOS} className="w-full flex items-center justify-center gap-1.5 text-red-500 py-3 rounded-full font-black text-[9px] tracking-widest uppercase border border-red-100 hover:bg-red-50 transition-all"><Shield className="w-3 h-3" /> Emergency SOS</button>}
               </div>
             </div>
           ) : (
@@ -728,8 +714,8 @@ const RiderPortal = () => {
                         <div className="flex items-center gap-4 mt-1">
                           <h4 className="text-2xl font-black text-gray-900 tracking-tighter truncate">PHP {parseFloat(req.total_amount).toFixed(2)}</h4>
                           <div className="flex items-center gap-2 shrink-0">
-                            <button onClick={() => setDeclinedJobs([...declinedJobs, req.id])} className="bg-red-50 text-red-500 px-4 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-red-100 transition-all">Decline</button>
-                            <button onClick={() => acceptJob(req.id)} className="bg-gray-900 text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-gray-200 hover:bg-[#00B14F] hover:shadow-green-100 transition-all">Accept</button>
+                            <button onClick={() => setDeclinedJobs([...declinedJobs, req.id])} className="bg-gray-900 text-white px-4 py-2.5 rounded-full font-black text-[10px] uppercase tracking-widest hover:bg-gray-800 transition-all">Decline</button>
+                            <button onClick={() => acceptJob(req.id)} className="bg-[#00B14F] text-white px-5 py-2.5 rounded-full font-black text-[10px] uppercase tracking-widest shadow-lg shadow-green-100 hover:bg-[#009241] transition-all">Accept</button>
                           </div>
                         </div>
                       </div>

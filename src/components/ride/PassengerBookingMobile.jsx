@@ -1308,48 +1308,48 @@ const PassengerBookingMobile = ({ setCurrentPage }) => {
             <div className="grid grid-cols-2 gap-4">
               <button 
                 onClick={() => { setFormData({...formData, paymentMethod: 'Cash', corporateAccountId: ''}); setCorporateValid(null); }}
-                className={`p-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition-all ${formData.paymentMethod === 'Cash' ? 'border-blue-500 bg-blue-50/50' : 'border-gray-100 bg-gray-50'}`}
+                className={`p-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition-all ${formData.paymentMethod === 'Cash' ? 'border-[#00B14F] bg-[#E1F5EE]/50' : 'border-gray-100 bg-gray-50'}`}
               >
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${formData.paymentMethod === 'Cash' ? 'bg-blue-100 text-blue-600' : 'bg-gray-200 text-gray-500'}`}>
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${formData.paymentMethod === 'Cash' ? 'bg-[#00B14F] text-white' : 'bg-gray-200 text-gray-500'}`}>
                   <Banknote className="w-5 h-5" />
                 </div>
-                <span className={`text-xs font-bold ${formData.paymentMethod === 'Cash' ? 'text-blue-700' : 'text-gray-500'}`}>Cash</span>
+                <span className={`text-xs font-bold ${formData.paymentMethod === 'Cash' ? 'text-[#00B14F]' : 'text-gray-500'}`}>Cash</span>
               </button>
               <button 
                 onClick={() => setFormData({...formData, paymentMethod: 'Corporate'})}
-                className={`p-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition-all ${formData.paymentMethod === 'Corporate' ? 'border-blue-500 bg-blue-50/50' : 'border-gray-100 bg-gray-50'}`}
+                className={`p-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition-all ${formData.paymentMethod === 'Corporate' ? 'border-[#00B14F] bg-[#E1F5EE]/50' : 'border-gray-100 bg-gray-50'}`}
               >
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${formData.paymentMethod === 'Corporate' ? 'bg-blue-100 text-blue-600' : 'bg-gray-200 text-gray-500'}`}>
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${formData.paymentMethod === 'Corporate' ? 'bg-[#00B14F] text-white' : 'bg-gray-200 text-gray-500'}`}>
                   <Shield className="w-5 h-5" />
                 </div>
-                <span className={`text-xs font-bold ${formData.paymentMethod === 'Corporate' ? 'text-blue-700' : 'text-gray-500'}`}>Corporate</span>
+                <span className={`text-xs font-bold ${formData.paymentMethod === 'Corporate' ? 'text-[#00B14F]' : 'text-gray-500'}`}>Corporate</span>
               </button>
               <button 
                 onClick={() => { setFormData({...formData, paymentMethod: 'GCash', corporateAccountId: ''}); setCorporateValid(null); }}
-                className={`p-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition-all ${formData.paymentMethod === 'GCash' ? 'border-blue-500 bg-blue-50/50' : 'border-gray-100 bg-gray-50'}`}
+                className={`p-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition-all ${formData.paymentMethod === 'GCash' ? 'border-[#00B14F] bg-[#E1F5EE]/50' : 'border-gray-100 bg-gray-50'}`}
               >
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${formData.paymentMethod === 'GCash' ? 'bg-blue-100 text-blue-600' : 'bg-gray-200 text-gray-500'}`}>
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${formData.paymentMethod === 'GCash' ? 'bg-[#00B14F] text-white' : 'bg-gray-200 text-gray-500'}`}>
                   <Smartphone className="w-5 h-5" />
                 </div>
-                <span className={`text-xs font-bold ${formData.paymentMethod === 'GCash' ? 'text-blue-700' : 'text-gray-500'}`}>GCash</span>
+                <span className={`text-xs font-bold ${formData.paymentMethod === 'GCash' ? 'text-[#00B14F]' : 'text-gray-500'}`}>GCash</span>
               </button>
               <button 
                 onClick={() => { setFormData({...formData, paymentMethod: 'Maya Account', corporateAccountId: ''}); setCorporateValid(null); }}
-                className={`p-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition-all ${formData.paymentMethod === 'Maya Account' ? 'border-blue-500 bg-blue-50/50' : 'border-gray-100 bg-gray-50'}`}
+                className={`p-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition-all ${formData.paymentMethod === 'Maya Account' ? 'border-[#00B14F] bg-[#E1F5EE]/50' : 'border-gray-100 bg-gray-50'}`}
               >
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${formData.paymentMethod === 'Maya Account' ? 'bg-blue-100 text-blue-600' : 'bg-gray-200 text-gray-500'}`}>
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${formData.paymentMethod === 'Maya Account' ? 'bg-[#00B14F] text-white' : 'bg-gray-200 text-gray-500'}`}>
                   <Wallet className="w-5 h-5" />
                 </div>
-                <span className={`text-xs font-bold ${formData.paymentMethod === 'Maya Account' ? 'text-blue-700' : 'text-gray-500'}`}>Maya</span>
+                <span className={`text-xs font-bold ${formData.paymentMethod === 'Maya Account' ? 'text-[#00B14F]' : 'text-gray-500'}`}>Maya</span>
               </button>
               <button 
                 onClick={() => { setFormData({...formData, paymentMethod: 'Credit Card', corporateAccountId: ''}); setCorporateValid(null); }}
-                className={`col-span-2 p-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition-all ${formData.paymentMethod === 'Credit Card' ? 'border-blue-500 bg-blue-50/50' : 'border-gray-100 bg-gray-50'}`}
+                className={`col-span-2 p-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition-all ${formData.paymentMethod === 'Credit Card' ? 'border-[#00B14F] bg-[#E1F5EE]/50' : 'border-gray-100 bg-gray-50'}`}
               >
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${formData.paymentMethod === 'Credit Card' ? 'bg-blue-100 text-blue-600' : 'bg-gray-200 text-gray-500'}`}>
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${formData.paymentMethod === 'Credit Card' ? 'bg-[#00B14F] text-white' : 'bg-gray-200 text-gray-500'}`}>
                   <CreditCard className="w-5 h-5" />
                 </div>
-                <span className={`text-xs font-bold ${formData.paymentMethod === 'Credit Card' ? 'text-blue-700' : 'text-gray-500'}`}>Credit Card</span>
+                <span className={`text-xs font-bold ${formData.paymentMethod === 'Credit Card' ? 'text-[#00B14F]' : 'text-gray-500'}`}>Credit Card</span>
               </button>
             </div>
           </div>
@@ -1425,7 +1425,7 @@ const PassengerBookingMobile = ({ setCurrentPage }) => {
           <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100 mt-8">
             <div className="flex justify-between items-center mb-2">
               <p className="text-xs font-medium text-gray-500 uppercase tracking-widest">Estimated Fare</p>
-              <p className="text-xl font-semibold text-blue-600">PHP {getCalculatedPrice(selectedVehicle)}</p>
+              <p className="text-xl font-semibold text-black">PHP {getCalculatedPrice(selectedVehicle)}</p>
             </div>
             <p className="text-[10px] font-medium text-gray-400 leading-relaxed uppercase tracking-tighter">Fare includes base rate and platform fees. Final amount may vary based on actual distance.</p>
           </div>
@@ -1434,7 +1434,7 @@ const PassengerBookingMobile = ({ setCurrentPage }) => {
         <button 
           onClick={handleConfirmBooking}
           disabled={bookingLoading}
-          className="w-full bg-[#00B14F] hover:bg-[#009241] text-white py-5 rounded-2xl font-semibold uppercase tracking-widest active:scale-95 transition-all mt-8 disabled:opacity-50 flex items-center justify-center gap-3"
+          className="w-full bg-[#00B14F] hover:bg-[#009241] text-white py-5 rounded-full font-semibold uppercase tracking-widest active:scale-95 transition-all mt-8 disabled:opacity-50 flex items-center justify-center gap-3"
         >
           {bookingLoading ? <RefreshCw className="w-6 h-6 animate-spin" /> : 'Complete My Booking'}
         </button>
@@ -1664,10 +1664,10 @@ const PassengerBookingMobile = ({ setCurrentPage }) => {
                       setIsSearching(true);
                     }
                   }}
-                  className={`w-full flex items-center gap-4 p-3 rounded-2xl transition-all duration-300 ${
+                  className={`w-full flex items-center gap-4 p-3 rounded-2xl transition-all duration-300 border-2 ${
                     selectedVehicle === v.id 
-                      ? 'bg-gray-100 text-gray-900 shadow-sm' 
-                      : 'bg-white text-gray-900'
+                      ? 'bg-gray-100 border-[#00B14F] text-gray-900 shadow-sm' 
+                      : 'bg-white border-transparent text-gray-900'
                   }`}
                 >
                   <div className="w-[150px] h-24 flex items-center justify-center overflow-hidden">
@@ -1718,7 +1718,7 @@ const PassengerBookingMobile = ({ setCurrentPage }) => {
               
               <button 
                 onClick={() => setStep('details')}
-                className="flex-1 bg-[#00B14F] hover:bg-[#009241] text-white h-14 rounded-2xl font-semibold text-lg flex items-center justify-center active:scale-95 transition-all"
+                className="flex-1 bg-[#00B14F] hover:bg-[#009241] text-white h-14 rounded-full font-semibold text-lg flex items-center justify-center active:scale-95 transition-all"
               >
                 Continue
               </button>

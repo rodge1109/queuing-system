@@ -9,6 +9,8 @@ const LiveTrackingMap = ({ riderPos, pickupPos, destPos, status, pickMode = fals
   const [userInteracted, setUserInteracted] = useState(false);
   const userInteractedRef = React.useRef(false);
   const markersRef = React.useRef([]);
+  const prevRiderPosRef = React.useRef(null);
+  const bearingRef = React.useRef(0);
 
   useEffect(() => {
     const L = window.L;
@@ -68,8 +70,11 @@ const LiveTrackingMap = ({ riderPos, pickupPos, destPos, status, pickMode = fals
 
   // Fetch Main Trip Route
   useEffect(() => {
-    if (pickupPos && destPos) {
-      fetch(`https://router.project-osrm.org/route/v1/driving/${pickupPos.lng},${pickupPos.lat};${destPos.lng},${destPos.lat}?overview=full&geometries=geojson`)
+    const startLat = status === 'picked_up' ? riderPos?.lat : pickupPos?.lat;
+    const startLng = status === 'picked_up' ? riderPos?.lng : pickupPos?.lng;
+
+    if (startLat && startLng && destPos) {
+      fetch(`https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${destPos.lng},${destPos.lat}?overview=full&geometries=geojson`)
         .then(r => r.json())
         .then(data => {
           if (data.routes?.[0]?.geometry?.coordinates) {
@@ -79,11 +84,11 @@ const LiveTrackingMap = ({ riderPos, pickupPos, destPos, status, pickMode = fals
     } else {
       setMainRoute(null);
     }
-  }, [pickupPos?.lat, pickupPos?.lng, destPos?.lat, destPos?.lng]);
+  }, [pickupPos?.lat, pickupPos?.lng, destPos?.lat, destPos?.lng, status === 'picked_up' ? riderPos?.lat : null, status === 'picked_up' ? riderPos?.lng : null, status]);
 
   // Fetch Driver Tracking Route
   useEffect(() => {
-    if (riderPos && pickupPos) {
+    if (riderPos && pickupPos && status !== 'picked_up') {
       fetch(`https://router.project-osrm.org/route/v1/driving/${riderPos.lng},${riderPos.lat};${pickupPos.lng},${pickupPos.lat}?overview=full&geometries=geojson`)
         .then(r => r.json())
         .then(data => {
@@ -94,7 +99,7 @@ const LiveTrackingMap = ({ riderPos, pickupPos, destPos, status, pickMode = fals
     } else {
       setDriverRoute(null);
     }
-  }, [riderPos?.lat, riderPos?.lng, pickupPos?.lat, pickupPos?.lng]);
+  }, [riderPos?.lat, riderPos?.lng, pickupPos?.lat, pickupPos?.lng, status]);
 
   useEffect(() => {
     const L = window.L;
@@ -111,10 +116,26 @@ const LiveTrackingMap = ({ riderPos, pickupPos, destPos, status, pickMode = fals
 
     // Rider Marker (Detailed Top-Down Car Icon)
     if (riderPos) {
+      if (prevRiderPosRef.current) {
+        const p1 = prevRiderPosRef.current;
+        const p2 = riderPos;
+        if (p1.lat !== p2.lat || p1.lng !== p2.lng) {
+          const toRad = (deg) => (deg * Math.PI) / 180;
+          const toDeg = (rad) => (rad * 180) / Math.PI;
+          const lat1 = toRad(p1.lat);
+          const lat2 = toRad(p2.lat);
+          const dLng = toRad(p2.lng - p1.lng);
+          const y = Math.sin(dLng) * Math.cos(lat2);
+          const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+          bearingRef.current = (toDeg(Math.atan2(y, x)) + 360) % 360;
+        }
+      }
+      prevRiderPosRef.current = riderPos;
+
       const iconColor = '#00B14F';
       const carSvgHtml = `
-        <div class="relative flex items-center justify-center transition-all hover:scale-110" style="filter: drop-shadow(0 4px 6px rgba(0,0,0,0.2)); transform: translateY(-4px);">
-          <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24">
+        <div class="relative flex items-center justify-center transition-all hover:scale-110" style="filter: drop-shadow(0 4px 6px rgba(0,0,0,0.2)); transform: rotate(${bearingRef.current}deg);">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
             <path d="M12 1.5C8 1.5 6 3 6 5.5v14c0 2.5 2 3 6 3s6-0.5 6-3v-14c0-2.5-2-4-6-4z" fill="${iconColor}" />
             <path d="M6.8 8 Q12 5 17.2 8 Z" fill="#1a1a1a" />
             <rect x="6.5" y="9" width="0.8" height="8" fill="#1a1a1a" />
@@ -132,15 +153,15 @@ const LiveTrackingMap = ({ riderPos, pickupPos, destPos, status, pickMode = fals
         icon: L.divIcon({
           html: carSvgHtml,
           className: 'rider-car-icon',
-          iconSize: [36, 36],
-          iconAnchor: [18, 18]
+          iconSize: [24, 24],
+          iconAnchor: [12, 12]
         })
       }).addTo(leafletMap.current);
       markers.push([riderPos.lat, riderPos.lng]);
     }
 
     // Pickup Marker
-    if (pickupPos) {
+    if (pickupPos && status !== 'picked_up') {
       L.marker([pickupPos.lat, pickupPos.lng], {
         icon: L.icon({
           iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
@@ -166,7 +187,7 @@ const LiveTrackingMap = ({ riderPos, pickupPos, destPos, status, pickMode = fals
       L.polyline(driverRoute, {
         color: '#00B14F', weight: 3, dashArray: '5, 8', opacity: 0.8, lineJoin: 'round'
       }).addTo(leafletMap.current);
-    } else if (riderPos && pickupPos) {
+    } else if (riderPos && pickupPos && status !== 'picked_up') {
       L.polyline([[riderPos.lat, riderPos.lng], [pickupPos.lat, pickupPos.lng]], {
         color: '#00B14F', weight: 3, dashArray: '5, 8', opacity: 0.8, lineJoin: 'round'
       }).addTo(leafletMap.current);
@@ -177,7 +198,8 @@ const LiveTrackingMap = ({ riderPos, pickupPos, destPos, status, pickMode = fals
         color: '#00B14F', weight: 4, opacity: 0.9, lineJoin: 'round'
       }).addTo(leafletMap.current);
     } else if (pickupPos && destPos) {
-      L.polyline([[pickupPos.lat, pickupPos.lng], [destPos.lat, destPos.lng]], {
+      const start = status === 'picked_up' && riderPos ? [riderPos.lat, riderPos.lng] : [pickupPos.lat, pickupPos.lng];
+      L.polyline([start, [destPos.lat, destPos.lng]], {
         color: '#00B14F', weight: 4, opacity: 0.9, lineJoin: 'round'
       }).addTo(leafletMap.current);
     }
