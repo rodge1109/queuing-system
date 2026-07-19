@@ -1691,7 +1691,7 @@ const PassengerBookingMobile = ({ setCurrentPage }) => {
             </p>
             
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pb-2 px-2 max-h-[40vh] overflow-y-auto">
-              {vehicles.map((v) => (
+              {[...vehicles].sort((a, b) => a.id === selectedVehicle ? -1 : b.id === selectedVehicle ? 1 : 0).map((v) => (
                 <button
                   key={v.id}
                   onClick={() => {
@@ -1765,7 +1765,7 @@ const PassengerBookingMobile = ({ setCurrentPage }) => {
                 <div className="flex justify-center p-4">
                   <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
                 </div>
-              ) : vehicles.map((v) => (
+              ) : [...vehicles].sort((a, b) => a.id === selectedVehicle ? -1 : b.id === selectedVehicle ? 1 : 0).map((v) => (
                 <button
                   key={v.id}
                   onClick={() => {
