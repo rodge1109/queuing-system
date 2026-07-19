@@ -3272,7 +3272,7 @@ app.delete('/api/booking-services/:id', async (req, res) => {
 // Passenger Registration
 app.post('/api/passenger/register', async (req, res) => {
   try {
-    const { fullName, email, phoneNumber, password } = req.body;
+    const { fullName, email, phoneNumber, password, photoBase64 } = req.body;
     
     if (!fullName || !phoneNumber || !password) {
       return res.status(400).json({ success: false, message: 'Please provide full name, phone number, and password' });
@@ -3286,10 +3286,10 @@ app.post('/api/passenger/register', async (req, res) => {
 
     // Insert new passenger/client
     const result = await pool.query(
-      `INSERT INTO clients (full_name, phone_number, email, password)
-       VALUES ($1, $2, $3, $4)
-       RETURNING id, full_name, phone_number, email`,
-      [fullName, phoneNumber, email || null, password]
+      `INSERT INTO clients (full_name, phone_number, email, password, photo_url)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id, full_name, phone_number, email, photo_url`,
+      [fullName, phoneNumber, email || null, password, photoBase64 || null]
     );
 
     res.status(201).json({
@@ -4211,6 +4211,10 @@ const initClinicSettings = async () => {
 
   await pool.query(`
     ALTER TABLE clients ADD COLUMN IF NOT EXISTS password VARCHAR(255);
+  `);
+  
+  await pool.query(`
+    ALTER TABLE clients ADD COLUMN IF NOT EXISTS photo_url TEXT;
   `);
 
   // Migrate existing walk-in clients from appointments to clients table

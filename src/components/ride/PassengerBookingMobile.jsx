@@ -5,7 +5,7 @@ import {
   ArrowLeft, Heart, History, Star,
   Compass, Shield, Phone, MessageSquare,
   CarFront, Bus, Check, Mail, RefreshCw, Play, X, Flag, Plus, Ticket, SlidersHorizontal, CreditCard,
-  Lock, Eye, EyeOff, ClipboardList, Briefcase, Smartphone, Wallet, Banknote
+  Lock, Eye, EyeOff, ClipboardList, Briefcase, Smartphone, Wallet, Banknote, Camera
 } from 'lucide-react';
 import LiveTrackingMap from '../maps/LiveTrackingMap';
 import PassengerTracking from './PassengerTracking';
@@ -58,6 +58,13 @@ const PassengerBookingMobile = ({ setCurrentPage }) => {
     password: ''
   });
   const [showLoginPassword, setShowLoginPassword] = useState(false);
+  
+  // Liveness Check State
+  const [livenessStage, setLivenessStage] = useState(0);
+  const [photoDataUrl, setPhotoDataUrl] = useState(null);
+  const videoRef = React.useRef(null);
+  const canvasRef = React.useRef(null);
+  const streamRef = React.useRef(null);
 
   const [driverForm, setDriverForm] = useState({
     fullName: '',
@@ -102,6 +109,47 @@ const PassengerBookingMobile = ({ setCurrentPage }) => {
         .catch(err => console.error(err));
     }
   }, []);
+
+  // Liveness Check Side Effects
+  useEffect(() => {
+    if (step === 'liveness-check') {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
+          .then(stream => {
+            streamRef.current = stream;
+            if (videoRef.current) {
+              videoRef.current.srcObject = stream;
+              videoRef.current.play();
+            }
+          })
+          .catch(err => {
+            console.error(err);
+            alert("Camera access is required for verification");
+            setStep('passenger-signup');
+          });
+      }
+      
+      return () => {
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop());
+        }
+      };
+    }
+  }, [step]);
+
+  useEffect(() => {
+    let timer;
+    if (step === 'liveness-check') {
+      if (livenessStage === 0) {
+        timer = setTimeout(() => setLivenessStage(1), 3000);
+      } else if (livenessStage === 1) {
+        timer = setTimeout(() => setLivenessStage(2), 3000);
+      } else if (livenessStage === 2) {
+        timer = setTimeout(() => setLivenessStage(3), 3000);
+      }
+    }
+    return () => clearTimeout(timer);
+  }, [livenessStage, step]);
 
   const handleUseCurrentLocation = () => {
     console.log('Use current location clicked');
@@ -227,7 +275,7 @@ const PassengerBookingMobile = ({ setCurrentPage }) => {
         const res = await fetch('/api/booking-services');
         const data = await res.json();
         if (data.success) {
-          const transportServices = data.services.filter(s => (s.category || '').trim().toUpperCase() === 'TRANSPORT');
+          const transportServices = data.services;
           const mappedVehicles = transportServices.map(s => {
             const isVan = s.name.toLowerCase().includes('van');
             const isMotorcycle = s.name.toLowerCase().includes('motor');
@@ -986,33 +1034,8 @@ const PassengerBookingMobile = ({ setCurrentPage }) => {
         return;
       }
       
-      setAuthLoading(true);
-      try {
-        const res = await fetch('/api/passenger/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            fullName: signupForm.fullName,
-            email: signupForm.email,
-            phoneNumber: signupForm.phoneNumber,
-            password: signupForm.password
-          })
-        });
-        const data = await res.json();
-        if (data.success) {
-          localStorage.setItem('passenger_user', JSON.stringify(data.passenger));
-          setPassenger(data.passenger);
-          alert(data.message || "Account created successfully!");
-          setStep('selection');
-        } else {
-          alert(data.message || "Failed to create account");
-        }
-      } catch (err) {
-        console.error(err);
-        alert("Error connecting to server");
-      } finally {
-        setAuthLoading(false);
-      }
+      setStep('liveness-check');
+      setLivenessStage(0);
     };
 
     return (
@@ -1122,6 +1145,96 @@ const PassengerBookingMobile = ({ setCurrentPage }) => {
           >
             Already registered? <span className="text-[#00B14F] hover:underline">Sign In</span>
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (step === 'liveness-check') {
+    const capturePhotoAndSubmit = async () => {
+      if (videoRef.current && canvasRef.current) {
+        const video = videoRef.current;
+        const canvas = canvasRef.current;
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const context = canvas.getContext('2d');
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/jpeg');
+        setPhotoDataUrl(dataUrl);
+
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop());
+        }
+
+        setAuthLoading(true);
+        try {
+          const res = await fetch('/api/passenger/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fullName: signupForm.fullName,
+              email: signupForm.email,
+              phoneNumber: signupForm.phoneNumber,
+              password: signupForm.password,
+              photoBase64: dataUrl
+            })
+          });
+          const data = await res.json();
+          if (data.success) {
+            localStorage.setItem('passenger_user', JSON.stringify(data.passenger));
+            setPassenger(data.passenger);
+            alert(data.message || "Account created successfully!");
+            setStep('selection');
+          } else {
+            alert(data.message || "Failed to create account");
+            setStep('passenger-signup');
+          }
+        } catch (err) {
+          console.error(err);
+          alert("Error connecting to server");
+          setStep('passenger-signup');
+        } finally {
+          setAuthLoading(false);
+        }
+      }
+    };
+
+    return (
+      <div className="min-h-screen bg-[#161616] flex flex-col items-center justify-center p-6 text-white text-center animate-fadeIn">
+        <h2 className="text-2xl font-bold mb-2">Verify it's you</h2>
+        <p className="text-sm text-gray-400 mb-10 h-10 flex items-center justify-center">
+          {livenessStage === 0 && "Please look straight at the camera."}
+          {livenessStage === 1 && "Turn your head slowly to the left."}
+          {livenessStage === 2 && "Turn your head slowly to the right."}
+          {livenessStage === 3 && "Great! Now smile for your profile photo."}
+        </p>
+
+        <div className="relative w-72 h-72 rounded-full overflow-hidden border-4 border-[#00B14F] mb-10 shadow-[0_0_40px_rgba(0,177,79,0.2)]">
+          <video 
+            ref={videoRef} 
+            className="w-full h-full object-cover transform scale-x-[-1]" 
+            playsInline 
+            muted 
+          />
+        </div>
+        <canvas ref={canvasRef} style={{ display: 'none' }} />
+
+        <div className="h-20 flex items-center justify-center w-full">
+          {livenessStage === 3 ? (
+            <button 
+              onClick={capturePhotoAndSubmit}
+              disabled={authLoading}
+              className="bg-[#00B14F] text-white py-4 px-8 rounded-full font-bold shadow-lg shadow-green-900/50 flex items-center gap-3 active:scale-95 transition-transform disabled:opacity-50 text-base"
+            >
+              {authLoading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <><Camera size={20} /> Capture & Finish</>}
+            </button>
+          ) : (
+            <div className="flex gap-3">
+              <div className={`h-2.5 rounded-full transition-all duration-500 ${livenessStage >= 0 ? 'w-10 bg-[#00B14F]' : 'w-3 bg-gray-700'}`}></div>
+              <div className={`h-2.5 rounded-full transition-all duration-500 ${livenessStage >= 1 ? 'w-10 bg-[#00B14F]' : 'w-3 bg-gray-700'}`}></div>
+              <div className={`h-2.5 rounded-full transition-all duration-500 ${livenessStage >= 2 ? 'w-10 bg-[#00B14F]' : 'w-3 bg-gray-700'}`}></div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -1577,8 +1690,8 @@ const PassengerBookingMobile = ({ setCurrentPage }) => {
               Tap to get a ride to your destination
             </p>
             
-            <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2 px-2">
-              {vehicles.filter(v => !selectedVehicle || v.id === selectedVehicle).map((v) => (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pb-2 px-2 max-h-[40vh] overflow-y-auto">
+              {vehicles.map((v) => (
                 <button
                   key={v.id}
                   onClick={() => {
@@ -1590,10 +1703,10 @@ const PassengerBookingMobile = ({ setCurrentPage }) => {
                       setIsSearching(true);
                     }
                   }}
-                  className={`flex flex-col items-center gap-1 p-3 min-w-[150px] rounded-2xl transition-all duration-300 ${
+                  className={`flex flex-col items-center gap-1 p-3 rounded-2xl transition-all duration-300 border-2 ${
                     selectedVehicle === v.id 
-                      ? 'bg-gray-100 text-gray-900 scale-105' 
-                      : 'bg-white text-gray-900'
+                      ? 'border-[#00B14F] bg-[#E1F5EE]/20 shadow-sm' 
+                      : 'border-transparent bg-white shadow-sm hover:border-gray-100'
                   }`}
                 >
                   <div className="relative w-[150px] h-20 flex items-center justify-center">
@@ -1652,7 +1765,7 @@ const PassengerBookingMobile = ({ setCurrentPage }) => {
                 <div className="flex justify-center p-4">
                   <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
                 </div>
-              ) : vehicles.filter(v => !selectedVehicle || v.id === selectedVehicle).map((v) => (
+              ) : vehicles.map((v) => (
                 <button
                   key={v.id}
                   onClick={() => {
