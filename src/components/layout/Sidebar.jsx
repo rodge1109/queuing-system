@@ -41,7 +41,7 @@ const Sidebar = ({ activeTab, setActiveTab, onLogout, userProfile }) => {
     {
       section: 'MANAGEMENT',
       items: [
-        { id: 'specialists', label: 'Specialists', icon: Users },
+
         { id: 'services', label: 'Services', icon: ClipboardList },
         { id: 'riders', label: 'Riders', icon: Truck },
         { id: 'corporate', label: 'Corporate Accounts', icon: Building2 },

@@ -35,7 +35,7 @@ import RidersManagement from './components/admin/RidersManagement';
 import RideScheduling from './components/admin/RideScheduling';
 import PassengerBookingMobile from './components/ride/PassengerBookingMobile';
 import OperatorPortal from './components/operator/OperatorPortal';
-
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend } from 'recharts';
 
 
 // Cart Context
@@ -598,6 +598,12 @@ export default function RestaurantApp() {
               className="text-[10px] font-black text-[#888] tracking-widest uppercase hover:text-blue-400 transition-colors"
             >
               Switch to Mobile Booking
+            </button>
+            <button
+              onClick={() => setCurrentPage('admin')}
+              className="text-[10px] font-black text-[#10b981] tracking-widest uppercase hover:text-white transition-colors"
+            >
+              Admin Dashboard
             </button>
           </div>
         )}
@@ -1413,67 +1419,186 @@ function AdminDashboard({ setCurrentPage }) {
           {/* ==================== DASHBOARD TAB ==================== */}
           <>
             {activeTab === 'dashboard' && (
-              <div className="space-y-8 animate-fadeIn">
+              <div className="space-y-6 animate-fadeIn">
                 {/* Stats Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                   {[
-                    { label: 'Total Bookings', value: appointments.length || '12,458', change: '+15.2%', positive: true, color: 'blue' },
-                    { label: 'Completed', value: appointments.filter(a => a.status === 'completed').length || '11,245', change: '+12.6%', positive: true, color: 'green' },
-                    { label: 'Cancelled', value: appointments.filter(a => a.status === 'cancelled').length || '1,213', change: '-5.4%', positive: false, color: 'red' },
-                    { label: 'Ongoing', value: appointments.filter(a => a.status === 'pending').length || '256', change: '+8.6%', positive: true, color: 'orange' },
-                    { label: 'No Show', value: '128', change: '+3.1%', positive: false, color: 'slate' }
+                    { label: 'Total Bookings', value: appointments.length || '0', change: '', positive: true, color: 'blue' },
+                    { label: 'Completed', value: appointments.filter(a => a.status === 'completed').length || '0', change: '', positive: true, color: 'green' },
+                    { label: 'Cancelled', value: appointments.filter(a => a.status === 'cancelled').length || '0', change: '', positive: false, color: 'red' },
+                    { label: 'Ongoing', value: appointments.filter(a => a.status === 'pending').length || '0', change: '', positive: true, color: 'orange' },
+                    { label: 'No Show', value: appointments.filter(a => a.status === 'no_show').length || '0', change: '', positive: false, color: 'slate' }
                   ].map((stat, i) => (
-                    <div key={i} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-                      <p className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-2">{stat.label}</p>
+                    <div key={i} className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                      <p className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-1">{stat.label}</p>
                       <div className="flex items-end justify-between">
-                        <h3 className="text-2xl font-bold text-gray-900">{stat.value}</h3>
-                        <span className={`text-xs font-bold px-2 py-1 rounded-lg ${stat.positive ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
-                          {stat.change}
-                        </span>
+                        <h3 className="text-xl font-black text-gray-900">{stat.value}</h3>
+                        {stat.change && (
+                          <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${stat.positive ? 'bg-green-50 text-[#10b981]' : 'bg-red-50 text-red-600'}`}>
+                            {stat.change}
+                          </span>
+                        )}
                       </div>
                     </div>
                   ))}
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                  {/* Main Chart/Map Area */}
-                  <div className="lg:col-span-2 space-y-8">
-                    <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                      <div className="flex justify-between items-center mb-6">
-                        <h3 className="font-bold text-gray-900">Recent Activity</h3>
-                        <button className="text-xs font-bold text-[#00B14F]">View Detailed Report</button>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Main Chart Area */}
+                  <div className="lg:col-span-2 space-y-6">
+                    <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-sm font-black text-gray-900 uppercase tracking-wide">Bookings Over Time</h3>
                       </div>
-                      <div className="h-[300px] w-full bg-gray-50 rounded-xl border border-dashed border-gray-200 flex items-center justify-center">
-                        <p className="text-gray-400 text-sm italic">Activity visualization placeholder</p>
+                      <div className="h-[260px] w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={
+                            (() => {
+                              const grouped = {};
+                              appointments.forEach(a => {
+                                const d = (a.preferred_date || '').slice(0, 10);
+                                if (d) {
+                                  grouped[d] = (grouped[d] || 0) + 1;
+                                }
+                              });
+                              let arr = Object.keys(grouped).map(k => ({ date: k, bookings: grouped[k] }));
+                              arr.sort((a,b) => a.date.localeCompare(b.date));
+                              if (arr.length === 0) {
+                                arr = [
+                                  { date: 'Mon', bookings: 12 }, { date: 'Tue', bookings: 19 },
+                                  { date: 'Wed', bookings: 15 }, { date: 'Thu', bookings: 22 },
+                                  { date: 'Fri', bookings: 28 }, { date: 'Sat', bookings: 35 },
+                                  { date: 'Sun', bookings: 20 }
+                                ];
+                              }
+                              return arr.slice(-7);
+                            })()
+                          } margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                            <defs>
+                              <linearGradient id="colorBookings" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                                <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                            <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#888' }} />
+                            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#888' }} />
+                            <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
+                            <Area type="monotone" dataKey="bookings" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorBookings)" />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm">
+                        <h3 className="text-sm font-black text-gray-900 uppercase tracking-wide mb-4">Status Breakdown</h3>
+                        <div className="h-[200px] w-full">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={[
+                                  { name: 'Completed', value: appointments.filter(a => a.status === 'completed').length || 45 },
+                                  { name: 'Pending', value: appointments.filter(a => a.status === 'pending').length || 25 },
+                                  { name: 'Cancelled', value: appointments.filter(a => a.status === 'cancelled').length || 10 },
+                                ]}
+                                innerRadius={60}
+                                outerRadius={80}
+                                paddingAngle={5}
+                                dataKey="value"
+                              >
+                                <Cell fill="#10b981" />
+                                <Cell fill="#f59e0b" />
+                                <Cell fill="#ef4444" />
+                              </Pie>
+                              <Tooltip />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+
+                      <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm">
+                        <h3 className="text-sm font-black text-gray-900 uppercase tracking-wide mb-4">Service Popularity</h3>
+                        <div className="h-[200px] w-full">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={
+                              (() => {
+                                const svcCounts = {};
+                                appointments.forEach(a => {
+                                  if (a.service_type) {
+                                    svcCounts[a.service_type] = (svcCounts[a.service_type] || 0) + 1;
+                                  }
+                                });
+                                let arr = Object.keys(svcCounts).map(k => ({ name: k.substring(0, 8) + (k.length > 8 ? '...' : ''), count: svcCounts[k] }));
+                                arr.sort((a,b) => b.count - a.count);
+                                if (arr.length === 0) {
+                                  arr = [
+                                    { name: 'Consult', count: 40 },
+                                    { name: 'Dental', count: 30 },
+                                    { name: 'Checkup', count: 20 },
+                                    { name: 'X-Ray', count: 10 }
+                                  ];
+                                }
+                                return arr.slice(0, 4);
+                              })()
+                            } layout="vertical" margin={{ top: 0, right: 10, left: 10, bottom: 0 }}>
+                              <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f0f0f0" />
+                              <XAxis type="number" hide />
+                              <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#555' }} width={60} />
+                              <Tooltip cursor={{ fill: 'transparent' }} />
+                              <Bar dataKey="count" fill="#10b981" radius={[0, 4, 4, 0]} barSize={20} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
                       </div>
                     </div>
                   </div>
 
                   {/* Sidebar Info Area */}
-                  <div className="space-y-8">
-                    <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                      <h3 className="font-bold text-gray-900 mb-6">System Status</h3>
-                      <div className="space-y-4">
+                  <div className="space-y-6">
+                    <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm">
+                      <h3 className="text-sm font-black text-gray-900 uppercase tracking-wide mb-5">System Status</h3>
+                      <div className="space-y-3">
                         {[
-                          { label: 'Server Status', status: 'Optimal', color: 'bg-green-500' },
-                          { label: 'Payment Gateway', status: 'Active', color: 'bg-green-500' },
-                          { label: 'SMS Provider', status: 'Active', color: 'bg-green-500' }
+                          { label: 'Database', status: 'Online', color: 'bg-green-500' },
+                          { label: 'API Gateway', status: 'Active', color: 'bg-green-500' },
+                          { label: 'SMS Provider', status: 'Active', color: 'bg-green-500' },
+                          { label: 'Email Server', status: 'Active', color: 'bg-green-500' }
                         ].map((item, i) => (
-                          <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl font-medium">
-                            <span className="text-sm text-gray-600">{item.label}</span>
-                            <div className="flex items-center gap-2">
+                          <div key={i} className="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg font-medium">
+                            <span className="text-xs text-gray-600 font-bold">{item.label}</span>
+                            <div className="flex items-center gap-1.5">
                               <div className={`w-2 h-2 rounded-full ${item.color}`}></div>
-                              <span className="text-xs text-gray-900">{item.status}</span>
+                              <span className="text-[10px] font-black text-gray-900 uppercase tracking-wider">{item.status}</span>
                             </div>
                           </div>
                         ))}
+                      </div>
+                    </div>
+
+                    <div className="bg-[#1c1917] p-5 rounded-xl shadow-lg relative overflow-hidden">
+                      <div className="absolute top-0 right-0 p-4 opacity-10">
+                        <Activity className="w-24 h-24 text-[#E4FE7B]" />
+                      </div>
+                      <h3 className="text-sm font-black text-white uppercase tracking-wide mb-2 relative z-10">Quick Actions</h3>
+                      <p className="text-xs text-gray-400 mb-5 relative z-10">Need to manage something right now?</p>
+                      
+                      <div className="space-y-2 relative z-10">
+                        <button onClick={() => setActiveTab('services')} className="w-full flex items-center justify-between p-3 bg-white/10 hover:bg-white/20 rounded-lg text-white transition-colors text-xs font-bold">
+                          <span>Configure Services</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => setActiveTab('appointments')} className="w-full flex items-center justify-between p-3 bg-white/10 hover:bg-white/20 rounded-lg text-white transition-colors text-xs font-bold">
+                          <span>View All Bookings</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
             )}
-
             {/* ==================== SCHEDULING TAB ==================== */}
             {activeTab === 'scheduling' && (
               <RideScheduling trips={trips} riders={riders} fetchTrips={fetchTrips} />
@@ -1822,125 +1947,7 @@ function AdminDashboard({ setCurrentPage }) {
                 </div>
               </div>
             )}
-            {/* ==================== SPECIALISTS TAB ==================== */}
-            {activeTab === 'specialists' && (
-              <div className="space-y-8">
-                <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div>
-                    <h2 className="text-3xl font-light text-[#161616] uppercase tracking-tighter">Clinical Specialists</h2>
-                    <p className="text-[#525252] text-sm mt-1">Manage the medical professionals available for booking.</p>
-                  </div>
-                </header>
 
-                <div className="grid lg:grid-cols-3 gap-8">
-                  {/* Add Specialist Form */}
-                  <div className="lg:col-span-1 border border-[#e0e0e0] bg-white p-6">
-                    <h3 className="text-lg font-bold text-[#161616] mb-6 uppercase tracking-wider">Add New specialist</h3>
-                    <div className="space-y-4">
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-[#525252] uppercase tracking-widest">Full Name</label>
-                        <input
-                          className="w-full px-4 py-3 bg-blue-50 border border-[#e0e0e0] rounded-0 text-gray-800 placeholder-gray-400 focus:outline-none focus:border-blue-500"
-                          placeholder="Dr. Jordan Smith"
-                          value={newSpecialist.name}
-                          onChange={(e) => setNewSpecialist({ ...newSpecialist, name: e.target.value })}
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-[#525252] uppercase tracking-widest">Title / Specialty</label>
-                        <input
-                          className="w-full px-4 py-3 bg-blue-50 border border-[#e0e0e0] rounded-0 text-gray-800 placeholder-gray-400 focus:outline-none focus:border-blue-500"
-                          placeholder="Chief Cardiologist"
-                          value={newSpecialist.title}
-                          onChange={(e) => setNewSpecialist({ ...newSpecialist, title: e.target.value })}
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-[#525252] uppercase tracking-widest">Email Address</label>
-                        <input
-                          className="w-full px-4 py-3 bg-blue-50 border border-[#e0e0e0] rounded-0 text-gray-800 placeholder-gray-400 focus:outline-none focus:border-blue-500"
-                          placeholder="jordan@healthcare.com"
-                          value={newSpecialist.email}
-                          onChange={(e) => setNewSpecialist({ ...newSpecialist, email: e.target.value })}
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-[#525252] uppercase tracking-widest">Profile Image (URL)</label>
-                        <input
-                          className="w-full px-4 py-3 bg-blue-50 border border-[#e0e0e0] rounded-0 text-gray-800 placeholder-gray-400 focus:outline-none focus:border-blue-500"
-                          placeholder="https://..."
-                          value={newSpecialist.imageUrl}
-                          onChange={(e) => setNewSpecialist({ ...newSpecialist, imageUrl: e.target.value })}
-                        />
-                      </div>
-                      <button
-                        disabled={!newSpecialist.name || isAddingSpecialist}
-                        onClick={async () => {
-                          setIsAddingSpecialist(true);
-                          try {
-                            const res = await fetch('/api/specialists', {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify(newSpecialist)
-                            });
-                            const data = await res.json();
-                            if (data.success) {
-                              setSpecialists([...specialists, data.specialist]);
-                              setNewSpecialist({ name: '', title: '', email: '', imageUrl: '' });
-                            }
-                          } catch (err) {
-                            alert('Failed to add specialist');
-                          } finally {
-                            setIsAddingSpecialist(false);
-                          }
-                        }}
-                        className="w-full py-3 bg-[#10b981] text-white font-bold uppercase tracking-widest text-[12px] disabled:opacity-50 hover:bg-[#465a8f] transition-all"
-                      >
-                        {isAddingSpecialist ? 'Saving...' : 'Add Specialist'}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Specialists List */}
-                  <div className="lg:col-span-2 space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {specialists.map(s => (
-                        <div key={s.id} className="bg-white border border-[#e0e0e0] p-6 flex gap-4 transition-all hover:bg-[#f4f4f4]">
-                          <div className="w-16 h-16 bg-[#e0e0e0] flex items-center justify-center overflow-hidden flex-shrink-0">
-                            {s.image_url ? <img src={s.image_url} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-gray-400"><svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" /></svg></div>}
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="font-bold text-[#161616]">{s.name}</h4>
-                            <p className="text-xs text-[#10b981] font-medium">{s.title}</p>
-                            <p className="text-[10px] text-[#8d8d8d] mt-1">{s.email}</p>
-                            <button
-                              onClick={async () => {
-                                if (window.confirm('Delete this specialist?')) {
-                                  try {
-                                    await fetch(`/api/specialists/${s.id}`, { method: 'DELETE' });
-                                    setSpecialists(specialists.filter(x => x.id !== s.id));
-                                  } catch (err) {
-                                    alert('Failed to delete');
-                                  }
-                                }
-                              }}
-                              className="text-red-500 text-[10px] uppercase font-bold tracking-widest mt-4 hover:underline"
-                            >
-                              Remove Specialist
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                      {specialists.length === 0 && (
-                        <div className="col-span-full py-12 text-center bg-[#f4f4f4] border border-dashed border-[#e0e0e0] text-[#8d8d8d] text-sm font-mono uppercase">
-                          No Specialists Registered
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* ==================== CORPORATE ACCOUNTS TAB ==================== */}
             {activeTab === 'corporate' && (
@@ -2061,7 +2068,7 @@ function AdminDashboard({ setCurrentPage }) {
                   ) : (
                     <div className="bg-white border border-[#e0e0e0] shadow-sm overflow-hidden">
                       {/* Table Header */}
-                      <div className="hidden md:grid md:grid-cols-[44px_1.4fr_1fr_0.9fr_0.7fr_0.8fr_0.9fr_1.1fr] gap-2 px-5 py-3 bg-[#161616] text-[10px] font-black text-white uppercase tracking-[1.5px] items-center border-b-2 border-[#24a148]">
+                      <div className="hidden md:grid md:grid-cols-[40px_1.4fr_1.2fr_1fr_0.7fr_0.8fr_0.9fr_80px] gap-2 px-3 py-2 bg-[#161616] text-[10px] font-black text-white uppercase tracking-[1.5px] items-center border-b border-[#e0e0e0]">
                         <span className="text-[#24a148]">#</span>
                         <span>Client</span>
                         <span>Service</span>
@@ -2072,7 +2079,7 @@ function AdminDashboard({ setCurrentPage }) {
                         <span className="text-right">Actions</span>
                       </div>
                       {filteredAppointments.map((apt, index) => (
-                        <div key={apt.id} className={`grid grid-cols-1 md:grid-cols-[44px_1.4fr_1fr_0.9fr_0.7fr_0.8fr_0.9fr_1.1fr] gap-2 px-5 py-3 items-center text-sm border-b border-[#e0e0e0] hover:bg-[#f0fdf4] transition-all group ${index % 2 === 0 ? 'bg-white' : 'bg-[#f9fafb]'}`}>
+                        <div key={apt.id} className={`grid grid-cols-1 md:grid-cols-[40px_1.4fr_1.2fr_1fr_0.7fr_0.8fr_0.9fr_80px] gap-2 px-3 py-1.5 items-center text-sm border-b border-[#e0e0e0] hover:bg-[#f0fdf4] transition-all group ${index % 2 === 0 ? 'bg-white' : 'bg-[#f9fafb]'}`}>
                           {/* # */}
                           <span className="text-[#24a148] font-mono font-bold text-xs">{apt.id}</span>
 
@@ -2125,43 +2132,42 @@ function AdminDashboard({ setCurrentPage }) {
                           </span>
 
                           {/* Actions */}
-                          <div className="flex flex-wrap gap-1 justify-end">
-                            {(apt.status === 'pending' || apt.status === 'queued' || apt.status === 'confirmed') && (
-                              <button onClick={() => openRescheduleModal(apt)} className="px-2 py-1 bg-purple-50 text-purple-600 text-[10px] font-bold hover:bg-purple-100 transition-all border border-purple-200 uppercase tracking-wide">
-                                Reschedule
-                              </button>
-                            )}
-                            {(apt.status === 'pending' || apt.status === 'queued') && (
-                              <>
-                                <button onClick={() => updateStatus(apt.id, 'confirmed')} disabled={updatingId === apt.id} className="px-2 py-1 bg-[#f0fdf4] text-[#24a148] text-[10px] font-bold hover:bg-[#24a148] hover:text-white transition-all border border-[#24a148]/30 uppercase tracking-wide disabled:opacity-50">
-                                  Confirm
-                                </button>
-                                <button onClick={() => updateStatus(apt.id, 'cancelled')} disabled={updatingId === apt.id} className="px-2 py-1 bg-red-50 text-red-600 text-[10px] font-bold hover:bg-red-600 hover:text-white transition-all border border-red-200 uppercase tracking-wide disabled:opacity-50">
-                                  Cancel
-                                </button>
-                              </>
-                            )}
-                            {apt.status === 'confirmed' && (
-                              <>
-                                <button onClick={() => updateStatus(apt.id, 'completed')} disabled={updatingId === apt.id} className="px-2 py-1 bg-[#161616] text-white text-[10px] font-bold hover:bg-[#24a148] transition-all uppercase tracking-wide disabled:opacity-50">
-                                  Complete
-                                </button>
-                                <button onClick={() => updateStatus(apt.id, 'cancelled')} disabled={updatingId === apt.id} className="px-2 py-1 bg-red-50 text-red-600 text-[10px] font-bold hover:bg-red-600 hover:text-white transition-all border border-red-200 uppercase tracking-wide disabled:opacity-50">
-                                  Cancel
-                                </button>
-                              </>
-                            )}
-                            {(apt.status === 'cancelled' || apt.status === 'completed') && (
-                              <button onClick={() => updateStatus(apt.id, 'pending')} disabled={updatingId === apt.id} className="px-2 py-1 bg-gray-50 text-gray-600 text-[10px] font-bold hover:bg-gray-200 transition-all border border-gray-200 uppercase tracking-wide disabled:opacity-50">
-                                Reopen
-                              </button>
-                            )}
-                            <button onClick={() => sendSMSReminder(apt)} className="px-2 py-1 bg-cyan-50 text-cyan-600 hover:bg-cyan-600 hover:text-white transition-all border border-cyan-200" title="Send SMS Reminder">
-                              <Smartphone className="w-3 h-3" />
-                            </button>
-                            <button onClick={() => printSlip(apt)} className="px-2 py-1 bg-gray-50 text-gray-600 hover:bg-gray-600 hover:text-white transition-all border border-gray-200" title="Print Appointment Slip">
-                              <Printer className="w-3 h-3" />
-                            </button>
+                          <div className="flex justify-end">
+                            <select
+                              className="px-1.5 py-1 text-[9px] font-bold uppercase border border-gray-300 bg-white text-gray-700 cursor-pointer focus:outline-none focus:border-[#10b981]"
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                e.target.value = ''; // reset after action
+                                if (!val) return;
+                                if (val === 'reschedule') openRescheduleModal(apt);
+                                else if (val === 'confirm') updateStatus(apt.id, 'confirmed');
+                                else if (val === 'complete') updateStatus(apt.id, 'completed');
+                                else if (val === 'cancel') updateStatus(apt.id, 'cancelled');
+                                else if (val === 'reopen') updateStatus(apt.id, 'pending');
+                                else if (val === 'sms') sendSMSReminder(apt);
+                                else if (val === 'print') printSlip(apt);
+                              }}
+                              defaultValue=""
+                              disabled={updatingId === apt.id}
+                            >
+                              <option value="" disabled>Select</option>
+                              {(apt.status === 'pending' || apt.status === 'queued' || apt.status === 'confirmed') && <option value="reschedule">Reschedule</option>}
+                              {(apt.status === 'pending' || apt.status === 'queued') && (
+                                <>
+                                  <option value="confirm">Confirm</option>
+                                  <option value="cancel">Cancel</option>
+                                </>
+                              )}
+                              {apt.status === 'confirmed' && (
+                                <>
+                                  <option value="complete">Complete</option>
+                                  <option value="cancel">Cancel</option>
+                                </>
+                              )}
+                              {(apt.status === 'cancelled' || apt.status === 'completed') && <option value="reopen">Reopen</option>}
+                              <option value="sms">SMS Reminder</option>
+                              <option value="print">Print Slip</option>
+                            </select>
                           </div>
                         </div>
                       ))}

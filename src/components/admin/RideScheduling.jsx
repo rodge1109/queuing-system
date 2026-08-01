@@ -27,17 +27,7 @@ const RideScheduling = ({ trips = [], riders = [], fetchTrips }) => {
   const filteredRiders = useMemo(() => {
     let result = riders;
 
-    if (selectedTrip && selectedTrip.service_type) {
-      const tripServiceType = selectedTrip.service_type.toLowerCase();
-      result = result.filter(rider => {
-        if (!rider.vehicle_type) return false;
-        const vType = rider.vehicle_type.toLowerCase();
-        return vType.includes(tripServiceType) || tripServiceType.includes(vType) ||
-               (tripServiceType.includes('van') && vType.includes('van')) ||
-               (tripServiceType.includes('car') && vType.includes('car')) ||
-               (tripServiceType.includes('motor') && vType.includes('motor'));
-      });
-    }
+    // Removed strict vehicle_type vs service_type filtering so admin can assign any available operator
 
     if (!searchQuery.trim()) return result;
     const lowerQuery = searchQuery.toLowerCase();
