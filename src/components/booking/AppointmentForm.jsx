@@ -723,7 +723,7 @@ function AppointmentForm() {
                     </div>
 
                     <p className="text-[11px] text-[#525252] leading-relaxed mb-6 line-clamp-3 font-medium opacity-80">
-                      "{service.description || 'Enjoy a safe, comfortable, and reliable ride with our professional drivers. Book your preferred vehicle and travel with confidence.'}"
+                      {service.description ? `"${service.description}"` : ''}
                     </p>
 
                     <div className="mt-auto pt-4 border-t border-gray-50 flex items-center justify-between">
