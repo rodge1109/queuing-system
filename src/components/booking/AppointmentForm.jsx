@@ -31,6 +31,34 @@ const ServiceIconRender = ({ iconName, className }) => {
   return <span className={className || "text-5xl"}>{iconName || '🚗'}</span>;
 };
 
+const isTransportService = (service) => {
+  if (!service) return false;
+  const cat = (service.category || '').trim().toLowerCase();
+  const name = (service.name || '').trim().toLowerCase();
+  if (cat.includes('pickleball') || cat.includes('court') || name.includes('court')) {
+    return false;
+  }
+  return true;
+};
+
+const getServiceDescription = (service) => {
+  if (!service) return '';
+  const desc = (service.description || '').trim();
+  if (!desc || desc.toLowerCase().includes('pickleball') || desc.toLowerCase().includes('court')) {
+    const name = (service.name || '').toLowerCase();
+    if (name.includes('sedan')) {
+      return 'Comfortable private sedan for up to 3 passengers with standard luggage. Perfect for couples and solo travelers.';
+    }
+    if (name.includes('van') && !name.includes('package')) {
+      return 'Spacious air-conditioned tourist van accommodating up to 10-12 passengers. Ideal for families and group transfers.';
+    }
+    if (name.includes('package') || name.includes('boat')) {
+      return 'All-in-one island transfer combining private pump boat crossing and air-conditioned van service.';
+    }
+    return 'Comfortable, reliable, and air-conditioned tourist transport with professional drivers.';
+  }
+  return desc;
+};
 
 function AppointmentForm() {
   const [formData, setFormData] = useState({
@@ -167,14 +195,14 @@ function AppointmentForm() {
     if (!selectedService) return { subtotal: 0, tax: 0, total: 0 };
 
     let subtotal = 0;
-    const cat = (selectedService.category || '').trim().toUpperCase();
+    const isTransport = isTransportService(selectedService);
 
     let base = 0;
     let rate = 0;
     let transportFees = 0;
     let flatPrice = 0;
 
-    if (cat === 'TRANSPORT') {
+    if (isTransport) {
       let routePrice = null;
       if (selectedRoute && selectedRoute.prices) {
         const matched = selectedRoute.prices.find(p => {
@@ -221,7 +249,7 @@ function AppointmentForm() {
       rate,
       transportFees,
       flatPrice,
-      isTransport: cat === 'TRANSPORT' && (base > 0 || rate > 0)
+      isTransport: isTransport && (base > 0 || rate > 0)
     };
   };
 
@@ -527,7 +555,7 @@ function AppointmentForm() {
             </div>
 
             {/* Transport Route Details if category is TRANSPORT */}
-            {selectedService?.category?.trim().toUpperCase() === 'TRANSPORT' && (formData.pickupLocation || formData.destinationLocation) && (
+            {isTransportService(selectedService) && (formData.pickupLocation || formData.destinationLocation) && (
               <div className="pb-4 border-b border-gray-200/50 space-y-3">
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Route Details</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-gray-800 bg-white p-4 border border-gray-100">
@@ -676,7 +704,7 @@ function AppointmentForm() {
             <p className="text-gray-500 mb-12 text-sm">Select the transport service you require.</p>
 
             <div className="flex gap-4 mb-8 overflow-x-auto pb-4 scrollbar-hide">
-              {['All', ...new Set(liveServices.filter(s => s.is_active !== false).map(s => s.category).filter(Boolean))].map(cat => (
+              {['All', ...new Set(liveServices.filter(s => s.is_active !== false && isTransportService(s)).map(s => s.category).filter(Boolean))].map(cat => (
                 <button
                   key={cat}
                   onClick={() => setActiveCategory(cat)}
@@ -690,7 +718,7 @@ function AppointmentForm() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {isLoadingServices ? (
                 <div className="col-span-full py-20 text-center text-gray-400 italic">Loading services...</div>
-              ) : liveServices.filter(s => s.is_active !== false && (activeCategory === 'All' || s.category === activeCategory)).map(service => (
+              ) : liveServices.filter(s => s.is_active !== false && isTransportService(s) && (activeCategory === 'All' || s.category === activeCategory)).map(service => (
                 <button
                   key={service.id}
                   onClick={() => { setSelectedService(service); setStep('datetime'); }}
@@ -723,7 +751,7 @@ function AppointmentForm() {
                     </div>
 
                     <p className="text-[11px] text-[#525252] leading-relaxed mb-6 line-clamp-3 font-medium opacity-80">
-                      {service.description ? `"${service.description}"` : ''}
+                      "{getServiceDescription(service)}"
                     </p>
 
                     <div className="mt-auto pt-4 border-t border-gray-50 flex items-center justify-between">
@@ -1079,7 +1107,7 @@ function AppointmentForm() {
               </div>
             </div>
 
-            {selectedService?.category?.toUpperCase() === 'TRANSPORT' && showMapInForm && TransportMap && (
+            {isTransportService(selectedService) && showMapInForm && TransportMap && (
               <div className="mb-8 animate-fadeIn">
                 <p className="text-[9px] font-bold text-[#24a148] uppercase tracking-widest mb-2 flex items-center justify-between">
                   <span className="flex items-center gap-2">
