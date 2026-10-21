@@ -1923,6 +1923,7 @@ function AdminDashboard({ setCurrentPage }) {
                                   const data = await res.json();
                                   if (data.success) {
                                     setBookingServices(bookingServices.filter(x => x.id !== s.id));
+                                    alert('Service deleted successfully!');
                                   } else {
                                     alert('Failed to delete: ' + (data.message || 'Unknown error'));
                                   }

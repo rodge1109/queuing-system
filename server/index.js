@@ -3259,8 +3259,13 @@ app.delete('/api/booking-services/:id', async (req, res) => {
   try {
     const { id } = req.params;
     console.log(`[Admin] Deleting service ID: ${id}`);
-    await pool.query('DELETE FROM booking_services WHERE id = $1', [id]);
-    res.json({ success: true, message: 'Service deleted' });
+    const result = await pool.query('DELETE FROM booking_services WHERE id = $1', [id]);
+    if (result.rowCount === 0) {
+      console.warn(`[Admin] Warning: Service ID ${id} not found in database`);
+      return res.status(404).json({ success: false, message: `Service ID ${id} not found in database` });
+    }
+    console.log(`[Admin] Successfully deleted service ID: ${id}`);
+    res.json({ success: true, message: 'Service deleted', deletedId: id });
   } catch (error) {
     console.error('Error deleting service:', error);
     res.status(500).json({ success: false, message: error.message });
