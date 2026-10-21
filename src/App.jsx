@@ -1,5 +1,5 @@
 import React, { useState, createContext, useContext, useEffect, useCallback, useMemo } from 'react';
-import { ShoppingCart, Plus, Minus, Trash2, ChevronRight, ChevronLeft, ArrowRight, Check, X, Search, Settings, Smartphone, Printer, Download, Store, CreditCard, Lock, User, Users, Wallet, Calendar, MapPin, Clock, Phone, Mail, Star, Car, Truck, Shield, Activity, Clipboard, ClipboardList, Stethoscope, Hospital, Pill, Syringe, HeartPulse, Map as MapIcon, Navigation, AlertTriangle, AlertCircle, RefreshCw, Edit, History, DollarSign, Link, Bell, Database } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Trash2, ChevronRight, ChevronLeft, ArrowRight, Check, X, Search, Settings, Smartphone, Printer, Download, Store, CreditCard, Lock, User, Users, Wallet, Calendar, MapPin, Clock, Phone, Mail, Star, Car, Truck, Shield, Activity, Clipboard, ClipboardList, Stethoscope, Hospital, Pill, Syringe, HeartPulse, Map as MapIcon, Navigation, AlertTriangle, AlertCircle, RefreshCw, Edit, History, DollarSign, Link, Bell, Database, Eye, EyeOff } from 'lucide-react';
 
 // Help component to render either Lucide icon or Emoji
 const LucideIcons = { ShoppingCart, Plus, Minus, Trash2, ChevronRight, ChevronLeft, ArrowRight, Check, X, Search, Settings, Smartphone, Printer, Download, Store, CreditCard, Lock, User, Users, Wallet, Calendar, MapPin, Clock, Phone, Mail, Star, Car, Truck, Shield, Activity, Clipboard, Stethoscope, Hospital, Pill, Syringe, HeartPulse, Map: MapIcon, Navigation, AlertTriangle, AlertCircle, RefreshCw };
@@ -661,6 +661,7 @@ function AdminDashboard({ setCurrentPage }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Admin section tabs
   const [activeTab, setActiveTab] = useState('appointments');
@@ -1342,65 +1343,123 @@ function AdminDashboard({ setCurrentPage }) {
   // Login Page
   if (!isLoggedIn) {
     return (
-      <div className="bg-white min-h-screen pt-[70px] md:pt-[30px] pb-24 flex items-center justify-center">
-        <div className="w-full max-w-md px-4">
-          <div className="bg-white rounded-0 p-8 border border-[#e0e0e0] shadow-lg">
+      <div className="min-h-screen bg-[#080c14] flex items-center justify-center p-4 sm:p-6 relative overflow-hidden select-none">
+        {/* Ambient Gradient Background Glows */}
+        <div className="absolute top-[-10%] left-[-10%] w-[550px] h-[550px] rounded-full bg-emerald-500/10 blur-[140px] pointer-events-none" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[550px] h-[550px] rounded-full bg-teal-600/10 blur-[150px] pointer-events-none" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:28px_28px] opacity-25 pointer-events-none" />
+
+        <div className="w-full max-w-md relative z-10 animate-fadeIn">
+          {/* Card */}
+          <div className="relative backdrop-blur-2xl bg-slate-900/85 border border-slate-700/60 rounded-3xl p-8 sm:p-10 shadow-[0_25px_70px_rgba(0,0,0,0.7)] ring-1 ring-white/10 overflow-hidden">
+            {/* Top Accent Gradient Line */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-[2px] bg-gradient-to-r from-transparent via-emerald-400 to-transparent" />
+
+            {/* Brand Header */}
             <div className="text-center mb-8">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-[#10b981]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold tracking-widest uppercase mb-6">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                RideHail Admin Gateway
               </div>
-              <h2 className="text-2xl font-bold text-gray-800">Admin Login</h2>
-              <p className="text-gray-500 mt-2">Sign in to access the dashboard</p>
+
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-600 via-emerald-500 to-teal-400 p-[1.5px] shadow-xl shadow-emerald-500/20 mx-auto mb-4">
+                <div className="w-full h-full bg-slate-900/90 rounded-[14px] flex items-center justify-center backdrop-blur-sm">
+                  <Lock className="w-7 h-7 text-emerald-400" />
+                </div>
+              </div>
+
+              <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">Admin Login</h2>
+              <p className="text-slate-400 text-xs sm:text-sm mt-1.5 font-normal">Sign in to manage bookings, fleet, and dispatch</p>
             </div>
 
+            {/* Login Form */}
             <form onSubmit={handleLogin} className="space-y-4">
               {loginError && (
-                <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-0 text-sm">
-                  {loginError}
+                <div className="flex items-center gap-2.5 p-3.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-medium animate-fadeIn">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
+                  <span>{loginError}</span>
                 </div>
               )}
 
-              <div>
-                <label className="block text-gray-600 text-sm mb-2">Username</label>
-                <input
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-50 border border-[#e0e0e0] rounded-lg text-gray-800 placeholder-gray-400 focus:outline-none focus:border-green-500"
-                  placeholder="Enter username"
-                  required
-                />
+              {/* Username Field */}
+              <div className="space-y-1.5">
+                <label className="block text-slate-300 text-[11px] font-bold uppercase tracking-wider">Username</label>
+                <div className="relative">
+                  <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 bg-slate-800/80 border border-slate-700/80 rounded-xl text-white placeholder-slate-500 text-sm focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all font-medium"
+                    placeholder="Enter admin username"
+                    required
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-gray-600 text-sm mb-2">Password</label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-50 border border-[#e0e0e0] rounded-lg text-gray-800 placeholder-gray-400 focus:outline-none focus:border-green-500"
-                  placeholder="Enter password"
-                  required
-                />
+              {/* Password Field */}
+              <div className="space-y-1.5">
+                <label className="block text-slate-300 text-[11px] font-bold uppercase tracking-wider">Password</label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full pl-10 pr-10 py-3 bg-slate-800/80 border border-slate-700/80 rounded-xl text-white placeholder-slate-500 text-sm focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all font-medium"
+                    placeholder="Enter password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
 
+              {/* Sign In Button */}
               <button
                 type="submit"
                 disabled={isLoggingIn}
-                className="w-full py-3 bg-[#10B981] text-white font-semibold rounded-lg hover:bg-[#059669] transition-all disabled:opacity-50"
+                className="w-full mt-2 py-3.5 px-4 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-bold text-xs uppercase tracking-widest rounded-xl shadow-lg shadow-emerald-600/30 hover:shadow-emerald-500/40 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 flex items-center justify-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
               >
-                {isLoggingIn ? 'Signing in...' : 'Sign In'}
+                {isLoggingIn ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Signing in...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Sign In</span>
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </>
+                )}
               </button>
             </form>
 
+            {/* Back to Home Button */}
             <button
+              type="button"
               onClick={() => setCurrentPage('home')}
-              className="w-full mt-4 py-3 bg-blue-100 text-blue-700 rounded-0 hover:bg-blue-200 transition-all text-sm"
+              className="w-full mt-4 py-2.5 px-4 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 border border-transparent hover:border-slate-700/60 transition-all text-xs font-semibold flex items-center justify-center gap-2 group"
             >
-              <ChevronLeft className="w-3 h-3" /> Back to Home
+              <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform text-slate-400 group-hover:text-emerald-400" />
+              <span>Back to Home</span>
             </button>
+
+            {/* Security Footer */}
+            <div className="mt-8 pt-6 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-500 font-medium">
+              <span className="flex items-center gap-1.5">
+                <Shield className="w-3.5 h-3.5 text-emerald-500/80" /> 256-Bit Encrypted
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Car className="w-3.5 h-3.5 text-slate-400" /> RideHail Admin
+              </span>
+            </div>
           </div>
         </div>
       </div>
