@@ -5677,8 +5677,9 @@ function MonitoringMap({ trips, selectedTrip, focusId }) {
           maxZoom: 18
         }).setView([11.0500, 124.0000], 10);
 
-        window.L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-          attribution: '&copy; CARTO'
+        window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; OpenStreetMap contributors',
+          maxZoom: 19
         }).addTo(leafletMap.current);
 
         // Track zoom
@@ -6159,7 +6160,10 @@ function DispatchMap({ trips, riders, selectedBooking }) {
   React.useEffect(() => {
     if (!leafletReady || !mapRef.current || leafletMap.current) return;
     leafletMap.current = window.L.map(mapRef.current, { zoomControl: false, attributionControl: false }).setView([11.0500, 124.0000], 12);
-    window.L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 20 }).addTo(leafletMap.current);
+    window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
+      maxZoom: 19
+    }).addTo(leafletMap.current);
     setTimeout(() => { if (leafletMap.current) leafletMap.current.invalidateSize(); }, 500);
   }, [leafletReady]);
 
@@ -6988,8 +6992,9 @@ function GeofenceForm({ geofence, onCancel, onSave }) {
     const map = window.L.map(mapRef.current).setView([11.0500, 124.0000], 13);
     leafletMap.current = map;
 
-    window.L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; CARTO'
+    window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
+      maxZoom: 19
     }).addTo(map);
 
     // Initialize the FeatureGroup to store editable layers
@@ -7215,7 +7220,10 @@ function GeofenceMonitoring({ geofences }) {
   useEffect(() => {
     if (!mapRef.current || !window.L) return;
     const map = window.L.map(mapRef.current).setView([11.0500, 124.0000], 12);
-    window.L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
+    window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
+      maxZoom: 19
+    }).addTo(map);
 
     // Render all geofences on monitoring map
     geofences.forEach(g => {

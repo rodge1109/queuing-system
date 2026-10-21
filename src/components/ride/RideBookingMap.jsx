@@ -16,8 +16,9 @@ const RideBookingMap = ({ pickupPos, destPos, onMapClick }) => {
       scrollWheelZoom: true
     }).setView([11.0500, 124.0000], 13);
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; OpenStreetMap contributors'
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
+      maxZoom: 19
     }).addTo(leafletMap.current);
 
     leafletMap.current.on('click', (e) => {
