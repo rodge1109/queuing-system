@@ -7808,8 +7808,12 @@ function PricingFareSettings() {
       const servicesData = await servicesRes.json();
 
       if (routesData.success) setRoutes(routesData.routes);
-      if (servicesData.success) {
-        const transport = servicesData.services.filter(s => (s.category || '').toUpperCase() === 'TRANSPORT');
+      if (servicesData.success && Array.isArray(servicesData.services)) {
+        const transport = servicesData.services.filter(s => {
+          const cat = (s.category || '').toLowerCase();
+          const name = (s.name || '').toLowerCase();
+          return !cat.includes('court') && !cat.includes('pickleball') && !name.includes('court');
+        });
         setServices(transport);
       }
     } catch (err) {

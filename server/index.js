@@ -4394,6 +4394,13 @@ const getDistanceMeters = (lat1, lon1, lat2, lon2) => {
 };
 
 async function getCalculatedFare({ pickupLat, pickupLng, destLat, destLng, serviceType, distanceKm, routeId }) {
+  // Query category of selected service
+  let serviceCategory = '';
+  try {
+    const sRow = await pool.query('SELECT category FROM booking_services WHERE LOWER(name) = LOWER($1) LIMIT 1', [serviceType]);
+    if (sRow.rows.length > 0) serviceCategory = sRow.rows[0].category || '';
+  } catch (e) {}
+
   // 1. Check if specific predefined route is selected
   if (routeId) {
     const priceQuery = await pool.query(`
@@ -4405,9 +4412,14 @@ async function getCalculatedFare({ pickupLat, pickupLng, destLat, destLng, servi
         LOWER(p.service_type) = LOWER($2) 
         OR LOWER($2) LIKE '%' || LOWER(p.service_type) || '%' 
         OR LOWER(p.service_type) LIKE '%' || LOWER($2) || '%'
+        OR LOWER(p.service_type) = LOWER($3)
+        OR LOWER($3) LIKE '%' || LOWER(p.service_type) || '%'
+        OR LOWER(p.service_type) LIKE '%' || LOWER($3) || '%'
+        OR (LOWER($2) LIKE '%van%' AND LOWER(p.service_type) LIKE '%van%')
+        OR (LOWER($3) LIKE '%van%' AND LOWER(p.service_type) LIKE '%van%')
       )
       LIMIT 1
-    `, [routeId, serviceType]);
+    `, [routeId, serviceType, serviceCategory]);
 
     if (priceQuery.rows.length > 0) {
       return { fare: parseFloat(priceQuery.rows[0].price), isPredefined: true, routeName: priceQuery.rows[0].route_name };
@@ -4424,9 +4436,17 @@ async function getCalculatedFare({ pickupLat, pickupLng, destLat, destLng, servi
     `);
 
     const matchingRoute = routesQuery.rows.find(route => {
-      const isServiceMatch = route.service_type.toLowerCase() === serviceType.toLowerCase() || 
-                             serviceType.toLowerCase().includes(route.service_type.toLowerCase()) ||
-                             route.service_type.toLowerCase().includes(serviceType.toLowerCase());
+      const rType = route.service_type.toLowerCase();
+      const sType = (serviceType || '').toLowerCase();
+      const cType = (serviceCategory || '').toLowerCase();
+      const isServiceMatch = rType === sType || 
+                             sType.includes(rType) ||
+                             rType.includes(sType) ||
+                             rType === cType ||
+                             cType.includes(rType) ||
+                             rType.includes(cType) ||
+                             (sType.includes('van') && rType.includes('van')) ||
+                             (cType.includes('van') && rType.includes('van'));
       if (!isServiceMatch) return false;
 
       const distFromOrigin = getDistanceMeters(parseFloat(pickupLat), parseFloat(pickupLng), parseFloat(route.pickup_lat), parseFloat(route.pickup_lng));

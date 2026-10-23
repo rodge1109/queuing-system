@@ -205,10 +205,18 @@ function AppointmentForm() {
     if (isTransport) {
       let routePrice = null;
       if (selectedRoute && selectedRoute.prices) {
+        const sName = (selectedService.name || '').toLowerCase();
+        const sCat = (selectedService.category || '').toLowerCase();
         const matched = selectedRoute.prices.find(p => {
-          return p.service_type.toLowerCase() === selectedService.name.toLowerCase() ||
-            selectedService.name.toLowerCase().includes(p.service_type.toLowerCase()) ||
-            p.service_type.toLowerCase().includes(selectedService.name.toLowerCase());
+          const pType = (p.service_type || '').toLowerCase();
+          return pType === sName ||
+            sName.includes(pType) ||
+            pType.includes(sName) ||
+            pType === sCat ||
+            sCat.includes(pType) ||
+            pType.includes(sCat) ||
+            (sName.includes('van') && pType.includes('van')) ||
+            (sCat.includes('van') && pType.includes('van'));
         });
         if (matched) {
           routePrice = parseFloat(matched.price);
@@ -581,7 +589,7 @@ function AppointmentForm() {
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Payment Details</p>
               <div className="space-y-1.5 text-xs">
                 <div className="flex justify-between items-center text-gray-500 font-medium">
-                  <span>Base Rate</span>
+                  <span>{selectedRoute ? `Fixed Route Fare (${selectedRoute.route_name})` : 'Base Rate'}</span>
                   <span className="font-mono">₱{calculateFees().subtotal.toFixed(2)}</span>
                 </div>
                 {calculateFees().tax > 0 && (
@@ -1224,7 +1232,7 @@ function AppointmentForm() {
                     </div>
                   ) : (
                     <div className="flex justify-between items-center text-sm">
-                      <span className="text-gray-500">Professional Service Fee</span>
+                      <span className="text-gray-500">{selectedRoute ? `Fixed Route Fare (${selectedRoute.route_name})` : 'Service Fee'}</span>
                       <span className="font-mono font-bold text-gray-700">₱{calculateFees().subtotal.toFixed(2)}</span>
                     </div>
                   )}
