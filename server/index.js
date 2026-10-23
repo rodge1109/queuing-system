@@ -269,6 +269,8 @@ const applyTemplate = (template, vars) => {
     .replace(/{primary_color}/g, vars.primary_color || '#10b981')
     .replace(/{accent_color}/g, vars.accent_color  || '#E4FE7B')
     .replace(/{font_family}/g,  vars.font_family   || 'Arial, sans-serif')
+    .replace(/{amount}/g,       vars.amount      != null ? String(vars.amount) : '')
+    .replace(/{total_amount}/g, vars.total_amount != null ? String(vars.total_amount) : '')
     .replace(/{old_date}/g,    vars.old_date    || '')
     .replace(/{old_time}/g,    vars.old_time    || '');
 };
@@ -343,6 +345,7 @@ const DEFAULT_CONFIRMATION_HTML = `
             <p style="margin: 5px 0;"><strong>Service:</strong> {service}</p>
             <p style="margin: 5px 0;"><strong>Date:</strong> {date}</p>
             <p style="margin: 5px 0;"><strong>Time:</strong> {time}</p>
+            <p style="margin: 5px 0;"><strong>Total Amount:</strong> ₱{amount}</p>
             <p style="margin: 5px 0;"><strong>Reference ID:</strong> #{ref}</p>
           </div>
           <p style="color: #666; font-size: 14px;">Please arrive 10 minutes before your scheduled time.</p>
@@ -443,20 +446,28 @@ const DEFAULT_REMINDER_HTML = `
 
 // ==================== EMAIL / SMS HELPERS ====================
 
-const makeVars = (appointment, cancelUrl = '') => ({
-  name:        appointment.full_name,
-  date:        appointment.preferred_date,
-  time:        appointment.preferred_time,
-  service:     appointment.service_type,
-  ref:         appointment.id,
-  cancel_url:  cancelUrl,
-  clinic_name: getSetting('clinic_name', 'HealthCare Clinic'),
-  address:     getSetting('clinic_address', 'Cantecson, Gairan, Bogo City, Cebu'),
-  phone:       getSetting('clinic_phone', '+63 912 345 6789'),
-  primary_color: getSetting('email_primary_color', '#10b981'),
-  accent_color:  getSetting('email_accent_color', '#E4FE7B'),
-  font_family:   getSetting('email_font_family', 'Arial, sans-serif'),
-});
+const makeVars = (appointment, cancelUrl = '') => {
+  const formattedAmount = appointment && appointment.total_amount != null
+    ? Number(appointment.total_amount).toFixed(2)
+    : '0.00';
+
+  return {
+    name:        appointment.full_name,
+    date:        appointment.preferred_date,
+    time:        appointment.preferred_time,
+    service:     appointment.service_type,
+    ref:         appointment.id,
+    amount:      formattedAmount,
+    total_amount: formattedAmount,
+    cancel_url:  cancelUrl,
+    clinic_name: getSetting('clinic_name', 'HealthCare Clinic'),
+    address:     getSetting('clinic_address', 'Cantecson, Gairan, Bogo City, Cebu'),
+    phone:       getSetting('clinic_phone', '+63 912 345 6789'),
+    primary_color: getSetting('email_primary_color', '#10b981'),
+    accent_color:  getSetting('email_accent_color', '#E4FE7B'),
+    font_family:   getSetting('email_font_family', 'Arial, sans-serif'),
+  };
+};
 
 // Function to send confirmation email
 const sendConfirmationEmail = async (appointment) => {
@@ -586,9 +597,7 @@ app.post('/api/appointments', async (req, res) => {
         routeId: req.body.routeId
       });
       if (calculated.fare !== null) {
-        const taxRateSetting = getSetting('government_tax_rate', '12');
-        const taxRate = parseFloat(taxRateSetting) || 0;
-        validatedAmount = calculated.fare + (calculated.fare * (taxRate / 100));
+        validatedAmount = calculated.fare;
       }
     } catch (pricingErr) {
       console.error('Backend pricing validation failed, falling back to request amount:', pricingErr);
@@ -4058,6 +4067,7 @@ app.post('/api/admin/test-email', async (req, res) => {
       preferred_time: '10:00 AM',
       service_type: 'System Diagnostic',
       id: 'TEST-001',
+      total_amount: 500.00,
       cancel_token: 'test-token'
     }, '#');
 
@@ -4345,7 +4355,7 @@ const initClinicSettings = async () => {
     ['clinic_name',                'King\'s Tourist and Transport Services'],
     ['clinic_address',             'Cantecson, Gairan, Bogo City, Cebu'],
     ['clinic_phone',               '+63 912 345 6789'],
-    ['government_tax_rate',        '12'],
+    ['government_tax_rate',        '0'],
     ['sms_confirmation',           'Hi {name}, your appointment at {clinic_name} is confirmed for {date} at {time}. Ref#{ref}'],
     ['sms_reminder',               'Hi {name}, reminder: Your appointment at {clinic_name} is on {date} at {time}. Ref#{ref}'],
     ['email_confirmation_subject', 'Appointment Confirmation - {clinic_name}'],

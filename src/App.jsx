@@ -7560,7 +7560,7 @@ function GeneralSettings() {
     clinic_name: 'King\'s Tourist and Transport Services',
     clinic_address: 'Cantecson, Gairan, Bogo City, Cebu',
     clinic_phone: '+63 912 345 6789',
-    government_tax_rate: '12'
+    government_tax_rate: '0'
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -8428,6 +8428,7 @@ function EmailTemplateSettings() {
       <p style="margin: 5px 0;"><strong>Service:</strong> {service}</p>
       <p style="margin: 5px 0;"><strong>Date:</strong> {date}</p>
       <p style="margin: 5px 0;"><strong>Time:</strong> {time}</p>
+      <p style="margin: 5px 0;"><strong>Total Amount:</strong> ₱{amount}</p>
       <p style="margin: 5px 0;"><strong>Reference ID:</strong> #{ref}</p>
     </div>
     <p style="color: #666; font-size: 14px;">Please arrive 10 minutes before your scheduled time.</p>
@@ -8688,7 +8689,7 @@ function EmailTemplateSettings() {
           <div className="flex gap-4">
             <div className="flex-1 p-3 bg-blue-50 border border-blue-100 rounded-0">
               <p className="text-[9px] font-bold text-blue-800 uppercase tracking-widest mb-1">Available Tags</p>
-              <p className="text-[9px] text-blue-600 font-mono">{"{name}, {service}, {date}, {time}, {ref}, {cancel_url}, {clinic_name}, {address}, {phone}"}</p>
+              <p className="text-[9px] text-blue-600 font-mono">{"{name}, {service}, {date}, {time}, {amount}, {ref}, {cancel_url}, {clinic_name}, {address}, {phone}"}</p>
             </div>
             <button
               type="button"

@@ -238,12 +238,11 @@ function AppointmentForm() {
       subtotal = flatPrice;
     }
 
-    const tax = subtotal * (taxRate / 100);
-    const total = subtotal + tax;
+    const total = subtotal;
 
     return {
       subtotal: parseFloat(subtotal) || 0,
-      tax: parseFloat(tax) || 0,
+      tax: 0,
       total: parseFloat(total) || 0,
       base,
       rate,
@@ -585,10 +584,12 @@ function AppointmentForm() {
                   <span>Base Rate</span>
                   <span className="font-mono">₱{calculateFees().subtotal.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between items-center text-gray-500 font-medium">
-                  <span>Government Tax ({taxRate}%)</span>
-                  <span className="font-mono">₱{calculateFees().tax.toFixed(2)}</span>
-                </div>
+                {calculateFees().tax > 0 && (
+                  <div className="flex justify-between items-center text-gray-500 font-medium">
+                    <span>Government Tax ({taxRate}%)</span>
+                    <span className="font-mono">₱{calculateFees().tax.toFixed(2)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center pt-3 border-t border-gray-200 text-sm">
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
@@ -1228,10 +1229,12 @@ function AppointmentForm() {
                     </div>
                   )}
 
-                  <div className="flex justify-between items-center py-4 border-t border-gray-200 mt-6">
-                    <span className="text-xs font-black text-gray-400 uppercase tracking-widest">Government Tax ({taxRate}%)</span>
-                    <span className="font-mono font-bold text-[#24a148]">₱{calculateFees().tax.toFixed(2)}</span>
-                  </div>
+                  {calculateFees().tax > 0 && (
+                    <div className="flex justify-between items-center py-4 border-t border-gray-200 mt-6">
+                      <span className="text-xs font-black text-gray-400 uppercase tracking-widest">Government Tax ({taxRate}%)</span>
+                      <span className="font-mono font-bold text-[#24a148]">₱{calculateFees().tax.toFixed(2)}</span>
+                    </div>
+                  )}
 
                   <div className="flex justify-between items-center p-6 bg-white border border-gray-200 shadow-xl mt-8">
                     <div>
