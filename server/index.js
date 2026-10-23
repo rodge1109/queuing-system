@@ -4252,17 +4252,6 @@ const initClinicSettings = async () => {
     `);
   }
 
-  // Seed Transport Services if they don't exist
-  const sCheck = await pool.query("SELECT COUNT(*) FROM booking_services WHERE category ILIKE 'TRANSPORT'");
-  if (parseInt(sCheck.rows[0].count) === 0) {
-    await pool.query(`
-      INSERT INTO booking_services (name, category, duration, price, base_fare, per_km_rate) VALUES
-      ('Standard', 'TRANSPORT', 'Flexible', 'Varies', 50.00, 15.00),
-      ('Car', 'TRANSPORT', 'Flexible', 'Varies', 100.00, 25.00),
-      ('Luxury Van', 'TRANSPORT', 'Flexible', 'Varies', 250.00, 45.00)
-    `);
-  }
-
   // Migrate appointments table
   try {
     await pool.query('ALTER TABLE appointments ADD COLUMN IF NOT EXISTS specialist_id INTEGER REFERENCES booking_specialists(id)');
