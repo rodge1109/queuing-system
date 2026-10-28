@@ -877,9 +877,14 @@ app.get(['/b/:id', '/b', '/booking/view/:id', '/booking/view'], async (req, res)
       ? appointment.full_name 
       : (req.query.name || req.query.fullName || 'Pickleball Player');
       
-    const totalAmount = (appointment && appointment.total_amount) 
-      ? appointment.total_amount 
-      : (req.query.price || req.query.total || '350');
+    const rawAmount = (appointment && appointment.total_amount) 
+      ? parseFloat(appointment.total_amount) 
+      : parseFloat(req.query.price || req.query.total || 200);
+      
+    // Always include the ₱15 service charge if not already factored in
+    const totalAmount = (rawAmount % 50 === 0 || !String(Math.round(rawAmount)).endsWith('15'))
+      ? (rawAmount + 15.00)
+      : rawAmount;
       
     const status = (appointment && appointment.status) 
       ? appointment.status.toUpperCase() 

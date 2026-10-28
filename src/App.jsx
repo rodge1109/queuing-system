@@ -190,6 +190,10 @@ function BookingPassView({ bookingId, onBack }) {
   } catch (_) {}
 
   const timeSlot = appointment.preferred_time || 'Reserved Time';
+  const rawTotal = parseFloat(appointment.total_amount || 0);
+  const finalPaid = (rawTotal % 50 === 0 || !String(Math.round(rawTotal)).endsWith('15'))
+    ? (rawTotal + 15.00)
+    : rawTotal;
   const courtAddress = appointment.pickup_location || 'Cayang, Bogo City, Cebu';
   const qrData = encodeURIComponent(`PICKLEBOOK:${appointment.id}:${courtName}:${displayDate}:${timeSlot}`);
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${qrData}&bgcolor=ffffff&color=0f5b2a&margin=0`;
@@ -268,8 +272,8 @@ function BookingPassView({ bookingId, onBack }) {
               <span className="text-xs font-bold text-gray-900 font-mono">#PB-{appointment.id}</span>
             </div>
             <div>
-              <span className="block text-[10px] text-gray-400 font-bold uppercase">Total Amount</span>
-              <span className="text-sm font-extrabold text-[#0F5B2A]">₱{parseFloat(appointment.total_amount || 0).toFixed(2)}</span>
+              <span className="block text-[10px] text-gray-400 font-bold uppercase">Total Paid</span>
+              <span className="text-sm font-extrabold text-[#0F5B2A]">₱{finalPaid.toFixed(2)}</span>
             </div>
             <div>
               <span className="block text-[10px] text-gray-400 font-bold uppercase">Payment</span>
