@@ -86,6 +86,239 @@ const fallbackMenuData = [
 
 
 // Main App Component
+
+// ==================== PUBLIC BOOKING & MATCH PASS VIEW ====================
+function BookingPassView({ bookingId, onBack }) {
+  const [appointment, setAppointment] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!bookingId) {
+      setLoading(false);
+      setError('No booking ID provided');
+      return;
+    }
+
+    const fetchBooking = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        let res = await fetch(`/api/appointments/${bookingId}`);
+        let data = await res.json();
+        if (data.success && data.appointment) {
+          setAppointment(data.appointment);
+          return;
+        }
+
+        // Fallback: try by token
+        res = await fetch(`/api/patient/appointment/${bookingId}`);
+        data = await res.json();
+        if (data.success && data.appointment) {
+          setAppointment(data.appointment);
+          return;
+        }
+
+        setError(data.message || 'Booking not found');
+      } catch (err) {
+        setError('Error loading booking details: ' + err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBooking();
+  }, [bookingId]);
+
+  const copyLink = () => {
+    navigator.clipboard.writeText(window.location.href);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
+  };
+
+  const sharePass = () => {
+    if (!appointment) return;
+    const shareData = {
+      title: 'PickleBook Match Pass: ' + appointment.service_type,
+      text: `Court Reserved! Playing at ${appointment.service_type} on ${appointment.preferred_date ? appointment.preferred_date.split('T')[0] : ''} at ${appointment.preferred_time}. View match pass:`,
+      url: window.location.href
+    };
+    if (navigator.share) {
+      navigator.share(shareData).catch(() => copyLink());
+    } else {
+      copyLink();
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#0E221B] flex flex-col items-center justify-center p-6 text-white font-['Poppins']">
+        <div className="w-12 h-12 border-4 border-[#A3E635] border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p className="text-sm font-semibold tracking-wide text-gray-300">Loading your Match Pass...</p>
+      </div>
+    );
+  }
+
+  if (error || !appointment) {
+    return (
+      <div className="min-h-screen bg-[#0E221B] flex flex-col items-center justify-center p-6 font-['Poppins']">
+        <div className="w-full max-w-md bg-white rounded-3xl p-8 text-center shadow-2xl">
+          <div className="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold">!</div>
+          <h2 className="text-xl font-extrabold text-gray-900 mb-2">Booking Not Found</h2>
+          <p className="text-sm text-gray-500 mb-6">{error || 'Could not find booking with reference #' + bookingId}</p>
+          {onBack && (
+            <button onClick={onBack} className="w-full bg-[#0F5B2A] text-white py-3.5 rounded-xl font-bold text-sm hover:bg-[#083819] transition-all">
+              Back to Home
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  const courtName = appointment.service_type || 'Pickleball Court';
+  const rawDate = appointment.preferred_date ? appointment.preferred_date.split('T')[0] : '';
+  let displayDate = rawDate;
+  let isoDatePart = '';
+  try {
+    const d = new Date(appointment.preferred_date);
+    if (!isNaN(d.getTime())) {
+      displayDate = d.toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+      isoDatePart = d.toISOString().split('T')[0].replace(/-/g, '');
+    }
+  } catch (_) {}
+
+  const timeSlot = appointment.preferred_time || 'Reserved Time';
+  const courtAddress = appointment.pickup_location || 'Cayang, Bogo City, Cebu';
+  const qrData = encodeURIComponent(`PICKLEBOOK:${appointment.id}:${courtName}:${displayDate}:${timeSlot}`);
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${qrData}&bgcolor=ffffff&color=0f5b2a&margin=0`;
+
+  let gCalLink = '#';
+  try {
+    let startH = 9, startM = 0;
+    const cleanTime = String(timeSlot).split('-')[0].trim();
+    const parts = cleanTime.split(' ');
+    if (parts.length >= 2) {
+      const hm = parts[0].split(':');
+      startH = parseInt(hm[0], 10);
+      startM = hm[1] ? parseInt(hm[1], 10) : 0;
+      const ampm = parts[1].toUpperCase();
+      if (ampm === 'PM' && startH < 12) startH += 12;
+      if (ampm === 'AM' && startH === 12) startH = 0;
+    }
+    const endH = (startH + 1) % 24;
+    const pad = (n) => String(n).padStart(2, '0');
+    const datePrefix = isoDatePart || new Date().toISOString().split('T')[0].replace(/-/g, '');
+    const startIso = `${datePrefix}T${pad(startH)}${pad(startM)}00`;
+    const endIso = `${datePrefix}T${pad(endH)}${pad(startM)}00`;
+    gCalLink = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent('🎾 Pickleball Match: ' + courtName)}&dates=${startIso}/${endIso}&details=${encodeURIComponent('PickleBook Match Pass\\nCourt: ' + courtName + '\\nSchedule: ' + timeSlot + '\\nAddress: ' + courtAddress)}&location=${encodeURIComponent(courtAddress)}`;
+  } catch (e) {}
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-[#164032] to-[#091712] py-8 px-4 flex flex-col items-center justify-start font-['Poppins']">
+      <div className="flex items-center gap-2 mb-5 text-white font-extrabold text-xl tracking-tight">
+        <span>🎾 PickleBook</span>
+        <span className="bg-[#A3E635] text-[#0E221B] text-[11px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">Match Pass</span>
+      </div>
+
+      <div className="w-full max-w-sm bg-white rounded-[28px] overflow-hidden shadow-2xl border border-white/10">
+        {/* Top Header */}
+        <div className="bg-gradient-to-br from-[#0F5B2A] to-[#083819] text-white p-6 pb-5">
+          <div className="inline-flex items-center gap-1.5 bg-[#A3E635]/20 border border-[#A3E635]/40 text-[#A3E635] text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider mb-3">
+            <span className="w-2 h-2 rounded-full bg-[#A3E635] animate-pulse"></span>
+            <span>{appointment.status ? appointment.status.toUpperCase() : 'CONFIRMED'}</span>
+          </div>
+          <h1 className="text-2xl font-black leading-tight text-white mb-1">{courtName}</h1>
+          <p className="text-xs text-white/70 font-medium">📍 {courtAddress}</p>
+        </div>
+
+        {/* Perforations */}
+        <div className="relative h-6 bg-white flex items-center overflow-hidden">
+          <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[#0E221B]"></div>
+          <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[#0E221B]"></div>
+          <div className="w-full mx-4 border-t-2 border-dashed border-gray-200"></div>
+        </div>
+
+        {/* Ticket Body */}
+        <div className="p-6 pt-2 pb-7">
+          {/* Schedule Banner */}
+          <div className="bg-[#F4FBF7] border-2 border-[#D1FAE5] rounded-2xl p-4 mb-5">
+            <div className="mb-2">
+              <div className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">Reserved Date</div>
+              <div className="text-base font-extrabold text-[#0F5B2A]">📅 {displayDate}</div>
+            </div>
+            <div className="pt-2 border-t border-dashed border-emerald-200 flex items-center justify-between">
+              <div>
+                <div className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">Schedule & Time Slot</div>
+                <div className="text-lg font-black text-gray-900">⏰ {timeSlot}</div>
+              </div>
+              <span className="bg-[#0F5B2A] text-[#A3E635] text-[10px] font-extrabold px-2 py-0.5 rounded">Verified</span>
+            </div>
+          </div>
+
+          {/* Meta Details */}
+          <div className="grid grid-cols-2 gap-3 mb-5">
+            <div>
+              <span className="block text-[10px] text-gray-400 font-bold uppercase">Player / Host</span>
+              <span className="text-xs font-bold text-gray-900 truncate block">{appointment.full_name || 'Pickleball Player'}</span>
+            </div>
+            <div>
+              <span className="block text-[10px] text-gray-400 font-bold uppercase">Booking Ref</span>
+              <span className="text-xs font-bold text-gray-900 font-mono">#PB-{appointment.id}</span>
+            </div>
+            <div>
+              <span className="block text-[10px] text-gray-400 font-bold uppercase">Total Amount</span>
+              <span className="text-sm font-extrabold text-[#0F5B2A]">₱{parseFloat(appointment.total_amount || 0).toFixed(2)}</span>
+            </div>
+            <div>
+              <span className="block text-[10px] text-gray-400 font-bold uppercase">Payment</span>
+              <span className="text-xs font-bold text-gray-900">{appointment.payment_method || 'Paid'}</span>
+            </div>
+          </div>
+
+          {/* Verification QR */}
+          <div className="bg-gray-50 border border-gray-100 rounded-2xl p-4 flex flex-col items-center text-center mb-5">
+            <img src={qrUrl} alt="Match Pass QR Code" className="w-32 h-32 rounded-xl bg-white p-2 border border-gray-200 mb-2 shadow-sm" />
+            <span className="text-[10px] text-gray-500 font-medium">Scan at court gate for quick check-in</span>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="space-y-2.5">
+            <button onClick={sharePass} className="w-full bg-[#A3E635] text-[#0E221B] py-3.5 px-4 rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 hover:bg-[#90d324] transition-all shadow-sm">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
+              Share Pass with Group / Buddies
+            </button>
+
+            <a href={gCalLink} target="_blank" rel="noopener noreferrer" className="w-full bg-gray-100 text-gray-900 py-3 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-gray-200 transition-all border border-gray-200">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+              Add to Google Calendar
+            </a>
+
+            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(courtName + ' ' + courtAddress)}`} target="_blank" rel="noopener noreferrer" className="w-full bg-gray-100 text-gray-900 py-3 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-gray-200 transition-all border border-gray-200">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+              Open Location in Maps
+            </a>
+
+            {onBack && (
+              <button onClick={onBack} className="w-full py-2.5 text-xs text-gray-500 font-semibold hover:text-gray-800 transition-all">
+                ← Book Another Court / Home
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {copied && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-5 py-2.5 rounded-full text-xs font-bold shadow-xl">
+          Match pass link copied to clipboard!
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 export default function RestaurantApp() {
   const [cartItems, setCartItems] = useState([]);
   const [currentPage, setCurrentPage] = useState('home');
@@ -119,6 +352,7 @@ export default function RestaurantApp() {
 
   // State for client appointment lookup
   const [appointmentToken, setAppointmentToken] = useState(null);
+  const [bookingPassId, setBookingPassId] = useState(null);
 
   // Check URL parameters for payment status (after GCash redirect) or patient appointment
   useEffect(() => {
@@ -127,6 +361,17 @@ export default function RestaurantApp() {
     const orderNumber = urlParams.get('order');
     const page = urlParams.get('page');
     const token = urlParams.get('token');
+
+    // Check if URL path is /b/:id or /booking/view/:id
+    const pathname = window.location.pathname;
+    const bMatch = pathname.match(/^\/(?:b|booking|match-pass)(?:\/view)?\/([^\/\?#]+)/);
+    const bParam = urlParams.get('b') || urlParams.get('bookingId');
+    if (bMatch || bParam) {
+      const bId = bMatch ? bMatch[1] : bParam;
+      setBookingPassId(bId);
+      setCurrentPage('booking-pass');
+      return;
+    }
 
     if (payment && orderNumber) {
       setPaymentStatus(payment);
@@ -298,6 +543,7 @@ export default function RestaurantApp() {
       case 'confirmation': return <ConfirmationPage setCurrentPage={setCurrentPage} orderNumber={pendingOrderNumber} paymentStatus={paymentStatus} />;
       case 'payment-failed': return <PaymentFailedPage setCurrentPage={setCurrentPage} orderNumber={pendingOrderNumber} />;
       case 'admin': return <AdminDashboard setCurrentPage={setCurrentPage} />;
+      case 'booking-pass': return <BookingPassView bookingId={bookingPassId} onBack={() => setCurrentPage('home')} />;
       case 'my-appointment': return <MyAppointment token={appointmentToken} />;
       case 'rider': return <RiderPortal />;
       case 'queue': return <QueuePage setCurrentPage={setCurrentPage} />;

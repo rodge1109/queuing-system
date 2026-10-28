@@ -827,6 +827,547 @@ app.get('/api/appointments/search', async (req, res) => {
 });
 
 // Get a single appointment by ID
+
+// ==================== PUBLIC BOOKING CONFIRMATION & MATCH PASS ====================
+app.get(['/b/:id', '/b', '/booking/view/:id', '/booking/view'], async (req, res) => {
+  try {
+    const bookingId = req.params.id || req.query.id;
+    let appointment = null;
+    let serviceOrCourt = null;
+
+    if (bookingId && !isNaN(bookingId)) {
+      try {
+        const aptRes = await pool.query('SELECT * FROM appointments WHERE id = $1', [bookingId]);
+        if (aptRes.rows.length > 0) appointment = aptRes.rows[0];
+      } catch (err) {}
+      
+      if (!appointment) {
+        try {
+          const aptRes = await pool.query('SELECT * FROM pickle_appointment WHERE id = $1', [bookingId]);
+          if (aptRes.rows.length > 0) appointment = aptRes.rows[0];
+        } catch (err) {}
+      }
+    } else if (bookingId && typeof bookingId === 'string' && bookingId.length > 5) {
+      try {
+        const aptRes = await pool.query('SELECT * FROM appointments WHERE cancel_token = $1', [bookingId]);
+        if (aptRes.rows.length > 0) appointment = aptRes.rows[0];
+      } catch (err) {}
+      if (!appointment) {
+        try {
+          const aptRes = await pool.query('SELECT * FROM pickle_appointment WHERE cancel_token = $1', [bookingId]);
+          if (aptRes.rows.length > 0) appointment = aptRes.rows[0];
+        } catch (err) {}
+      }
+    }
+
+    const id = appointment ? appointment.id : (bookingId || 'PB-PASS');
+    const courtName = (appointment && appointment.service_type) 
+      ? appointment.service_type 
+      : (req.query.court || req.query.serviceType || 'Pickleball Court');
+      
+    const rawDate = (appointment && appointment.preferred_date) 
+      ? appointment.preferred_date 
+      : (req.query.date || new Date().toISOString().split('T')[0]);
+      
+    const timeSlot = (appointment && appointment.preferred_time) 
+      ? appointment.preferred_time 
+      : (req.query.time || req.query.timeSlot || 'Reserved Timeslot');
+      
+    const playerName = (appointment && appointment.full_name) 
+      ? appointment.full_name 
+      : (req.query.name || req.query.fullName || 'Pickleball Player');
+      
+    const totalAmount = (appointment && appointment.total_amount) 
+      ? appointment.total_amount 
+      : (req.query.price || req.query.total || '350');
+      
+    const status = (appointment && appointment.status) 
+      ? appointment.status.toUpperCase() 
+      : (req.query.status ? req.query.status.toUpperCase() : 'CONFIRMED');
+
+    // Lookup service / court details
+    if (appointment && appointment.specialist_id && !isNaN(appointment.specialist_id)) {
+      try {
+        const cRes = await pool.query('SELECT * FROM booking_services WHERE id = $1', [appointment.specialist_id]);
+        if (cRes.rows.length > 0) serviceOrCourt = cRes.rows[0];
+      } catch (e) {}
+      if (!serviceOrCourt) {
+        try {
+          const cRes = await pool.query('SELECT * FROM pickle_courts WHERE id = $1', [appointment.specialist_id]);
+          if (cRes.rows.length > 0) serviceOrCourt = cRes.rows[0];
+        } catch (e) {}
+      }
+    }
+    if (!serviceOrCourt && courtName) {
+      try {
+        const cRes = await pool.query('SELECT * FROM booking_services WHERE LOWER(name) = LOWER($1) LIMIT 1', [courtName]);
+        if (cRes.rows.length > 0) serviceOrCourt = cRes.rows[0];
+      } catch (e) {}
+      if (!serviceOrCourt) {
+        try {
+          const cRes = await pool.query('SELECT * FROM pickle_courts WHERE LOWER(name) = LOWER($1) OR LOWER(venue_name) = LOWER($1) LIMIT 1', [courtName]);
+          if (cRes.rows.length > 0) serviceOrCourt = cRes.rows[0];
+        } catch (e) {}
+      }
+    }
+
+    const courtAddress = (serviceOrCourt && (serviceOrCourt.address || serviceOrCourt.description)) 
+      ? (serviceOrCourt.address || serviceOrCourt.description) 
+      : (req.query.address || 'Cayang, Bogo City, Cebu');
+      
+    let displayDate = rawDate;
+    let isoDatePart = '';
+    try {
+      const d = new Date(rawDate);
+      if (!isNaN(d.getTime())) {
+        const options = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' };
+        displayDate = d.toLocaleDateString('en-US', options);
+        isoDatePart = d.toISOString().split('T')[0].replace(/-/g, '');
+      }
+    } catch (_) {}
+
+    let gCalLink = '#';
+    try {
+      let startH = 9, startM = 0;
+      const cleanTime = String(timeSlot).split('-')[0].trim();
+      const parts = cleanTime.split(' ');
+      if (parts.length >= 2) {
+        const hm = parts[0].split(':');
+        startH = parseInt(hm[0], 10);
+        startM = hm[1] ? parseInt(hm[1], 10) : 0;
+        const ampm = parts[1].toUpperCase();
+        if (ampm === 'PM' && startH < 12) startH += 12;
+        if (ampm === 'AM' && startH === 12) startH = 0;
+      }
+      const endH = (startH + 1) % 24;
+      const pad = (n) => String(n).padStart(2, '0');
+      const datePrefix = isoDatePart || new Date().toISOString().split('T')[0].replace(/-/g, '');
+      const startIso = `${datePrefix}T${pad(startH)}${pad(startM)}00`;
+      const endIso = `${datePrefix}T${pad(endH)}${pad(startM)}00`;
+      gCalLink = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent('Pickleball Match: ' + courtName)}&dates=${startIso}/${endIso}&details=${encodeURIComponent('PickleBook Match Pass\\nCourt: ' + courtName + '\\nSchedule: ' + timeSlot + '\\nAddress: ' + courtAddress)}&location=${encodeURIComponent(courtAddress)}`;
+    } catch (e) {
+      gCalLink = '#';
+    }
+
+    const qrData = encodeURIComponent(`PICKLEBOOK:${id}:${courtName}:${displayDate}:${timeSlot}`);
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${qrData}&bgcolor=ffffff&color=0f5b2a&margin=0`;
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>PickleBook Match Pass - ${courtName}</title>
+  <meta name="description" content="Pickleball Court Reservation: ${courtName} on ${displayDate} at ${timeSlot}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: radial-gradient(circle at 50% 0%, #164032 0%, #091712 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 24px 16px 48px;
+      color: #111827;
+      -webkit-font-smoothing: antialiased;
+    }
+    .app-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+      color: #FFFFFF;
+      font-weight: 800;
+      font-size: 20px;
+      letter-spacing: -0.5px;
+    }
+    .app-brand span.tag {
+      background: #A3E635;
+      color: #0E221B;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 2px 8px;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .ticket-container {
+      width: 100%;
+      max-width: 420px;
+      background: #FFFFFF;
+      border-radius: 28px;
+      overflow: hidden;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1);
+      position: relative;
+    }
+    .ticket-top {
+      background: linear-gradient(135deg, #0F5B2A 0%, #083819 100%);
+      color: #FFFFFF;
+      padding: 24px 24px 20px;
+      position: relative;
+    }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(163, 230, 53, 0.2);
+      border: 1px solid rgba(163, 230, 53, 0.4);
+      color: #A3E635;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+    }
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      background: #A3E635;
+      border-radius: 50%;
+      box-shadow: 0 0 8px #A3E635;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+    .venue-title {
+      font-size: 22px;
+      font-weight: 800;
+      line-height: 1.2;
+      color: #FFFFFF;
+      margin-bottom: 4px;
+    }
+    .venue-location {
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.7);
+      font-weight: 400;
+    }
+    .perforations {
+      position: relative;
+      height: 24px;
+      background: #FFFFFF;
+      display: flex;
+      align-items: center;
+      overflow: hidden;
+    }
+    .perforations::before, .perforations::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 24px;
+      height: 24px;
+      background: #091712;
+      border-radius: 50%;
+      z-index: 2;
+    }
+    .perforations::before { left: -12px; }
+    .perforations::after { right: -12px; }
+    .dashed-line {
+      width: 100%;
+      margin: 0 16px;
+      border-top: 2px dashed #E5E7EB;
+    }
+    .ticket-body {
+      padding: 12px 24px 28px;
+    }
+    .highlight-box {
+      background: #F4FBF7;
+      border: 1.5px solid #D1FAE5;
+      border-radius: 18px;
+      padding: 16px 18px;
+      margin-bottom: 20px;
+    }
+    .highlight-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .highlight-row:last-child {
+      margin-bottom: 0;
+      padding-top: 10px;
+      border-top: 1px dashed #A7F3D0;
+    }
+    .hl-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #065F46;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .hl-val-date {
+      font-size: 16px;
+      font-weight: 800;
+      color: #0F5B2A;
+    }
+    .hl-val-time {
+      font-size: 18px;
+      font-weight: 900;
+      color: #111827;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .time-badge {
+      background: #0F5B2A;
+      color: #A3E635;
+      font-size: 10px;
+      font-weight: 800;
+      padding: 2px 8px;
+      border-radius: 6px;
+    }
+    .meta-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 22px;
+    }
+    .meta-item {
+      display: flex;
+      flex-direction: column;
+    }
+    .meta-item span.title {
+      font-size: 11px;
+      color: #6B7280;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      margin-bottom: 2px;
+    }
+    .meta-item span.value {
+      font-size: 14px;
+      color: #111827;
+      font-weight: 700;
+    }
+    .qr-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: 16px;
+      background: #F9FAFB;
+      border-radius: 16px;
+      margin-bottom: 22px;
+    }
+    .qr-img {
+      width: 140px;
+      height: 140px;
+      border-radius: 12px;
+      border: 1px solid #E5E7EB;
+      background: #FFFFFF;
+      padding: 8px;
+      margin-bottom: 8px;
+    }
+    .qr-caption {
+      font-size: 11px;
+      color: #6B7280;
+      font-weight: 500;
+    }
+    .btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .btn-calendar {
+      width: 100%;
+      background: #F3F4F6;
+      color: #111827;
+      border: 1px solid #E5E7EB;
+      padding: 13px;
+      border-radius: 14px;
+      font-size: 13px;
+      font-weight: 700;
+      font-family: inherit;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+    .btn-calendar:hover {
+      background: #E5E7EB;
+    }
+    .btn-share {
+      width: 100%;
+      background: #A3E635;
+      color: #0E221B;
+      border: none;
+      padding: 14px;
+      border-radius: 14px;
+      font-size: 14px;
+      font-weight: 800;
+      font-family: inherit;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .btn-share:hover {
+      background: #90d324;
+    }
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: #111827;
+      color: #FFFFFF;
+      padding: 10px 20px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      z-index: 999;
+      pointer-events: none;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    }
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-brand">
+    <span>🎾 PickleBook</span>
+    <span class="tag">Match Pass</span>
+  </div>
+
+  <div class="ticket-container">
+    <div class="ticket-top">
+      <div class="status-badge">
+        <span class="status-dot"></span>
+        <span>${status}</span>
+      </div>
+      <h1 class="venue-title">${courtName}</h1>
+      <p class="venue-location">📍 ${courtAddress}</p>
+    </div>
+
+    <div class="perforations">
+      <div class="dashed-line"></div>
+    </div>
+
+    <div class="ticket-body">
+      <div class="highlight-box">
+        <div class="highlight-row">
+          <div>
+            <div class="hl-label">Reserved Date</div>
+            <div class="hl-val-date">📅 ${displayDate}</div>
+          </div>
+        </div>
+        <div class="highlight-row">
+          <div>
+            <div class="hl-label">Schedule & Time Slot</div>
+            <div class="hl-val-time">
+              <span>⏰ ${timeSlot}</span>
+            </div>
+          </div>
+          <span class="time-badge">Confirmed</span>
+        </div>
+      </div>
+
+      <div class="meta-grid">
+        <div class="meta-item">
+          <span class="title">Player / Host</span>
+          <span class="value">${playerName}</span>
+        </div>
+        <div class="meta-item">
+          <span class="title">Booking Ref</span>
+          <span class="value">#PB-${id}</span>
+        </div>
+        <div class="meta-item">
+          <span class="title">Total Paid</span>
+          <span class="value" style="color: #0F5B2A;">₱${parseFloat(totalAmount).toFixed(2)}</span>
+        </div>
+        <div class="meta-item">
+          <span class="title">Check-in</span>
+          <span class="value">Show at Court</span>
+        </div>
+      </div>
+
+      <div class="qr-section">
+        <img src="${qrUrl}" alt="Check-in QR Code" class="qr-img">
+        <div class="qr-caption">Scan at court gate for contactless check-in</div>
+      </div>
+
+      <div class="btn-group">
+        <button class="btn-share" onclick="sharePass()">
+          <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
+          Share Pass with Group / Buddies
+        </button>
+
+        <a href="${gCalLink}" target="_blank" rel="noopener" class="btn-calendar">
+          <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+          Add to Google Calendar
+        </a>
+
+        <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(courtName + ' ' + courtAddress)}" target="_blank" rel="noopener" class="btn-calendar">
+          <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+          Open Location in Maps
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast">Link copied to clipboard!</div>
+
+  <script>
+    function sharePass() {
+      const shareData = {
+        title: 'Pickleball Match Pass: ${courtName}',
+        text: 'Court Reserved! Playing at ${courtName} on ${displayDate} at ${timeSlot}. View schedule & pass:',
+        url: window.location.href
+      };
+
+      if (navigator.share) {
+        navigator.share(shareData).catch(() => copyLink());
+      } else {
+        copyLink();
+      }
+    }
+
+    function copyLink() {
+      navigator.clipboard.writeText(window.location.href).then(() => {
+        showToast('Booking link copied to clipboard!');
+      }).catch(() => {
+        showToast('Link ready to share!');
+      });
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.innerText = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2500);
+    }
+  </script>
+</body>
+</html>`;
+
+    res.setHeader('Content-Type', 'text/html');
+    res.send(html);
+  } catch (error) {
+    console.error('Error rendering booking confirmation page:', error);
+    res.status(500).send('<h1>Unable to load booking details</h1><p>' + error.message + '</p>');
+  }
+});
+
+
 app.get('/api/appointments/:id', async (req, res) => {
   try {
     const { id } = req.params;
