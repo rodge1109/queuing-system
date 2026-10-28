@@ -1287,13 +1287,25 @@ function AppointmentForm() {
                         </h5>
                         
                         {paymentMethod === 'gcash' && (
-                          <div className="space-y-2 text-xs text-gray-600">
-                            <p>Please send the exact total amount of <strong className="text-gray-900">₱{calculateFees().total.toFixed(2)}</strong> to our official GCash account:</p>
-                            <div className="bg-white p-3 border border-gray-200 font-mono font-bold text-gray-900 text-sm flex justify-between items-center">
-                              <span>GCash: 0917-123-4567</span>
-                              <span className="text-[9px] text-[#24a148] uppercase tracking-widest font-black">Active</span>
+                          <div className="space-y-3 text-xs text-gray-600">
+                            <p>Please send the exact total amount of <strong className="text-gray-900">₱{calculateFees().total.toFixed(2)}</strong> to either of our official GCash accounts:</p>
+                            <div className="space-y-2">
+                              <div className="bg-white p-3 border border-gray-200 font-mono font-bold text-gray-900 text-sm flex justify-between items-center">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-blue-600 font-black">GCash:</span>
+                                  <span>0995 914 3064</span>
+                                </div>
+                                <span className="text-[9px] text-[#24a148] uppercase tracking-widest font-black bg-green-50 px-2 py-0.5 border border-green-200">Active</span>
+                              </div>
+                              <div className="bg-white p-3 border border-gray-200 font-mono font-bold text-gray-900 text-sm flex justify-between items-center">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-blue-600 font-black">GCash:</span>
+                                  <span>0917 795 8798</span>
+                                </div>
+                                <span className="text-[9px] text-[#24a148] uppercase tracking-widest font-black bg-green-50 px-2 py-0.5 border border-green-200">Active</span>
+                              </div>
                             </div>
-                            <p className="text-[10px] text-gray-400">Account Name: KINGS TRANSPORT SERVICE</p>
+                            <p className="text-[10px] text-gray-400">Account Name: KINGS TOURIST & TRANSPORT SERVICES</p>
                           </div>
                         )}
 

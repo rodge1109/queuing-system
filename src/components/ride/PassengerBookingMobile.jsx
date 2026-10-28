@@ -1515,9 +1515,22 @@ const PassengerBookingMobile = ({ setCurrentPage }) => {
           )}
 
           {formData.paymentMethod === 'GCash' && (
-            <div className="bg-blue-50 rounded-xl p-4 animate-in slide-in-from-top-2 duration-300 border border-blue-100 mt-4">
-              <p className="text-xs font-bold text-blue-800 mb-1">GCash Payment Instructions</p>
-              <p className="text-xs text-blue-600 leading-relaxed">Please send the exact amount to the driver's GCash number. The driver will provide their QR code or number upon pickup or drop-off.</p>
+            <div className="bg-blue-50 rounded-xl p-4 animate-in slide-in-from-top-2 duration-300 border border-blue-100 mt-4 space-y-2">
+              <p className="text-xs font-bold text-blue-800">GCash Payment Instructions</p>
+              <p className="text-xs text-blue-600 leading-relaxed">
+                Please send the exact amount to either of our official GCash accounts, or scan the QR code upon ride service:
+              </p>
+              <div className="bg-white/80 p-2.5 rounded-lg border border-blue-200 font-mono text-xs text-blue-900 font-bold space-y-1">
+                <div className="flex justify-between items-center">
+                  <span>GCash 1:</span>
+                  <span>0995 914 3064</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span>GCash 2:</span>
+                  <span>0917 795 8798</span>
+                </div>
+              </div>
+              <p className="text-[10px] text-blue-500 font-medium">Account Name: KINGS TOURIST & TRANSPORT SERVICES</p>
             </div>
           )}
 

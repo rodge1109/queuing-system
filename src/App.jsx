@@ -3299,11 +3299,11 @@ function Header({ currentPage, setCurrentPage, searchQuery, setSearchQuery, defe
             </svg>
             <span>+63 995 914 3064</span>
           </a>
-          <a href="mailto:info@kingstouristtransport.com" className="hidden lg:flex items-center gap-2 text-[#c6c6c6] hover:text-white text-sm font-semibold tracking-wider transition-all">
+          <a href="mailto:kingstouristtransport_services@yahoo.com" className="hidden lg:flex items-center gap-2 text-[#c6c6c6] hover:text-white text-sm font-semibold tracking-wider transition-all">
             <svg className="w-4 h-4 text-[#10b981] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 00-2-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
             </svg>
-            <span>info@kingstouristtransport.com</span>
+            <span>kingstouristtransport_services@yahoo.com</span>
           </a>
           <button
             onClick={handleInstallClick}
@@ -3460,13 +3460,15 @@ function HomePage({ setCurrentPage }) {
                     <svg className="w-4 h-4 text-[#10b981]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                     </svg>
-                    0917 795 8798
+                    <span>0995 914 3064 / 0917 795 8798</span>
                   </p>
                   <p className="flex items-center gap-2">
                     <svg className="w-4 h-4 text-[#10b981]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                     </svg>
-                    info@kingstouristtransport.com
+                    <a href="mailto:kingstouristtransport_services@yahoo.com" className="hover:text-white transition-colors">
+                      kingstouristtransport_services@yahoo.com
+                    </a>
                   </p>
                 </div>
               </div>
@@ -7650,6 +7652,15 @@ function GeneralSettings() {
           />
         </div>
         <div>
+          <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Contact Email</label>
+          <input
+            type="email"
+            value={settings.clinic_email || ''}
+            onChange={e => setSettings({ ...settings, clinic_email: e.target.value })}
+            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:border-[#10b981] outline-none"
+          />
+        </div>
+        <div>
           <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Default Timezone</label>
           <select className="w-full px-4 py-3 bg-gray-50 border border-gray-200 text-sm focus:border-[#10b981] outline-none">
             <option>(GMT+08:00) Manila, Philippines</option>
@@ -7841,7 +7852,17 @@ function PricingFareSettings() {
     const pricesMap = {};
     if (route.prices) {
       route.prices.forEach(p => {
-        pricesMap[p.service_type] = p.price;
+        const pType = (p.service_type || '').toLowerCase();
+        const matchedSrv = services.find(srv => {
+          const sName = (srv.name || '').toLowerCase();
+          const sCat = (srv.category || '').toLowerCase();
+          return pType === sName || pType === sCat || (sName.includes('van') && pType.includes('van')) || (sCat.includes('van') && pType.includes('van'));
+        });
+        if (matchedSrv) {
+          pricesMap[matchedSrv.name] = p.price;
+        } else {
+          pricesMap[p.service_type] = p.price;
+        }
       });
     }
     setPrices(pricesMap);
@@ -7883,10 +7904,12 @@ function PricingFareSettings() {
       return;
     }
 
-    const pricesPayload = Object.entries(prices).map(([service_type, price]) => ({
-      service_type,
-      price: parseFloat(price) || 0
-    }));
+    const pricesPayload = Object.entries(prices)
+      .filter(([_, price]) => price !== '' && price !== null && parseFloat(price) > 0)
+      .map(([service_type, price]) => ({
+        service_type,
+        price: parseFloat(price) || 0
+      }));
 
     const payload = {
       route_name: routeName,

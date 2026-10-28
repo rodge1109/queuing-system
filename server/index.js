@@ -3988,7 +3988,7 @@ app.get('/api/patient/appointment/:token/tracker', async (req, res) => {
 // Public GET settings
 app.get('/api/settings', async (req, res) => {
   try {
-    const { rows } = await pool.query("SELECT key, value FROM clinic_settings WHERE key IN ('clinic_name', 'clinic_address', 'clinic_phone', 'government_tax_rate')");
+    const { rows } = await pool.query("SELECT key, value FROM clinic_settings WHERE key IN ('clinic_name', 'clinic_address', 'clinic_phone', 'clinic_email', 'government_tax_rate')");
     const settings = {};
     rows.forEach(r => { settings[r.key] = r.value; });
     if (!settings.government_tax_rate) settings.government_tax_rate = '12';
