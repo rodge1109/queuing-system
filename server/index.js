@@ -971,7 +971,8 @@ app.get(['/b/:id', '/b', '/booking/view/:id', '/booking/view'], async (req, res)
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: radial-gradient(circle at 50% 0%, #164032 0%, #091712 100%);
+      background: linear-gradient(180deg, #DCE9D5 0%, #F7F9F1 50%, #ECF3E9 100%);
+      background-attachment: fixed;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
@@ -986,17 +987,17 @@ app.get(['/b/:id', '/b', '/booking/view/:id', '/booking/view'], async (req, res)
       align-items: center;
       gap: 10px;
       margin-bottom: 20px;
-      color: #FFFFFF;
+      color: #0A0F0D;
       font-weight: 800;
       font-size: 20px;
       letter-spacing: -0.5px;
     }
     .app-brand span.tag {
-      background: #A3E635;
-      color: #0E221B;
+      background: #1B4332;
+      color: #A3E635;
       font-size: 11px;
       font-weight: 800;
-      padding: 2px 8px;
+      padding: 3px 10px;
       border-radius: 999px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
@@ -1007,7 +1008,7 @@ app.get(['/b/:id', '/b', '/booking/view/:id', '/booking/view'], async (req, res)
       background: #FFFFFF;
       border-radius: 28px;
       overflow: hidden;
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1);
+      box-shadow: 0 20px 45px -10px rgba(15, 46, 31, 0.18), 0 2px 10px rgba(0, 0, 0, 0.04);
       position: relative;
     }
     .ticket-top {
@@ -1070,8 +1071,9 @@ app.get(['/b/:id', '/b', '/booking/view/:id', '/booking/view'], async (req, res)
       transform: translateY(-50%);
       width: 24px;
       height: 24px;
-      background: #091712;
+      background: linear-gradient(180deg, #DCE9D5 0%, #F7F9F1 50%, #ECF3E9 100%) fixed;
       border-radius: 50%;
+      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
       z-index: 2;
     }
     .perforations::before { left: -12px; }

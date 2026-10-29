@@ -153,7 +153,7 @@ function BookingPassView({ bookingId, onBack }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0E221B] flex flex-col items-center justify-center p-6 text-white font-['Poppins']">
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 text-gray-800 font-['Poppins']" style={{ background: 'linear-gradient(180deg, #DCE9D5 0%, #F7F9F1 50%, #ECF3E9 100%)' }}>
         <div className="w-12 h-12 border-4 border-[#A3E635] border-t-transparent rounded-full animate-spin mb-4"></div>
         <p className="text-sm font-semibold tracking-wide text-gray-300">Loading your Match Pass...</p>
       </div>
@@ -162,7 +162,7 @@ function BookingPassView({ bookingId, onBack }) {
 
   if (error || !appointment) {
     return (
-      <div className="min-h-screen bg-[#0E221B] flex flex-col items-center justify-center p-6 font-['Poppins']">
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 font-['Poppins']" style={{ background: 'linear-gradient(180deg, #DCE9D5 0%, #F7F9F1 50%, #ECF3E9 100%)' }}>
         <div className="w-full max-w-md bg-white rounded-3xl p-8 text-center shadow-2xl">
           <div className="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold">!</div>
           <h2 className="text-xl font-extrabold text-gray-900 mb-2">Booking Not Found</h2>
@@ -220,13 +220,13 @@ function BookingPassView({ bookingId, onBack }) {
   } catch (e) {}
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#164032] to-[#091712] py-8 px-4 flex flex-col items-center justify-start font-['Poppins']">
-      <div className="flex items-center gap-2 mb-5 text-white font-extrabold text-xl tracking-tight">
+    <div className="min-h-screen py-8 px-4 flex flex-col items-center justify-start font-['Poppins']" style={{ background: 'linear-gradient(180deg, #DCE9D5 0%, #F7F9F1 50%, #ECF3E9 100%)', backgroundAttachment: 'fixed' }}>
+      <div className="flex items-center gap-2 mb-5 text-[#0A0F0D] font-extrabold text-xl tracking-tight">
         <span>🎾 PickleBook</span>
-        <span className="bg-[#A3E635] text-[#0E221B] text-[11px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">Match Pass</span>
+        <span className="bg-[#1B4332] text-[#A3E635] text-[11px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-sm">Match Pass</span>
       </div>
 
-      <div className="w-full max-w-sm bg-white rounded-[28px] overflow-hidden shadow-2xl border border-white/10">
+      <div className="w-full max-w-sm bg-white rounded-[28px] overflow-hidden shadow-[0_20px_45px_-12px_rgba(15,46,31,0.18)] border border-gray-200/60">
         {/* Top Header */}
         <div className="bg-gradient-to-br from-[#0F5B2A] to-[#083819] text-white p-6 pb-5">
           <div className="inline-flex items-center gap-1.5 bg-[#A3E635]/20 border border-[#A3E635]/40 text-[#A3E635] text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider mb-3">
@@ -239,8 +239,8 @@ function BookingPassView({ bookingId, onBack }) {
 
         {/* Perforations */}
         <div className="relative h-6 bg-white flex items-center overflow-hidden">
-          <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[#0E221B]"></div>
-          <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[#0E221B]"></div>
+          <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full shadow-[inset_0_1px_3px_rgba(0,0,0,0.1)]" style={{ background: 'linear-gradient(180deg, #DCE9D5 0%, #F7F9F1 50%, #ECF3E9 100%) fixed' }}></div>
+          <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full shadow-[inset_0_1px_3px_rgba(0,0,0,0.1)]" style={{ background: 'linear-gradient(180deg, #DCE9D5 0%, #F7F9F1 50%, #ECF3E9 100%) fixed' }}></div>
           <div className="w-full mx-4 border-t-2 border-dashed border-gray-200"></div>
         </div>
 
